@@ -1,0 +1,40 @@
+# EduVigIA - padrao oficial de finais de linha
+
+* text=auto
+
+# Backend / infraestrutura
+*.py        text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.ini       text eol=lf
+Dockerfile  text eol=lf
+*.conf      text eol=lf
+
+# Frontend
+*.js        text eol=lf
+*.jsx       text eol=lf
+*.ts        text eol=lf
+*.tsx       text eol=lf
+*.json      text eol=lf
+*.css       text eol=lf
+*.html      text eol=lf
+
+# Documentacao
+*.md        text eol=lf
+*.txt       text eol=lf
+
+# Windows / PowerShell
+*.ps1       text eol=crlf
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+
+# Binarios
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.webp      binary
+*.ico       binary
+*.pdf       binary
+*.zip       binary
+*.pfx       binary
+*.p12       binary
