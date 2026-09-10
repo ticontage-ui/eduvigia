@@ -1,0 +1,455 @@
+﻿==================================================
+ DIAGNOSTICO REAL DO MENU LATERAL EDUVIGIA
+==================================================
+
+Projeto: C:\Users\lecsa\Documents\eduvigia
+Data: 2026-06-24 13:16:44
+
+==================================================
+1. ARQUIVOS CSS, JSX E TSX EXISTENTES
+==================================================
+C:\Users\lecsa\Documents\eduvigia\frontend\src\main.jsx
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css
+C:\Users\lecsa\Documents\eduvigia\frontend\vite.config.js
+
+==================================================
+2. REGRAS SUSPEITAS NO PROJETO
+==================================================
+
+----- PADRAO: linear-gradient -----
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:1: :root{font-family:Inter,Segoe UI,Arial,sans-serif;color:#12233f;background:#eef4f8}*{box-sizing:border-box}body{margin:0}.app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}aside{background:#ffffff;border-right:1px solid #dbe5ec;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;overflow-x:hidden}.brand{width:190px;height:94px;object-fit:contain;margin:8px auto 0}nav{display:flex;flex-direction:column;padding:10px}nav button{border:0;background:transparent;border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:12px;color:#132039;font-weight:600;text-align:left}nav button.active{background:#08285d;color:#fff;box-shadow:0 4px 12px #08285d33}aside small{margin-top:auto;padding:18px;color:#607188;background:#eef4fa;border-top:1px solid #dbe5ec}main{min-width:0}header{height:58px;background:#fff;border-bottom:1px solid #dce6ee;display:flex;justify-content:flex-end;align-items:center;gap:25px;padding:0 24px}.search{display:flex;align-items:center;gap:8px;background:#edf3f7;padding:8px 12px;border-radius:8px}.search input{border:0;background:transparent;outline:none}.user{display:flex;align-items:center;gap:10px;font-weight:700}.title{padding:16px 18px 8px;display:flex;justify-content:space-between;align-items:center}.title h1{margin:0;color:#071c49}.title p{margin:3px 0;color:#57677d}.title>b{background:#16b15b;color:#fff;padding:7px 13px;border-radius:6px}.notice{margin:12px 18px;background:#fff3cd;border:1px solid #ffe08a;padding:10px;border-radius:8px}.cards{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;padding:8px 18px}.cards article{background:#fff;border:1px solid #dbe5eb;border-radius:12px;padding:13px;display:flex;align-items:center;gap:10px;box-shadow:0 3px 10px #1b41620b}.cards article strong{display:block;font-size:24px}.cards article small{color:#4b5c73}.ico{width:45px;height:45px;border-radius:50%;display:grid;place-items:center;color:#fff}.blue{background:#176197}.cyan{background:#0795ba}.green{background:#0da94e}.amber{background:#f19b00}.red{background:#db1010}.teal{background:#1599ad}.dashgrid{display:grid;grid-template-columns:1.35fr 1fr;gap:14px;padding:8px 18px 24px}.panel{background:#fff;border:1px solid #d6e2e9;border-radius:12px;padding:14px;box-shadow:0 3px 12px #1637500b}.panel h2{margin:0 0 12px;font-size:18px}.videoGrid{display:grid;grid-template-columns:1fr 1fr;gap:4px}.feed{height:150px;background:linear-gradient(135deg,#d4e0e7,#90a9b8);position:relative;overflow:hidden}.feed:after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 18px,#ffffff22 20px)}.feed span,.feed b{position:absolute;z-index:2;top:7px;background:#06214d;color:#fff;padding:4px 7px;border-radius:4px;font-size:12px}.feed span{left:7px}.feed b{right:7px;background:#e52525}.feed em{position:absolute;z-index:2;left:10px;bottom:10px;color:#fff;font-size:12px}.alert{display:grid;grid-template-columns:12px 1fr auto auto;align-items:center;gap:8px;border-bottom:1px solid #e3e9ed;padding:10px 0}.alert div{display:grid}.alert small{color:#6a7788}.alert button,form button{border:0;background:#078fa8;color:#fff;padding:8px 10px;border-radius:6px;font-weight:700}.alert .ghost{background:#fff;color:#aa3030;border:1px solid #d59a9a}.dot{width:9px;height:9px;border-radius:50%;background:#ef9d00}.dot.CRITICA{background:#df1212}.dot.ALTA{background:#f07c00}.wellbeing div{border-left:5px solid #f3a64b;padding:4px 12px;margin:10px 0}.wellbeing p{margin:4px 0;color:#4d5b6c}.health p{display:flex;justify-content:space-between;border-bottom:1px solid #e4eaee;padding:8px}.health b{color:#15914a}.health .warn{color:#dc8a00}.crud{display:grid;grid-template-columns:380px 1fr;gap:16px;padding:10px 18px}.crud form{background:#fff;border:1px solid #d6e2e9;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:11px}.crud input,.crud select{padding:11px;border:1px solid #ccd9e2;border-radius:7px}.crud label{display:flex;align-items:center;gap:8px}.crud form button{display:flex;justify-content:center;align-items:center;gap:7px}.list .row{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e4eaee;padding:11px}.row div{display:grid}.row span,.row small{color:#69788a}.coming{margin:70px auto;text-align:center;color:#557086}.coming svg{color:#0795ba}@media(max-width:1100px){.cards{grid-template-columns:repeat(3,1fr)}.dashgrid{grid-template-columns:1fr}.app{grid-template-columns:190px 1fr}.brand{width:165px}.crud{grid-template-columns:1fr}}@media(max-width:760px){.app{grid-template-columns:1fr}aside{display:none}.cards{grid-template-columns:repeat(2,1fr)}.dashgrid{padding:8px}.videoGrid{grid-template-columns:1fr}.crud{padding:8px}}
+
+----- PADRAO: nth-child -----
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:50: nav button:nth-child(n) {
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:84: nav button:nth-child(n).active {
+
+----- PADRAO: #061c4b -----
+Nenhuma ocorrência.
+
+----- PADRAO: #08285d -----
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:1: :root{font-family:Inter,Segoe UI,Arial,sans-serif;color:#12233f;background:#eef4f8}*{box-sizing:border-box}body{margin:0}.app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}aside{background:#ffffff;border-right:1px solid #dbe5ec;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;overflow-x:hidden}.brand{width:190px;height:94px;object-fit:contain;margin:8px auto 0}nav{display:flex;flex-direction:column;padding:10px}nav button{border:0;background:transparent;border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:12px;color:#132039;font-weight:600;text-align:left}nav button.active{background:#08285d;color:#fff;box-shadow:0 4px 12px #08285d33}aside small{margin-top:auto;padding:18px;color:#607188;background:#eef4fa;border-top:1px solid #dbe5ec}main{min-width:0}header{height:58px;background:#fff;border-bottom:1px solid #dce6ee;display:flex;justify-content:flex-end;align-items:center;gap:25px;padding:0 24px}.search{display:flex;align-items:center;gap:8px;background:#edf3f7;padding:8px 12px;border-radius:8px}.search input{border:0;background:transparent;outline:none}.user{display:flex;align-items:center;gap:10px;font-weight:700}.title{padding:16px 18px 8px;display:flex;justify-content:space-between;align-items:center}.title h1{margin:0;color:#071c49}.title p{margin:3px 0;color:#57677d}.title>b{background:#16b15b;color:#fff;padding:7px 13px;border-radius:6px}.notice{margin:12px 18px;background:#fff3cd;border:1px solid #ffe08a;padding:10px;border-radius:8px}.cards{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;padding:8px 18px}.cards article{background:#fff;border:1px solid #dbe5eb;border-radius:12px;padding:13px;display:flex;align-items:center;gap:10px;box-shadow:0 3px 10px #1b41620b}.cards article strong{display:block;font-size:24px}.cards article small{color:#4b5c73}.ico{width:45px;height:45px;border-radius:50%;display:grid;place-items:center;color:#fff}.blue{background:#176197}.cyan{background:#0795ba}.green{background:#0da94e}.amber{background:#f19b00}.red{background:#db1010}.teal{background:#1599ad}.dashgrid{display:grid;grid-template-columns:1.35fr 1fr;gap:14px;padding:8px 18px 24px}.panel{background:#fff;border:1px solid #d6e2e9;border-radius:12px;padding:14px;box-shadow:0 3px 12px #1637500b}.panel h2{margin:0 0 12px;font-size:18px}.videoGrid{display:grid;grid-template-columns:1fr 1fr;gap:4px}.feed{height:150px;background:linear-gradient(135deg,#d4e0e7,#90a9b8);position:relative;overflow:hidden}.feed:after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 18px,#ffffff22 20px)}.feed span,.feed b{position:absolute;z-index:2;top:7px;background:#06214d;color:#fff;padding:4px 7px;border-radius:4px;font-size:12px}.feed span{left:7px}.feed b{right:7px;background:#e52525}.feed em{position:absolute;z-index:2;left:10px;bottom:10px;color:#fff;font-size:12px}.alert{display:grid;grid-template-columns:12px 1fr auto auto;align-items:center;gap:8px;border-bottom:1px solid #e3e9ed;padding:10px 0}.alert div{display:grid}.alert small{color:#6a7788}.alert button,form button{border:0;background:#078fa8;color:#fff;padding:8px 10px;border-radius:6px;font-weight:700}.alert .ghost{background:#fff;color:#aa3030;border:1px solid #d59a9a}.dot{width:9px;height:9px;border-radius:50%;background:#ef9d00}.dot.CRITICA{background:#df1212}.dot.ALTA{background:#f07c00}.wellbeing div{border-left:5px solid #f3a64b;padding:4px 12px;margin:10px 0}.wellbeing p{margin:4px 0;color:#4d5b6c}.health p{display:flex;justify-content:space-between;border-bottom:1px solid #e4eaee;padding:8px}.health b{color:#15914a}.health .warn{color:#dc8a00}.crud{display:grid;grid-template-columns:380px 1fr;gap:16px;padding:10px 18px}.crud form{background:#fff;border:1px solid #d6e2e9;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:11px}.crud input,.crud select{padding:11px;border:1px solid #ccd9e2;border-radius:7px}.crud label{display:flex;align-items:center;gap:8px}.crud form button{display:flex;justify-content:center;align-items:center;gap:7px}.list .row{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e4eaee;padding:11px}.row div{display:grid}.row span,.row small{color:#69788a}.coming{margin:70px auto;text-align:center;color:#557086}.coming svg{color:#0795ba}@media(max-width:1100px){.cards{grid-template-columns:repeat(3,1fr)}.dashgrid{grid-template-columns:1fr}.app{grid-template-columns:190px 1fr}.brand{width:165px}.crud{grid-template-columns:1fr}}@media(max-width:760px){.app{grid-template-columns:1fr}aside{display:none}.cards{grid-template-columns:repeat(2,1fr)}.dashgrid{padding:8px}.videoGrid{grid-template-columns:1fr}.crud{padding:8px}}
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:80: color: #08285d !important;
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:85: background: #08285d !important;
+
+----- PADRAO: background: -----
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:1: :root{font-family:Inter,Segoe UI,Arial,sans-serif;color:#12233f;background:#eef4f8}*{box-sizing:border-box}body{margin:0}.app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}aside{background:#ffffff;border-right:1px solid #dbe5ec;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;overflow-x:hidden}.brand{width:190px;height:94px;object-fit:contain;margin:8px auto 0}nav{display:flex;flex-direction:column;padding:10px}nav button{border:0;background:transparent;border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:12px;color:#132039;font-weight:600;text-align:left}nav button.active{background:#08285d;color:#fff;box-shadow:0 4px 12px #08285d33}aside small{margin-top:auto;padding:18px;color:#607188;background:#eef4fa;border-top:1px solid #dbe5ec}main{min-width:0}header{height:58px;background:#fff;border-bottom:1px solid #dce6ee;display:flex;justify-content:flex-end;align-items:center;gap:25px;padding:0 24px}.search{display:flex;align-items:center;gap:8px;background:#edf3f7;padding:8px 12px;border-radius:8px}.search input{border:0;background:transparent;outline:none}.user{display:flex;align-items:center;gap:10px;font-weight:700}.title{padding:16px 18px 8px;display:flex;justify-content:space-between;align-items:center}.title h1{margin:0;color:#071c49}.title p{margin:3px 0;color:#57677d}.title>b{background:#16b15b;color:#fff;padding:7px 13px;border-radius:6px}.notice{margin:12px 18px;background:#fff3cd;border:1px solid #ffe08a;padding:10px;border-radius:8px}.cards{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;padding:8px 18px}.cards article{background:#fff;border:1px solid #dbe5eb;border-radius:12px;padding:13px;display:flex;align-items:center;gap:10px;box-shadow:0 3px 10px #1b41620b}.cards article strong{display:block;font-size:24px}.cards article small{color:#4b5c73}.ico{width:45px;height:45px;border-radius:50%;display:grid;place-items:center;color:#fff}.blue{background:#176197}.cyan{background:#0795ba}.green{background:#0da94e}.amber{background:#f19b00}.red{background:#db1010}.teal{background:#1599ad}.dashgrid{display:grid;grid-template-columns:1.35fr 1fr;gap:14px;padding:8px 18px 24px}.panel{background:#fff;border:1px solid #d6e2e9;border-radius:12px;padding:14px;box-shadow:0 3px 12px #1637500b}.panel h2{margin:0 0 12px;font-size:18px}.videoGrid{display:grid;grid-template-columns:1fr 1fr;gap:4px}.feed{height:150px;background:linear-gradient(135deg,#d4e0e7,#90a9b8);position:relative;overflow:hidden}.feed:after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 18px,#ffffff22 20px)}.feed span,.feed b{position:absolute;z-index:2;top:7px;background:#06214d;color:#fff;padding:4px 7px;border-radius:4px;font-size:12px}.feed span{left:7px}.feed b{right:7px;background:#e52525}.feed em{position:absolute;z-index:2;left:10px;bottom:10px;color:#fff;font-size:12px}.alert{display:grid;grid-template-columns:12px 1fr auto auto;align-items:center;gap:8px;border-bottom:1px solid #e3e9ed;padding:10px 0}.alert div{display:grid}.alert small{color:#6a7788}.alert button,form button{border:0;background:#078fa8;color:#fff;padding:8px 10px;border-radius:6px;font-weight:700}.alert .ghost{background:#fff;color:#aa3030;border:1px solid #d59a9a}.dot{width:9px;height:9px;border-radius:50%;background:#ef9d00}.dot.CRITICA{background:#df1212}.dot.ALTA{background:#f07c00}.wellbeing div{border-left:5px solid #f3a64b;padding:4px 12px;margin:10px 0}.wellbeing p{margin:4px 0;color:#4d5b6c}.health p{display:flex;justify-content:space-between;border-bottom:1px solid #e4eaee;padding:8px}.health b{color:#15914a}.health .warn{color:#dc8a00}.crud{display:grid;grid-template-columns:380px 1fr;gap:16px;padding:10px 18px}.crud form{background:#fff;border:1px solid #d6e2e9;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:11px}.crud input,.crud select{padding:11px;border:1px solid #ccd9e2;border-radius:7px}.crud label{display:flex;align-items:center;gap:8px}.crud form button{display:flex;justify-content:center;align-items:center;gap:7px}.list .row{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e4eaee;padding:11px}.row div{display:grid}.row span,.row small{color:#69788a}.coming{margin:70px auto;text-align:center;color:#557086}.coming svg{color:#0795ba}@media(max-width:1100px){.cards{grid-template-columns:repeat(3,1fr)}.dashgrid{grid-template-columns:1fr}.app{grid-template-columns:190px 1fr}.brand{width:165px}.crud{grid-template-columns:1fr}}@media(max-width:760px){.app{grid-template-columns:1fr}aside{display:none}.cards{grid-template-columns:repeat(2,1fr)}.dashgrid{padding:8px}.videoGrid{grid-template-columns:1fr}.crud{padding:8px}}
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:3: .panelHead{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:14px}.panelHead h2{margin:0 0 5px}.panelHead p{margin:0;color:#73849c;font-size:13px}.liveBadge{background:#e11d48;color:#fff;border-radius:999px;padding:7px 11px;font-size:12px;font-weight:800;white-space:nowrap}.videoFrame{position:relative;width:100%;aspect-ratio:16/9;background:#030712;border-radius:12px;overflow:hidden;border:1px solid #cbd5e1}.videoFrame.large{max-height:68vh}.videoFrame iframe{width:100%;height:100%;border:0;background:#030712}.streamMeta{display:flex;gap:15px;flex-wrap:wrap;align-items:center;padding-top:12px;color:#65758b;font-size:12px}.streamMeta a,.connectionGrid a{color:#0782a8;text-decoration:none;font-weight:700}.monitorPage{display:grid;gap:18px}.monitorPanel{padding:20px}.connectionGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}.connectionGrid div{padding:12px;background:#f7fafc;border:1px solid #dce5ef;border-radius:10px;display:grid;gap:6px;min-width:0}.connectionGrid small{color:#64748b}.connectionGrid code,.connectionGrid a{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dashgrid .cameras{grid-column:span 1}.dashgrid .videoFrame{min-height:260px}@media(max-width:900px){.connectionGrid{grid-template-columns:1fr}.videoFrame{min-height:220px}}
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:4: .videoHelp{margin-top:14px;padding:14px;border:1px solid #cbd5e1;border-radius:10px;background:#f8fafc;display:grid;gap:7px}.videoHelp span{color:#64748b;font-size:13px}.videoHelp>div{display:flex;gap:10px;flex-wrap:wrap}.actionLink{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;background:#078fa8;color:#fff;font-weight:800;padding:9px 12px;border-radius:7px}.actionLink.secondary{background:#fff;color:#0f4c6e;border:1px solid #9fc0d1}
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:15: background: #ffffff !important;
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:46: background: #ffffff !important;
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:54: background: transparent !important;
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:79: background: #eaf2fb !important;
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:85: background: #08285d !important;
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:95: background: #eef4fa !important;
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:112: background: #b9c8d8;
+
+----- PADRAO: background-color: -----
+Nenhuma ocorrência.
+
+----- PADRAO: color:#fff -----
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:1: :root{font-family:Inter,Segoe UI,Arial,sans-serif;color:#12233f;background:#eef4f8}*{box-sizing:border-box}body{margin:0}.app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}aside{background:#ffffff;border-right:1px solid #dbe5ec;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;overflow-x:hidden}.brand{width:190px;height:94px;object-fit:contain;margin:8px auto 0}nav{display:flex;flex-direction:column;padding:10px}nav button{border:0;background:transparent;border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:12px;color:#132039;font-weight:600;text-align:left}nav button.active{background:#08285d;color:#fff;box-shadow:0 4px 12px #08285d33}aside small{margin-top:auto;padding:18px;color:#607188;background:#eef4fa;border-top:1px solid #dbe5ec}main{min-width:0}header{height:58px;background:#fff;border-bottom:1px solid #dce6ee;display:flex;justify-content:flex-end;align-items:center;gap:25px;padding:0 24px}.search{display:flex;align-items:center;gap:8px;background:#edf3f7;padding:8px 12px;border-radius:8px}.search input{border:0;background:transparent;outline:none}.user{display:flex;align-items:center;gap:10px;font-weight:700}.title{padding:16px 18px 8px;display:flex;justify-content:space-between;align-items:center}.title h1{margin:0;color:#071c49}.title p{margin:3px 0;color:#57677d}.title>b{background:#16b15b;color:#fff;padding:7px 13px;border-radius:6px}.notice{margin:12px 18px;background:#fff3cd;border:1px solid #ffe08a;padding:10px;border-radius:8px}.cards{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;padding:8px 18px}.cards article{background:#fff;border:1px solid #dbe5eb;border-radius:12px;padding:13px;display:flex;align-items:center;gap:10px;box-shadow:0 3px 10px #1b41620b}.cards article strong{display:block;font-size:24px}.cards article small{color:#4b5c73}.ico{width:45px;height:45px;border-radius:50%;display:grid;place-items:center;color:#fff}.blue{background:#176197}.cyan{background:#0795ba}.green{background:#0da94e}.amber{background:#f19b00}.red{background:#db1010}.teal{background:#1599ad}.dashgrid{display:grid;grid-template-columns:1.35fr 1fr;gap:14px;padding:8px 18px 24px}.panel{background:#fff;border:1px solid #d6e2e9;border-radius:12px;padding:14px;box-shadow:0 3px 12px #1637500b}.panel h2{margin:0 0 12px;font-size:18px}.videoGrid{display:grid;grid-template-columns:1fr 1fr;gap:4px}.feed{height:150px;background:linear-gradient(135deg,#d4e0e7,#90a9b8);position:relative;overflow:hidden}.feed:after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 18px,#ffffff22 20px)}.feed span,.feed b{position:absolute;z-index:2;top:7px;background:#06214d;color:#fff;padding:4px 7px;border-radius:4px;font-size:12px}.feed span{left:7px}.feed b{right:7px;background:#e52525}.feed em{position:absolute;z-index:2;left:10px;bottom:10px;color:#fff;font-size:12px}.alert{display:grid;grid-template-columns:12px 1fr auto auto;align-items:center;gap:8px;border-bottom:1px solid #e3e9ed;padding:10px 0}.alert div{display:grid}.alert small{color:#6a7788}.alert button,form button{border:0;background:#078fa8;color:#fff;padding:8px 10px;border-radius:6px;font-weight:700}.alert .ghost{background:#fff;color:#aa3030;border:1px solid #d59a9a}.dot{width:9px;height:9px;border-radius:50%;background:#ef9d00}.dot.CRITICA{background:#df1212}.dot.ALTA{background:#f07c00}.wellbeing div{border-left:5px solid #f3a64b;padding:4px 12px;margin:10px 0}.wellbeing p{margin:4px 0;color:#4d5b6c}.health p{display:flex;justify-content:space-between;border-bottom:1px solid #e4eaee;padding:8px}.health b{color:#15914a}.health .warn{color:#dc8a00}.crud{display:grid;grid-template-columns:380px 1fr;gap:16px;padding:10px 18px}.crud form{background:#fff;border:1px solid #d6e2e9;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:11px}.crud input,.crud select{padding:11px;border:1px solid #ccd9e2;border-radius:7px}.crud label{display:flex;align-items:center;gap:8px}.crud form button{display:flex;justify-content:center;align-items:center;gap:7px}.list .row{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e4eaee;padding:11px}.row div{display:grid}.row span,.row small{color:#69788a}.coming{margin:70px auto;text-align:center;color:#557086}.coming svg{color:#0795ba}@media(max-width:1100px){.cards{grid-template-columns:repeat(3,1fr)}.dashgrid{grid-template-columns:1fr}.app{grid-template-columns:190px 1fr}.brand{width:165px}.crud{grid-template-columns:1fr}}@media(max-width:760px){.app{grid-template-columns:1fr}aside{display:none}.cards{grid-template-columns:repeat(2,1fr)}.dashgrid{padding:8px}.videoGrid{grid-template-columns:1fr}.crud{padding:8px}}
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:3: .panelHead{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:14px}.panelHead h2{margin:0 0 5px}.panelHead p{margin:0;color:#73849c;font-size:13px}.liveBadge{background:#e11d48;color:#fff;border-radius:999px;padding:7px 11px;font-size:12px;font-weight:800;white-space:nowrap}.videoFrame{position:relative;width:100%;aspect-ratio:16/9;background:#030712;border-radius:12px;overflow:hidden;border:1px solid #cbd5e1}.videoFrame.large{max-height:68vh}.videoFrame iframe{width:100%;height:100%;border:0;background:#030712}.streamMeta{display:flex;gap:15px;flex-wrap:wrap;align-items:center;padding-top:12px;color:#65758b;font-size:12px}.streamMeta a,.connectionGrid a{color:#0782a8;text-decoration:none;font-weight:700}.monitorPage{display:grid;gap:18px}.monitorPanel{padding:20px}.connectionGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}.connectionGrid div{padding:12px;background:#f7fafc;border:1px solid #dce5ef;border-radius:10px;display:grid;gap:6px;min-width:0}.connectionGrid small{color:#64748b}.connectionGrid code,.connectionGrid a{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dashgrid .cameras{grid-column:span 1}.dashgrid .videoFrame{min-height:260px}@media(max-width:900px){.connectionGrid{grid-template-columns:1fr}.videoFrame{min-height:220px}}
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:4: .videoHelp{margin-top:14px;padding:14px;border:1px solid #cbd5e1;border-radius:10px;background:#f8fafc;display:grid;gap:7px}.videoHelp span{color:#64748b;font-size:13px}.videoHelp>div{display:flex;gap:10px;flex-wrap:wrap}.actionLink{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;background:#078fa8;color:#fff;font-weight:800;padding:9px 12px;border-radius:7px}.actionLink.secondary{background:#fff;color:#0f4c6e;border:1px solid #9fc0d1}
+
+----- PADRAO: color: #fff -----
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:86: color: #ffffff !important;
+
+----- PADRAO: Despacho -----
+C:\Users\lecsa\Documents\eduvigia\frontend\src\main.jsx:11: const menu=[['Painel Geral',LayoutDashboard,'dashboard'],['Escolas',School,'schools'],['Câmeras',Camera,'cameras'],['Monitoramento',Camera,'monitor'],['Bem-Estar',HeartPulse,'wellness'],['Alertas',TriangleAlert,'alerts'],['Ocorrências',ClipboardList,'occurrences'],['Despacho',Truck,'dispatch'],['Equipamentos',Server,'equipment'],['Relatórios',BarChart3,'reports'],['Auditoria',ShieldCheck,'audit'],['Configurações',Settings,'settings']];
+
+----- PADRAO: Equipamentos -----
+C:\Users\lecsa\Documents\eduvigia\frontend\src\main.jsx:11: const menu=[['Painel Geral',LayoutDashboard,'dashboard'],['Escolas',School,'schools'],['Câmeras',Camera,'cameras'],['Monitoramento',Camera,'monitor'],['Bem-Estar',HeartPulse,'wellness'],['Alertas',TriangleAlert,'alerts'],['Ocorrências',ClipboardList,'occurrences'],['Despacho',Truck,'dispatch'],['Equipamentos',Server,'equipment'],['Relatórios',BarChart3,'reports'],['Auditoria',ShieldCheck,'audit'],['Configurações',Settings,'settings']];
+
+----- PADRAO: Relatórios -----
+C:\Users\lecsa\Documents\eduvigia\frontend\src\main.jsx:11: const menu=[['Painel Geral',LayoutDashboard,'dashboard'],['Escolas',School,'schools'],['Câmeras',Camera,'cameras'],['Monitoramento',Camera,'monitor'],['Bem-Estar',HeartPulse,'wellness'],['Alertas',TriangleAlert,'alerts'],['Ocorrências',ClipboardList,'occurrences'],['Despacho',Truck,'dispatch'],['Equipamentos',Server,'equipment'],['Relatórios',BarChart3,'reports'],['Auditoria',ShieldCheck,'audit'],['Configurações',Settings,'settings']];
+
+----- PADRAO: sidebar -----
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:6: /* EDUVIGIA-SIDEBAR-DEFINITIVE-START */
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:142: /* EDUVIGIA-SIDEBAR-DEFINITIVE-END */
+
+----- PADRAO: <aside -----
+C:\Users\lecsa\Documents\eduvigia\frontend\src\main.jsx:25: return <div className="app"><aside><img src="/eduvigia-brand.png" className="brand"/><nav>{menu.map(([n,I,k])=><button key={k} className={section===k?'active':''} onClick={()=>navigate(k)}><I size={20}/>{n}</button>)}</nav><small>EduVigIA v0.2 • RTSP/WebRTC ativo • IA aguardando GPU</small></aside><main><header><div className="search"><Search size={18}/><input placeholder="Buscar"/></div><div className="user"><Bell size={19}/><span>Administrador</span></div></header>{msg&&<div className="notice">{msg}</div>}
+
+----- PADRAO: aside -----
+C:\Users\lecsa\Documents\eduvigia\frontend\src\main.jsx:25: return <div className="app"><aside><img src="/eduvigia-brand.png" className="brand"/><nav>{menu.map(([n,I,k])=><button key={k} className={section===k?'active':''} onClick={()=>navigate(k)}><I size={20}/>{n}</button>)}</nav><small>EduVigIA v0.2 • RTSP/WebRTC ativo • IA aguardando GPU</small></aside><main><header><div className="search"><Search size={18}/><input placeholder="Buscar"/></div><div className="user"><Bell size={19}/><span>Administrador</span></div></header>{msg&&<div className="notice">{msg}</div>}
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:1: :root{font-family:Inter,Segoe UI,Arial,sans-serif;color:#12233f;background:#eef4f8}*{box-sizing:border-box}body{margin:0}.app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}aside{background:#ffffff;border-right:1px solid #dbe5ec;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;overflow-x:hidden}.brand{width:190px;height:94px;object-fit:contain;margin:8px auto 0}nav{display:flex;flex-direction:column;padding:10px}nav button{border:0;background:transparent;border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:12px;color:#132039;font-weight:600;text-align:left}nav button.active{background:#08285d;color:#fff;box-shadow:0 4px 12px #08285d33}aside small{margin-top:auto;padding:18px;color:#607188;background:#eef4fa;border-top:1px solid #dbe5ec}main{min-width:0}header{height:58px;background:#fff;border-bottom:1px solid #dce6ee;display:flex;justify-content:flex-end;align-items:center;gap:25px;padding:0 24px}.search{display:flex;align-items:center;gap:8px;background:#edf3f7;padding:8px 12px;border-radius:8px}.search input{border:0;background:transparent;outline:none}.user{display:flex;align-items:center;gap:10px;font-weight:700}.title{padding:16px 18px 8px;display:flex;justify-content:space-between;align-items:center}.title h1{margin:0;color:#071c49}.title p{margin:3px 0;color:#57677d}.title>b{background:#16b15b;color:#fff;padding:7px 13px;border-radius:6px}.notice{margin:12px 18px;background:#fff3cd;border:1px solid #ffe08a;padding:10px;border-radius:8px}.cards{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;padding:8px 18px}.cards article{background:#fff;border:1px solid #dbe5eb;border-radius:12px;padding:13px;display:flex;align-items:center;gap:10px;box-shadow:0 3px 10px #1b41620b}.cards article strong{display:block;font-size:24px}.cards article small{color:#4b5c73}.ico{width:45px;height:45px;border-radius:50%;display:grid;place-items:center;color:#fff}.blue{background:#176197}.cyan{background:#0795ba}.green{background:#0da94e}.amber{background:#f19b00}.red{background:#db1010}.teal{background:#1599ad}.dashgrid{display:grid;grid-template-columns:1.35fr 1fr;gap:14px;padding:8px 18px 24px}.panel{background:#fff;border:1px solid #d6e2e9;border-radius:12px;padding:14px;box-shadow:0 3px 12px #1637500b}.panel h2{margin:0 0 12px;font-size:18px}.videoGrid{display:grid;grid-template-columns:1fr 1fr;gap:4px}.feed{height:150px;background:linear-gradient(135deg,#d4e0e7,#90a9b8);position:relative;overflow:hidden}.feed:after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 18px,#ffffff22 20px)}.feed span,.feed b{position:absolute;z-index:2;top:7px;background:#06214d;color:#fff;padding:4px 7px;border-radius:4px;font-size:12px}.feed span{left:7px}.feed b{right:7px;background:#e52525}.feed em{position:absolute;z-index:2;left:10px;bottom:10px;color:#fff;font-size:12px}.alert{display:grid;grid-template-columns:12px 1fr auto auto;align-items:center;gap:8px;border-bottom:1px solid #e3e9ed;padding:10px 0}.alert div{display:grid}.alert small{color:#6a7788}.alert button,form button{border:0;background:#078fa8;color:#fff;padding:8px 10px;border-radius:6px;font-weight:700}.alert .ghost{background:#fff;color:#aa3030;border:1px solid #d59a9a}.dot{width:9px;height:9px;border-radius:50%;background:#ef9d00}.dot.CRITICA{background:#df1212}.dot.ALTA{background:#f07c00}.wellbeing div{border-left:5px solid #f3a64b;padding:4px 12px;margin:10px 0}.wellbeing p{margin:4px 0;color:#4d5b6c}.health p{display:flex;justify-content:space-between;border-bottom:1px solid #e4eaee;padding:8px}.health b{color:#15914a}.health .warn{color:#dc8a00}.crud{display:grid;grid-template-columns:380px 1fr;gap:16px;padding:10px 18px}.crud form{background:#fff;border:1px solid #d6e2e9;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:11px}.crud input,.crud select{padding:11px;border:1px solid #ccd9e2;border-radius:7px}.crud label{display:flex;align-items:center;gap:8px}.crud form button{display:flex;justify-content:center;align-items:center;gap:7px}.list .row{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e4eaee;padding:11px}.row div{display:grid}.row span,.row small{color:#69788a}.coming{margin:70px auto;text-align:center;color:#557086}.coming svg{color:#0795ba}@media(max-width:1100px){.cards{grid-template-columns:repeat(3,1fr)}.dashgrid{grid-template-columns:1fr}.app{grid-template-columns:190px 1fr}.brand{width:165px}.crud{grid-template-columns:1fr}}@media(max-width:760px){.app{grid-template-columns:1fr}aside{display:none}.cards{grid-template-columns:repeat(2,1fr)}.dashgrid{padding:8px}.videoGrid{grid-template-columns:1fr}.crud{padding:8px}}
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:14: aside {
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:90: aside small {
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:107: aside::-webkit-scrollbar {
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:111: aside::-webkit-scrollbar-thumb {
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:121: aside {
+C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css:137: aside {
+
+==================================================
+3. IMPORTACOES DE CSS NO FRONTEND
+==================================================
+C:\Users\lecsa\Documents\eduvigia\frontend\src\main.jsx:4: import'./style.css';
+
+==================================================
+4. VOLUMES DO CONTAINER EDUVIGIA_WEB
+==================================================
+template parsing error: template: :1: unexpected "=" in operand
+
+==================================================
+5. ARQUIVOS EXISTENTES DENTRO DO CONTAINER
+==================================================
+/app/src/main.jsx
+/app/src/style.css
+/app/vite.config.js
+
+==================================================
+6. REGRAS SUSPEITAS DENTRO DO CONTAINER
+==================================================
+sh: nth-child: not found
+sh: 061c4b: not found
+sh: 08285d: not found
+sh: Despacho: not found
+sh: Equipamentos: not found
+sh: color:[[:space:]]*#fff: not found
+
+==================================================
+7. FINAL DOS ARQUIVOS CSS DO HOST
+==================================================
+
+----- C:\Users\lecsa\Documents\eduvigia\frontend\src\style.css -----
+:root{font-family:Inter,Segoe UI,Arial,sans-serif;color:#12233f;background:#eef4f8}*{box-sizing:border-box}body{margin:0}.app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}aside{background:#ffffff;border-right:1px solid #dbe5ec;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;overflow-x:hidden}.brand{width:190px;height:94px;object-fit:contain;margin:8px auto 0}nav{display:flex;flex-direction:column;padding:10px}nav button{border:0;background:transparent;border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:12px;color:#132039;font-weight:600;text-align:left}nav button.active{background:#08285d;color:#fff;box-shadow:0 4px 12px #08285d33}aside small{margin-top:auto;padding:18px;color:#607188;background:#eef4fa;border-top:1px solid #dbe5ec}main{min-width:0}header{height:58px;background:#fff;border-bottom:1px solid #dce6ee;display:flex;justify-content:flex-end;align-items:center;gap:25px;padding:0 24px}.search{display:flex;align-items:center;gap:8px;background:#edf3f7;padding:8px 12px;border-radius:8px}.search input{border:0;background:transparent;outline:none}.user{display:flex;align-items:center;gap:10px;font-weight:700}.title{padding:16px 18px 8px;display:flex;justify-content:space-between;align-items:center}.title h1{margin:0;color:#071c49}.title p{margin:3px 0;color:#57677d}.title>b{background:#16b15b;color:#fff;padding:7px 13px;border-radius:6px}.notice{margin:12px 18px;background:#fff3cd;border:1px solid #ffe08a;padding:10px;border-radius:8px}.cards{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;padding:8px 18px}.cards article{background:#fff;border:1px solid #dbe5eb;border-radius:12px;padding:13px;display:flex;align-items:center;gap:10px;box-shadow:0 3px 10px #1b41620b}.cards article strong{display:block;font-size:24px}.cards article small{color:#4b5c73}.ico{width:45px;height:45px;border-radius:50%;display:grid;place-items:center;color:#fff}.blue{background:#176197}.cyan{background:#0795ba}.green{background:#0da94e}.amber{background:#f19b00}.red{background:#db1010}.teal{background:#1599ad}.dashgrid{display:grid;grid-template-columns:1.35fr 1fr;gap:14px;padding:8px 18px 24px}.panel{background:#fff;border:1px solid #d6e2e9;border-radius:12px;padding:14px;box-shadow:0 3px 12px #1637500b}.panel h2{margin:0 0 12px;font-size:18px}.videoGrid{display:grid;grid-template-columns:1fr 1fr;gap:4px}.feed{height:150px;background:linear-gradient(135deg,#d4e0e7,#90a9b8);position:relative;overflow:hidden}.feed:after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 18px,#ffffff22 20px)}.feed span,.feed b{position:absolute;z-index:2;top:7px;background:#06214d;color:#fff;padding:4px 7px;border-radius:4px;font-size:12px}.feed span{left:7px}.feed b{right:7px;background:#e52525}.feed em{position:absolute;z-index:2;left:10px;bottom:10px;color:#fff;font-size:12px}.alert{display:grid;grid-template-columns:12px 1fr auto auto;align-items:center;gap:8px;border-bottom:1px solid #e3e9ed;padding:10px 0}.alert div{display:grid}.alert small{color:#6a7788}.alert button,form button{border:0;background:#078fa8;color:#fff;padding:8px 10px;border-radius:6px;font-weight:700}.alert .ghost{background:#fff;color:#aa3030;border:1px solid #d59a9a}.dot{width:9px;height:9px;border-radius:50%;background:#ef9d00}.dot.CRITICA{background:#df1212}.dot.ALTA{background:#f07c00}.wellbeing div{border-left:5px solid #f3a64b;padding:4px 12px;margin:10px 0}.wellbeing p{margin:4px 0;color:#4d5b6c}.health p{display:flex;justify-content:space-between;border-bottom:1px solid #e4eaee;padding:8px}.health b{color:#15914a}.health .warn{color:#dc8a00}.crud{display:grid;grid-template-columns:380px 1fr;gap:16px;padding:10px 18px}.crud form{background:#fff;border:1px solid #d6e2e9;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:11px}.crud input,.crud select{padding:11px;border:1px solid #ccd9e2;border-radius:7px}.crud label{display:flex;align-items:center;gap:8px}.crud form button{display:flex;justify-content:center;align-items:center;gap:7px}.list .row{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e4eaee;padding:11px}.row div{display:grid}.row span,.row small{color:#69788a}.coming{margin:70px auto;text-align:center;color:#557086}.coming svg{color:#0795ba}@media(max-width:1100px){.cards{grid-template-columns:repeat(3,1fr)}.dashgrid{grid-template-columns:1fr}.app{grid-template-columns:190px 1fr}.brand{width:165px}.crud{grid-template-columns:1fr}}@media(max-width:760px){.app{grid-template-columns:1fr}aside{display:none}.cards{grid-template-columns:repeat(2,1fr)}.dashgrid{padding:8px}.videoGrid{grid-template-columns:1fr}.crud{padding:8px}}
+
+.panelHead{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:14px}.panelHead h2{margin:0 0 5px}.panelHead p{margin:0;color:#73849c;font-size:13px}.liveBadge{background:#e11d48;color:#fff;border-radius:999px;padding:7px 11px;font-size:12px;font-weight:800;white-space:nowrap}.videoFrame{position:relative;width:100%;aspect-ratio:16/9;background:#030712;border-radius:12px;overflow:hidden;border:1px solid #cbd5e1}.videoFrame.large{max-height:68vh}.videoFrame iframe{width:100%;height:100%;border:0;background:#030712}.streamMeta{display:flex;gap:15px;flex-wrap:wrap;align-items:center;padding-top:12px;color:#65758b;font-size:12px}.streamMeta a,.connectionGrid a{color:#0782a8;text-decoration:none;font-weight:700}.monitorPage{display:grid;gap:18px}.monitorPanel{padding:20px}.connectionGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}.connectionGrid div{padding:12px;background:#f7fafc;border:1px solid #dce5ef;border-radius:10px;display:grid;gap:6px;min-width:0}.connectionGrid small{color:#64748b}.connectionGrid code,.connectionGrid a{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dashgrid .cameras{grid-column:span 1}.dashgrid .videoFrame{min-height:260px}@media(max-width:900px){.connectionGrid{grid-template-columns:1fr}.videoFrame{min-height:220px}}
+.videoHelp{margin-top:14px;padding:14px;border:1px solid #cbd5e1;border-radius:10px;background:#f8fafc;display:grid;gap:7px}.videoHelp span{color:#64748b;font-size:13px}.videoHelp>div{display:flex;gap:10px;flex-wrap:wrap}.actionLink{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;background:#078fa8;color:#fff;font-weight:800;padding:9px 12px;border-radius:7px}.actionLink.secondary{background:#fff;color:#0f4c6e;border:1px solid #9fc0d1}
+
+/* EDUVIGIA-SIDEBAR-DEFINITIVE-START */
+
+.app {
+  display: grid !important;
+  grid-template-columns: 230px minmax(0, 1fr) !important;
+  min-height: 100vh !important;
+}
+
+aside {
+  background: #ffffff !important;
+  color: #12233f !important;
+  border-right: 1px solid #dbe5ec !important;
+  display: flex !important;
+  flex-direction: column !important;
+  position: sticky !important;
+  top: 0 !important;
+  width: 230px !important;
+  min-width: 230px !important;
+  max-width: 230px !important;
+  height: 100vh !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  z-index: 20 !important;
+}
+
+.brand {
+  width: 195px !important;
+  max-width: calc(100% - 24px) !important;
+  height: 102px !important;
+  object-fit: contain !important;
+  margin: 8px auto 6px !important;
+  flex-shrink: 0 !important;
+}
+
+nav {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  width: 100% !important;
+  padding: 8px 10px 14px !important;
+  background: #ffffff !important;
+}
+
+nav button,
+nav button:nth-child(n) {
+  width: 100% !important;
+  min-height: 44px !important;
+  border: 0 !important;
+  background: transparent !important;
+  border-radius: 9px !important;
+  padding: 11px 13px !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 12px !important;
+  color: #132039 !important;
+  font-weight: 650 !important;
+  text-align: left !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+nav button svg {
+  width: 20px !important;
+  min-width: 20px !important;
+  height: 20px !important;
+  color: currentColor !important;
+}
+
+nav button:hover {
+  background: #eaf2fb !important;
+  color: #08285d !important;
+}
+
+nav button.active,
+nav button:nth-child(n).active {
+  background: #08285d !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(8, 40, 93, 0.20) !important;
+}
+
+aside small {
+  display: block !important;
+  margin-top: auto !important;
+  padding: 16px 18px !important;
+  color: #607188 !important;
+  background: #eef4fa !important;
+  border-top: 1px solid #dbe5ec !important;
+  line-height: 1.5 !important;
+  flex-shrink: 0 !important;
+}
+
+main {
+  min-width: 0 !important;
+  width: 100% !important;
+  overflow-x: hidden !important;
+}
+
+aside::-webkit-scrollbar {
+  width: 7px;
+}
+
+aside::-webkit-scrollbar-thumb {
+  background: #b9c8d8;
+  border-radius: 10px;
+}
+
+@media (max-width: 1100px) {
+  .app {
+    grid-template-columns: 210px minmax(0, 1fr) !important;
+  }
+
+  aside {
+    width: 210px !important;
+    min-width: 210px !important;
+    max-width: 210px !important;
+  }
+
+  .brand {
+    width: 178px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .app {
+    grid-template-columns: 1fr !important;
+  }
+
+  aside {
+    display: none !important;
+  }
+}
+
+/* EDUVIGIA-SIDEBAR-DEFINITIVE-END */
+
+==================================================
+8. CONFIGURACAO DO SERVICO WEB NO COMPOSE
+==================================================
+name: eduvigia
+services:
+  api:
+    build:
+      context: C:\Users\lecsa\Documents\eduvigia\backend
+      dockerfile: Dockerfile
+    container_name: eduvigia_api
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: true
+      redis:
+        condition: service_healthy
+        required: true
+    environment:
+      DATABASE_URL: postgresql+psycopg://eduvigia:EduVigIA2026!@postgres:5432/eduvigia
+      REDIS_URL: redis://redis:6379/0
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 8000
+        published: "8002"
+        protocol: tcp
+    restart: unless-stopped
+  mediamtx:
+    container_name: eduvigia_mediamtx
+    image: bluenviron/mediamtx:1.19.1
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 8554
+        published: "8554"
+        protocol: tcp
+      - mode: ingress
+        target: 8888
+        published: "8888"
+        protocol: tcp
+      - mode: ingress
+        target: 8889
+        published: "8889"
+        protocol: tcp
+      - mode: ingress
+        target: 8189
+        published: "8189"
+        protocol: udp
+      - mode: ingress
+        host_ip: 127.0.0.1
+        target: 9997
+        published: "9997"
+        protocol: tcp
+      - mode: ingress
+        host_ip: 127.0.0.1
+        target: 9998
+        published: "9998"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: C:\Users\lecsa\Documents\eduvigia\mediamtx\mediamtx.yml
+        target: /mediamtx.yml
+        read_only: true
+        bind: {}
+  postgres:
+    container_name: eduvigia_postgres
+    environment:
+      POSTGRES_DB: eduvigia
+      POSTGRES_PASSWORD: EduVigIA2026!
+      POSTGRES_USER: eduvigia
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U eduvigia -d eduvigia
+      timeout: 5s
+      interval: 5s
+      retries: 20
+    image: postgres:16-alpine
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        host_ip: 127.0.0.1
+        target: 5432
+        published: "5437"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: eduvigia_postgres
+        target: /var/lib/postgresql/data
+        volume: {}
+  redis:
+    container_name: eduvigia_redis
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      timeout: 3s
+      interval: 5s
+      retries: 20
+    image: redis:7-alpine
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        host_ip: 127.0.0.1
+        target: 6379
+        published: "6382"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: eduvigia_redis
+        target: /data
+        volume: {}
+  video_teste:
+    command:
+      - -re
+      - -f
+      - lavfi
+      - -i
+      - testsrc2=size=1280x720:rate=15
+      - -f
+      - lavfi
+      - -i
+      - sine=frequency=880:sample_rate=44100
+      - -c:v
+      - libx264
+      - -preset
+      - ultrafast
+      - -tune
+      - zerolatency
+      - -pix_fmt
+      - yuv420p
+      - -g
+      - "30"
+      - -b:v
+      - 1400k
+      - -c:a
+      - aac
+      - -b:a
+      - 96k
+      - -f
+      - rtsp
+      - -rtsp_transport
+      - tcp
+      - rtsp://mediamtx:8554/teste
+    container_name: eduvigia_video_teste
+    depends_on:
+      mediamtx:
+        condition: service_started
+        required: true
+    image: jrottenberg/ffmpeg:7.1-alpine
+    networks:
+      default: null
+    restart: unless-stopped
+  web:
+    build:
+      context: C:\Users\lecsa\Documents\eduvigia\frontend
+      dockerfile: Dockerfile
+    container_name: eduvigia_web
+    depends_on:
+      api:
+        condition: service_started
+        required: true
+      mediamtx:
+        condition: service_started
+        required: true
+    environment:
+      VITE_API_URL: http://localhost:8002
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 5173
+        published: "5177"
+        protocol: tcp
+    restart: unless-stopped
+networks:
+  default:
+    name: eduvigia_default
+volumes:
+  eduvigia_postgres:
+    name: eduvigia_eduvigia_postgres
+  eduvigia_redis:
+    name: eduvigia_eduvigia_redis
+
+==================================================
+ DIAGNOSTICO CONCLUIDO
+==================================================
+
+Relatório salvo em:
+C:\Users\lecsa\Desktop\DIAGNOSTICO-MENU-EDUVIGIA.txt

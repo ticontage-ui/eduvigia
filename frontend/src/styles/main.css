@@ -1,0 +1,3968 @@
+:root {
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+  color: #101f38;
+  background: #eef4f8;
+  font-synthesis: none;
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 1180px; min-height: 100vh; }
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+
+.appShell {
+  display: grid;
+  grid-template-columns: 212px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.appSidebar {
+  width: 212px;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  overflow-y: auto;
+  background: #ffffff;
+  border-right: 1px solid #d9e3eb;
+  display: flex;
+  flex-direction: column;
+  z-index: 20;
+}
+
+.sidebarBrand {
+  height: 106px;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  border-bottom: 1px solid #edf2f6;
+}
+.sidebarBrand img {
+  width: 178px;
+  max-height: 82px;
+  object-fit: contain;
+}
+
+.sidebarNav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 10px;
+}
+.sidebarItem {
+  min-height: 48px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #15243d;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 0 13px;
+  font-weight: 650;
+  text-align: left;
+}
+.sidebarItem:hover { background: #edf4fa; }
+.sidebarItem.active {
+  color: #ffffff;
+  background: #082b64;
+  box-shadow: 0 6px 13px rgba(8, 43, 100, .20);
+}
+.sidebarFooter {
+  margin-top: auto;
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border-top: 1px solid #e1e9f0;
+  color: #5d6f85;
+  background: #f4f8fb;
+  font-size: 11px;
+}
+.sidebarFooter strong { color: #17345a; }
+
+.appMain { min-width: 0; }
+.topbar {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 20px;
+  background: #ffffff;
+  border-bottom: 1px solid #d8e2ea;
+  box-shadow: 0 2px 8px rgba(36, 65, 94, .06);
+}
+.menuButton, .iconButton {
+  border: 0;
+  background: transparent;
+  color: #16263e;
+  padding: 7px;
+}
+.topSearch {
+  margin-left: auto;
+  width: 270px;
+  height: 36px;
+  border-radius: 8px;
+  background: #edf3f7;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 12px;
+  color: #627286;
+}
+.topSearch input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+}
+.topActions { display: flex; align-items: center; gap: 14px; }
+.iconButton { position: relative; }
+.iconButton i {
+  position: absolute;
+  right: 0;
+  top: 0;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 10px;
+  background: #df1111;
+  color: #fff;
+  font-style: normal;
+  font-size: 10px;
+  display: grid;
+  place-items: center;
+}
+.profile { display: flex; align-items: center; gap: 9px; }
+.profile div { display: grid; }
+.profile span { font-size: 11px; color: #516174; }
+
+.contentArea { padding: 12px 16px 26px; }
+.notice {
+  margin-bottom: 10px;
+  border: 1px solid #9dc8d5;
+  background: #e8f7fa;
+  color: #15566b;
+  padding: 10px 13px;
+  border-radius: 8px;
+}
+.pageHeading {
+  min-height: 55px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 12px;
+}
+.pageHeading.compact { min-height: 40px; }
+.pageHeading h1 { margin: 0; font-size: 22px; color: #112343; }
+.pageHeading h1 span { font-weight: 500; font-size: 18px; color: #17263d; }
+.pageHeading p { margin: 5px 0 0; color: #66768a; font-size: 13px; }
+.onlineStatus { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+.onlineStatus b {
+  background: #13a851;
+  color: #fff;
+  padding: 5px 9px;
+  border-radius: 4px;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(130px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.metricCard {
+  min-height: 80px;
+  background: #fff;
+  border: 1px solid #d8e3ea;
+  border-radius: 10px;
+  box-shadow: 0 3px 9px rgba(38, 65, 91, .08);
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px;
+}
+.metricIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  color: #fff;
+  display: grid;
+  place-items: center;
+}
+.metricIcon.navy { background: #14517d; }
+.metricIcon.cyan { background: #138bae; }
+.metricIcon.green { background: #12a847; }
+.metricIcon.amber { background: #f0a000; }
+.metricIcon.red { background: #de0909; }
+.metricIcon.teal { background: #1599a8; }
+.metricCard div { display: grid; }
+.metricCard small { font-size: 11px; }
+.metricCard strong { font-size: 25px; }
+
+.operationsGrid {
+  display: grid;
+  grid-template-columns: 1.25fr 1.3fr .75fr;
+  gap: 12px;
+}
+.cameraWall {
+  grid-column: span 1;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  background: #0b2247;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #9fb2c4;
+  min-height: 292px;
+}
+.cameraTile {
+  position: relative;
+  min-height: 145px;
+  background: #24364a;
+  border: 1px solid #13284a;
+  overflow: hidden;
+}
+.cameraTile iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+.cameraName, .cameraLive {
+  position: absolute;
+  z-index: 3;
+  color: #fff;
+  font-weight: 750;
+  font-size: 11px;
+}
+.cameraName { left: 5px; top: 5px; background: #092451; padding: 4px 7px; border-radius: 4px; }
+.cameraLive { right: 5px; top: 5px; background: #e20d14; padding: 4px 7px; border-radius: 4px; }
+.cameraTile > small { display: none; }
+
+.dashboardPanel, .dataCard, .formCard {
+  background: #fff;
+  border: 1px solid #d6e1e8;
+  border-radius: 10px;
+  box-shadow: 0 3px 9px rgba(38, 65, 91, .08);
+}
+.dashboardPanel { padding: 12px; }
+.panelTitle { display: flex; align-items: center; justify-content: space-between; }
+.dashboardPanel h2 { margin: 0 0 10px; font-size: 16px; }
+
+.alertsPanel { grid-column: span 2; padding: 0; overflow: hidden; }
+.alertsPanel .panelTitle { padding: 12px; }
+.alertTable { border-top: 1px solid #dbe4ea; }
+.alertHeader, .alertRow {
+  display: grid;
+  grid-template-columns: 1.25fr .7fr .9fr 1.35fr;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 12px;
+}
+.alertHeader { background: #f1f6f8; font-size: 12px; font-weight: 700; }
+.alertRow { border-top: 1px solid #e5ebef; font-size: 12px; }
+.alertRow > div:first-child, .alertRow > span:nth-child(3) { display: grid; }
+.alertRow small { color: #637386; font-size: 10px; }
+.rowActions { display: flex; gap: 5px; flex-wrap: wrap; }
+.rowActions button, .occurrenceActions button, .dispatchCard button {
+  border: 0;
+  border-radius: 5px;
+  background: #078da5;
+  color: #fff;
+  padding: 6px 9px;
+  font-weight: 750;
+  font-size: 10px;
+}
+.rowActions .dangerOutline, .dangerOutline {
+  background: #fff;
+  color: #ad261d;
+  border: 1px solid #c55b51;
+}
+.rowActions .openOccurrence { background: #102d60; }
+
+.priority { display: flex; align-items: center; gap: 7px; font-weight: 650; }
+.priority i { width: 10px; height: 10px; border-radius: 50%; background: #e4bd00; }
+.priority.critica i { background: #df0808; }
+.priority.alta i { background: #ef7e00; }
+.priority.media i { background: #f1b000; }
+.priority.baixa i { background: #e6d100; }
+
+
+.schoolMap {
+  min-height: 190px;
+  background: #dbeaf0;
+  border: 1px solid #c7d9e1;
+  border-radius: 10px;
+  padding: 18px;
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.mapBlock {
+  border-radius: 7px;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  font-weight: 750;
+  z-index: 2;
+}
+.mapBlock.green { background: #10a647; }
+.mapBlock.yellow { background: #f0c30c; color: #17233a; }
+.mapBlock.red { background: #d91c15; grid-column: span 2; }
+.mapBlock small { background: #a2120e; padding: 3px 7px; border-radius: 3px; margin-top: 4px; }
+
+.systemHealth { min-height: 190px; }
+.healthColumns { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.healthColumns div { display: grid; }
+.healthColumns span { font-size: 11px; margin-top: 4px; }
+.healthColumns b { color: #159437; font-size: 18px; }
+.healthColumns strong { font-size: 19px; }
+.healthDanger { color: #b30d0d; }
+
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  border-radius: 20px;
+  padding: 5px 9px;
+  font-size: 10px;
+  font-weight: 800;
+  background: #e8eef2;
+  color: #455468;
+}
+.statusPill.success { background: #dff6e7; color: #11823a; }
+.statusPill.warning { background: #fff0c8; color: #8c6300; }
+.statusPill.danger { background: #f9d9d6; color: #a32219; }
+
+.twoColumn {
+  display: grid;
+  grid-template-columns: 380px minmax(0, 1fr);
+  gap: 14px;
+}
+.formCard, .dataCard { padding: 16px; }
+.formCard h2, .cardHeader h2 { margin: 0; font-size: 17px; }
+.formCard { display: flex; flex-direction: column; gap: 12px; align-self: start; }
+.field { display: grid; gap: 5px; }
+.field span { color: #45566b; font-size: 12px; font-weight: 650; }
+.field input, .field select, .field textarea, .monitorToolbar select {
+  width: 100%;
+  border: 1px solid #c7d5df;
+  border-radius: 7px;
+  background: #fff;
+  padding: 10px;
+  outline: none;
+}
+.field textarea { min-height: 100px; resize: vertical; }
+.field input:focus, .field select:focus, .field textarea:focus { border-color: #138aa3; box-shadow: 0 0 0 3px rgba(19, 138, 163, .12); }
+.checkField { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.primaryButton {
+  border: 0;
+  border-radius: 7px;
+  padding: 11px 14px;
+  background: #082d64;
+  color: #fff;
+  font-weight: 750;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.cardHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.cardHeader span { background: #e9f1f6; padding: 5px 9px; border-radius: 20px; font-size: 11px; font-weight: 800; }
+.records { display: grid; gap: 8px; }
+.record {
+  min-height: 70px;
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #e0e7ec;
+  border-radius: 8px;
+  padding: 10px;
+}
+.recordIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #e7f4f8;
+  color: #087c99;
+}
+.record > div { display: grid; }
+.record span, .record small { font-size: 11px; color: #617187; }
+
+.monitorToolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.monitorToolbar select { width: 220px; }
+.monitorToolbar .statusPill { margin-left: auto; }
+.monitorGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.monitorTile {
+  min-height: 300px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #0a203f;
+  border: 1px solid #92a9bb;
+}
+.monitorTile iframe { width: 100%; height: 100%; border: 0; }
+.monitorTile > span, .monitorTile > small, .monitorTile > b { position: absolute; color: #fff; z-index: 2; }
+.monitorTile > span { left: 8px; top: 8px; background: #08285a; padding: 5px 8px; border-radius: 4px; }
+.monitorTile > small { left: 8px; bottom: 8px; background: rgba(8, 32, 67, .82); padding: 4px 6px; border-radius: 4px; }
+.monitorTile > b { right: 8px; top: 8px; background: #e20d14; padding: 5px 7px; border-radius: 4px; font-size: 11px; }
+
+.largeTable { overflow-x: auto; }
+.largeTableHead, .largeTableRow {
+  display: grid;
+  grid-template-columns: 1.1fr .65fr 1fr .55fr 1.5fr;
+  gap: 12px;
+  align-items: center;
+  padding: 10px;
+  min-width: 900px;
+}
+.largeTableHead { background: #edf4f7; border-radius: 7px; font-weight: 750; font-size: 12px; }
+.largeTableRow { border-bottom: 1px solid #e4eaee; }
+.largeTableRow > div { display: grid; }
+.largeTableRow small { color: #64758a; font-size: 10px; }
+
+
+.occurrenceRecord {
+  border: 1px solid #dce5eb;
+  border-radius: 9px;
+  padding: 13px;
+}
+.occurrenceTop { display: flex; justify-content: space-between; }
+.occurrenceRecord h3 { margin: 9px 0 5px; }
+.occurrenceRecord p { margin: 0 0 6px; color: #4e5f73; }
+.occurrenceRecord small { color: #738194; }
+.occurrenceActions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.occurrenceActions .successButton { background: #168b43; }
+
+.dispatchBoard { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.dispatchColumn {
+  background: #e8eff4;
+  border-radius: 10px;
+  padding: 12px;
+  min-height: 430px;
+}
+.dispatchColumn h2 { margin: 0 0 10px; font-size: 14px; color: #42546a; }
+.dispatchCard {
+  background: #fff;
+  border-radius: 9px;
+  padding: 12px;
+  margin-bottom: 9px;
+  border: 1px solid #d9e3e9;
+}
+.dispatchCard h3 { margin: 7px 0; }
+.dispatchCard p { margin: 0 0 8px; color: #546579; font-size: 12px; }
+.dispatchCard small { color: #6e7f91; }
+.dispatchCard button { margin-top: 10px; }
+
+.equipmentGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.equipmentCard {
+  background: #fff;
+  border: 1px solid #d6e1e8;
+  border-radius: 10px;
+  padding: 18px;
+  display: grid;
+  gap: 8px;
+  box-shadow: 0 3px 9px rgba(38,65,91,.07);
+}
+.equipmentCard svg { color: #138ca5; }
+.equipmentCard h3 { margin: 0; }
+.equipmentCard strong { font-size: 28px; }
+.equipmentCard span { color: #69798c; }
+
+.placeholder, .emptyState {
+  min-height: 300px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  text-align: center;
+  color: #66788d;
+}
+.placeholder {
+  background: #fff;
+  border: 1px dashed #b9c9d4;
+  border-radius: 10px;
+}
+.placeholder h2, .placeholder p { margin: 0; }
+.emptyState { min-height: 180px; }
+
+@media (max-width: 1350px) {
+  .metricGrid { grid-template-columns: repeat(3, 1fr); }
+  .operationsGrid { grid-template-columns: 1fr 1fr; }
+  .alertsPanel { grid-column: span 1; }
+  }
+
+@media (max-width: 1050px) {
+  body { min-width: 900px; }
+  .appShell { grid-template-columns: 195px minmax(0,1fr); }
+  .appSidebar { width: 195px; }
+  .twoColumn { grid-template-columns: 1fr; }
+}
+
+
+/* EduVigIA v0.4.0 — módulos Escolas, Câmeras e Monitoramento */
+.wideForm {
+  grid-template-columns: minmax(460px, .92fr) minmax(540px, 1.35fr);
+}
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 11px;
+}
+.checkRow {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.expandedRecord {
+  grid-template-columns: 42px minmax(0, 1fr) 140px;
+}
+.recordActions {
+  display: grid;
+  justify-items: stretch;
+  gap: 6px;
+}
+.recordActions button {
+  border: 1px solid #9bb0bf;
+  border-radius: 6px;
+  background: #fff;
+  color: #173652;
+  padding: 6px 8px;
+  font-weight: 700;
+  font-size: 11px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+}
+.recordActions button:hover {
+  background: #edf5f8;
+}
+.recordActions .dangerOutline {
+  color: #a8221a;
+  border-color: #d0928c;
+}
+.monitorGrid.grid-1 {
+  grid-template-columns: 1fr;
+}
+.monitorGrid.grid-1 .monitorTile {
+  min-height: 620px;
+}
+.monitorGrid.grid-4 {
+  grid-template-columns: repeat(2, 1fr);
+}
+.monitorGrid.grid-9 {
+  grid-template-columns: repeat(3, 1fr);
+}
+.monitorGrid.grid-9 .monitorTile,
+.monitorGrid.grid-16 .monitorTile {
+  min-height: 210px;
+}
+.monitorGrid.grid-16 {
+  grid-template-columns: repeat(4, 1fr);
+}
+@media (max-width: 1350px) {
+  .wideForm {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* EduVigIA v0.5.0 — operação, despacho e auditoria */
+.dispatchSummary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.dispatchSummary article {
+  background: #fff;
+  border: 1px solid #d7e2e9;
+  border-radius: 10px;
+  padding: 14px;
+  box-shadow: 0 3px 9px rgba(38, 65, 91, .07);
+  display: grid;
+}
+.dispatchSummary b {
+  font-size: 26px;
+  color: #0a396f;
+}
+.dispatchSummary span {
+  color: #637489;
+  font-size: 12px;
+}
+.dispatchLayout {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+.dispatchLayout .dispatchBoard {
+  grid-template-columns: repeat(3, minmax(240px, 1fr));
+  overflow-x: auto;
+}
+.teamForm textarea {
+  min-height: 70px;
+}
+.teamList {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #dce6ec;
+}
+.teamList h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+.teamCard {
+  border: 1px solid #dde6ec;
+  border-radius: 8px;
+  padding: 9px;
+  display: grid;
+  gap: 7px;
+}
+.teamCard > div {
+  display: grid;
+}
+.teamCard small {
+  color: #69798c;
+}
+.teamCard select,
+.dispatchAssign select {
+  width: 100%;
+  border: 1px solid #c4d3de;
+  border-radius: 6px;
+  padding: 8px;
+  background: #fff;
+}
+.auditTable {
+  overflow-x: auto;
+}
+.auditHead,
+.auditRow {
+  min-width: 900px;
+  display: grid;
+  grid-template-columns: 160px 140px 120px 180px minmax(220px, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 10px;
+}
+.auditHead {
+  background: #eef4f7;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 800;
+}
+.auditRow {
+  border-bottom: 1px solid #e3e9ed;
+  font-size: 12px;
+}
+.auditRow small {
+  color: #637489;
+}
+@media (max-width: 1350px) {
+  .dispatchLayout {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* EduVigIA v0.6.0 — equipamentos, relatórios e configurações */
+.reportCards {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.reportCards article {
+  background: #fff;
+  border: 1px solid #d7e2e9;
+  border-radius: 10px;
+  padding: 14px;
+  display: grid;
+  box-shadow: 0 3px 9px rgba(38, 65, 91, .07);
+}
+.reportCards span {
+  color: #64758a;
+  font-size: 12px;
+}
+.reportCards b {
+  font-size: 28px;
+  color: #0b3a70;
+}
+.reportGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.reportBars {
+  display: grid;
+  gap: 10px;
+}
+.reportBars div {
+  border-radius: 8px;
+  background: #edf4f7;
+  padding: 14px;
+  display: flex;
+  justify-content: space-between;
+}
+.reportBars b {
+  font-size: 22px;
+}
+.miniRecord {
+  border-bottom: 1px solid #e3eaee;
+  padding: 9px 0;
+  display: grid;
+}
+.miniRecord span,
+.miniRecord small {
+  color: #68798d;
+}
+.settingsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.settingCard {
+  background: #fff;
+  border: 1px solid #d7e2e9;
+  border-radius: 10px;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 180px 90px;
+  gap: 12px;
+  align-items: center;
+}
+.settingCard > div {
+  display: grid;
+}
+.settingCard span {
+  color: #68798d;
+  font-size: 12px;
+}
+.settingCard input {
+  border: 1px solid #c5d4de;
+  border-radius: 7px;
+  padding: 9px;
+}
+.settingCard button {
+  border: 0;
+  border-radius: 7px;
+  background: #0b356d;
+  color: #fff;
+  padding: 9px;
+  font-weight: 700;
+}
+@media (max-width: 1350px) {
+  .reportCards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .reportGrid,
+  .settingsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* EduVigIA v0.7.0 — autenticação, usuários e perfis */
+.authLoading {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: #eef4f8;
+  color: #11345f;
+  font-size: 18px;
+  font-weight: 700;
+}
+.loginScreen {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1.2fr 480px;
+  background: linear-gradient(135deg, #071d45, #0b4779 58%, #0c8795);
+}
+.loginVisual {
+  color: #fff;
+  padding: 70px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  max-width: 850px;
+}
+.loginVisual img {
+  width: 260px;
+  background: #fff;
+  border-radius: 15px;
+  padding: 12px;
+  margin-bottom: 38px;
+}
+.loginVisual h1 {
+  font-size: 42px;
+  line-height: 1.1;
+  margin: 0 0 18px;
+}
+.loginVisual p {
+  font-size: 18px;
+  line-height: 1.6;
+  color: #d9edf4;
+  max-width: 680px;
+}
+.loginCard {
+  align-self: center;
+  margin-right: 50px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 34px;
+  display: grid;
+  gap: 18px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, .28);
+}
+.loginCard h2 {
+  margin: 0;
+  font-size: 25px;
+  color: #0c2e5f;
+}
+.loginCard p {
+  margin: 6px 0 0;
+  color: #68798c;
+}
+.loginCard small {
+  color: #68798c;
+  text-align: center;
+}
+.loginError {
+  background: #fde6e3;
+  border: 1px solid #e2a09a;
+  color: #a6261d;
+  padding: 10px;
+  border-radius: 7px;
+}
+.logoutButton {
+  border: 1px solid #c7d4de;
+  background: #fff;
+  color: #9d271e;
+  border-radius: 6px;
+  padding: 6px 9px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.securityWarning {
+  background: #fff1c9;
+  border: 1px solid #e2be55;
+  color: #785700;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  font-weight: 700;
+}
+.settingsSection {
+  margin-bottom: 18px;
+}
+.settingsSection > h2 {
+  margin: 0 0 10px;
+  color: #17375e;
+  font-size: 18px;
+}
+.passwordCard {
+  max-width: 640px;
+  background: #fff;
+  border: 1px solid #d7e2e9;
+  border-radius: 10px;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 12px;
+  align-items: end;
+}
+.userManagement {
+  display: grid;
+  grid-template-columns: 350px minmax(0, 1fr);
+  gap: 12px;
+}
+@media (max-width: 1100px) {
+  .loginScreen {
+    grid-template-columns: 1fr;
+    padding: 25px;
+  }
+  .loginVisual {
+    display: none;
+  }
+  .loginCard {
+    width: min(100%, 480px);
+    margin: auto;
+  }
+  .userManagement,
+  .passwordCard {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* EduVigIA v0.8.0 — RBAC e isolamento por escola */
+.singleColumn {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+.readOnlyBadge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 20px;
+  padding: 6px 9px;
+  background: #edf2f5;
+  color: #5d6d80;
+  font-size: 10px;
+  font-weight: 800;
+}
+.permissionNote {
+  border: 1px solid #bfd1dc;
+  background: #edf6fa;
+  color: #254e68;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+
+/* EduVigIA v0.9.0 — notificações, saúde e exportação */
+.notificationDrawer {
+  position: fixed;
+  top: 57px;
+  right: 18px;
+  width: 430px;
+  max-height: calc(100vh - 80px);
+  background: #ffffff;
+  border: 1px solid #ccd9e2;
+  border-radius: 12px;
+  box-shadow: 0 18px 45px rgba(16, 43, 72, .24);
+  z-index: 100;
+  overflow: hidden;
+}
+.notificationHeader {
+  padding: 14px;
+  border-bottom: 1px solid #dde6ec;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.notificationHeader h2 {
+  margin: 0;
+  font-size: 17px;
+}
+.notificationHeader span {
+  color: #68798d;
+  font-size: 11px;
+}
+.notificationHeader button {
+  border: 0;
+  border-radius: 6px;
+  background: #e8f2f6;
+  color: #165a72;
+  padding: 7px 9px;
+  font-size: 11px;
+  font-weight: 750;
+}
+.notificationList {
+  max-height: 560px;
+  overflow-y: auto;
+}
+.notificationItem {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #edf1f4;
+  background: #fff;
+  padding: 12px 14px;
+  display: grid;
+  gap: 6px;
+  text-align: left;
+}
+.notificationItem.unread {
+  background: #edf7fa;
+  border-left: 4px solid #078ba5;
+}
+.notificationItem.warning.unread {
+  border-left-color: #ef9d00;
+}
+.notificationItem.critical.unread {
+  border-left-color: #d81c14;
+}
+.notificationItem > div {
+  display: grid;
+  gap: 3px;
+}
+.notificationItem span,
+.notificationItem small {
+  color: #66778b;
+  font-size: 11px;
+}
+.emptyNotification {
+  padding: 28px;
+  text-align: center;
+  color: #6a7a8d;
+}
+.healthOverall {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 11px;
+}
+.healthOverall small {
+  color: #68798c;
+}
+.healthServiceList {
+  display: grid;
+  gap: 7px;
+}
+.healthServiceList div {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid #edf1f4;
+  padding-bottom: 5px;
+}
+.healthServiceList span {
+  text-transform: capitalize;
+  color: #5f7186;
+  font-size: 11px;
+}
+.serviceOnline {
+  color: #178643;
+}
+.serviceOffline {
+  color: #c22b22;
+}
+.reportActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.reportActions button {
+  border: 0;
+  border-radius: 7px;
+  background: #0a356c;
+  color: #fff;
+  padding: 9px 12px;
+  font-weight: 750;
+}
+@media (max-width: 700px) {
+  .notificationDrawer {
+    width: calc(100vw - 24px);
+    right: 12px;
+  }
+}
+
+
+/* EduVigIA v1.0.0 — homologação operacional */
+.advancedTile {
+  display: grid;
+  grid-template-rows: 1fr auto auto;
+}
+.cameraOverlay {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  background: #0b2038;
+  color: #fff;
+  padding: 8px 10px;
+}
+.cameraOverlay > div {
+  display: grid;
+}
+.cameraOverlay small {
+  color: #afc1d0;
+}
+.liveText { color: #37d06d; }
+.offlineText { color: #ff5d54; }
+.cameraActions {
+  display: flex;
+  gap: 5px;
+  padding: 7px;
+  background: #e8f0f4;
+}
+.cameraActions button,
+.detailButton,
+.detailActions button,
+.homologationHeader button {
+  border: 1px solid #afc2cf;
+  background: #fff;
+  color: #16486a;
+  border-radius: 6px;
+  padding: 7px 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+  font-size: 11px;
+}
+.monitorToolbar input {
+  border: 1px solid #bdccd6;
+  border-radius: 6px;
+  padding: 8px;
+}
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 19, 34, .65);
+  z-index: 500;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.detailModal {
+  width: min(1050px, 96vw);
+  max-height: 90vh;
+  overflow: hidden;
+  background: #f7fafb;
+  border-radius: 14px;
+  box-shadow: 0 25px 70px rgba(0,0,0,.35);
+}
+.modalHeader {
+  background: #0b356d;
+  color: #fff;
+  padding: 14px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.modalHeader h2 {
+  margin: 0;
+}
+.modalHeader button {
+  border: 1px solid #7290ab;
+  background: #fff;
+  border-radius: 6px;
+  padding: 7px 10px;
+}
+.modalBody {
+  padding: 18px;
+  max-height: calc(90vh - 65px);
+  overflow-y: auto;
+}
+.detailMetrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 9px;
+}
+.detailMetrics article {
+  background: #fff;
+  border: 1px solid #d7e2e9;
+  padding: 12px;
+  border-radius: 8px;
+  display: grid;
+}
+.detailMetrics b {
+  font-size: 24px;
+  color: #0b356d;
+}
+.detailRow,
+.timelineItem {
+  background: #fff;
+  border: 1px solid #dce6ec;
+  border-radius: 7px;
+  padding: 9px 11px;
+  margin: 6px 0;
+  display: grid;
+  grid-template-columns: 200px minmax(0,1fr) 180px;
+  gap: 10px;
+}
+.timelineItem {
+  grid-template-columns: 120px minmax(0,1fr) 240px;
+}
+.detailRow small,
+.timelineItem small {
+  color: #65768a;
+}
+.occurrenceDetailHeader {
+  display: flex;
+  justify-content: space-between;
+  background: #fff;
+  border: 1px solid #d9e3e9;
+  border-radius: 8px;
+  padding: 12px;
+}
+.occurrenceDetailHeader > div {
+  display: grid;
+  gap: 5px;
+}
+.detailActions {
+  display: flex;
+  gap: 7px;
+  margin: 10px 0;
+}
+.homologationHeader {
+  display: grid;
+  grid-template-columns: 180px 1fr auto;
+  gap: 12px;
+  background: #fff;
+  border: 1px solid #d7e2e9;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 12px;
+  align-items: center;
+}
+.homologationHeader > div {
+  display: grid;
+}
+.homologationHeader span {
+  color: #65768a;
+  font-size: 11px;
+}
+.homologationGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.healthLine,
+.diagnosticMetric {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid #e5ebef;
+  padding: 8px 0;
+  text-transform: capitalize;
+}
+.diagnosticJson {
+  max-height: 420px;
+  overflow: auto;
+  background: #081d31;
+  color: #d3e8ef;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 11px;
+}
+@media (max-width: 900px) {
+  .homologationGrid,
+  .detailMetrics {
+    grid-template-columns: 1fr;
+  }
+  .detailRow,
+  .timelineItem {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* EduVigIA v1.0.1 — correção definitiva da tela Monitoramento */
+.monitorGrid {
+  width: 100%;
+  min-width: 0;
+  align-items: stretch;
+}
+.monitorTile.advancedTile {
+  min-width: 0;
+  min-height: 320px;
+  display: grid;
+  grid-template-rows: minmax(230px, 1fr) auto auto;
+  position: relative;
+  overflow: hidden;
+}
+.monitorTile.advancedTile iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 230px;
+  position: static;
+}
+.monitorTile.advancedTile .cameraOverlay,
+.monitorTile.advancedTile .cameraActions {
+  position: static;
+  z-index: 3;
+}
+.monitorToolbar {
+  flex-wrap: wrap;
+}
+.monitorToolbar input,
+.monitorToolbar select {
+  min-width: 180px;
+  max-width: 100%;
+}
+.monitorEmpty {
+  width: 100%;
+  min-height: 240px;
+  border: 1px dashed #9fb3c2;
+  border-radius: 10px;
+  background: #f7fafb;
+  color: #587085;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 7px;
+  margin-bottom: 12px;
+  text-align: center;
+  padding: 24px;
+}
+.monitorEmpty b {
+  color: #173a5d;
+}
+@media (max-width: 900px) {
+  .monitorGrid.grid-4,
+  .monitorGrid.grid-9,
+  .monitorGrid.grid-16 {
+    grid-template-columns: 1fr;
+  }
+  .monitorToolbar .statusPill {
+    margin-left: 0;
+  }
+}
+
+
+/* EduVigIA v1.0.2 — identidade visual oficial */
+.sidebarBrand {
+  height: 112px;
+  padding: 14px 10px;
+  overflow: hidden;
+}
+.sidebarBrand img {
+  width: 188px;
+  max-width: 100%;
+  max-height: 86px;
+  object-fit: contain;
+  object-position: center;
+  display: block;
+}
+.loginVisual img {
+  width: min(560px, 82%);
+  max-height: 190px;
+  object-fit: contain;
+  object-position: left center;
+  background: rgba(255, 255, 255, 0.97);
+  border-radius: 18px;
+  padding: 16px 20px;
+  margin-bottom: 38px;
+  box-shadow: 0 18px 45px rgba(0, 12, 40, 0.24);
+}
+@media (max-width: 1280px) {
+  .loginVisual img {
+    width: min(470px, 88%);
+  }
+}
+
+
+/* EduVigIA v1.1.0 — Monitoramento Multi-escola */
+.monitorTopbar,
+.monitorTopActions,
+.monitorBreadcrumb,
+.cameraResultBar,
+.monitorPagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.monitorTopbar {
+  background: #ffffff;
+  border: 1px solid #d9e2ea;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+}
+.monitorBreadcrumb {
+  justify-content: flex-start;
+}
+.monitorBreadcrumb button,
+.monitorTopActions button,
+.monitorPagination button {
+  border: 1px solid #ccd7e0;
+  background: #fff;
+  border-radius: 8px;
+  padding: 9px 12px;
+  cursor: pointer;
+  color: #23465f;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.monitorBreadcrumb button.active {
+  color: #0c6d61;
+  font-weight: 800;
+}
+.monitorSummaryStrip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.monitorSummaryStrip > div {
+  background: #fff;
+  border: 1px solid #d9e2ea;
+  border-radius: 12px;
+  padding: 15px;
+  display: grid;
+  gap: 4px;
+}
+.monitorSummaryStrip b {
+  font-size: 24px;
+  color: #0a355f;
+}
+.monitorSummaryStrip span {
+  color: #667b8d;
+  font-size: 13px;
+}
+.schoolMonitorGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  gap: 16px;
+}
+.schoolMonitorCard {
+  background: #fff;
+  border: 1px solid #d8e2ea;
+  border-radius: 14px;
+  padding: 17px;
+  box-shadow: 0 8px 22px rgba(16, 52, 82, .07);
+  min-width: 0;
+}
+.schoolMonitorHeader {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 11px;
+  align-items: center;
+}
+.schoolMonitorHeader h3 {
+  margin: 0 0 3px;
+  color: #173a5d;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.schoolMonitorHeader small {
+  color: #718596;
+}
+.schoolMonitorIcon {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: #e7f4f1;
+  color: #087466;
+}
+.schoolMonitorStats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 16px 0 11px;
+}
+.schoolMonitorStats div {
+  background: #f4f7f9;
+  border-radius: 9px;
+  padding: 10px;
+  display: grid;
+  gap: 3px;
+}
+.schoolMonitorStats b {
+  color: #123c62;
+  font-size: 18px;
+}
+.schoolMonitorStats span,
+.schoolLatestEvent span {
+  color: #6c8293;
+  font-size: 12px;
+}
+.availabilityTrack {
+  height: 8px;
+  border-radius: 99px;
+  background: #e7edf1;
+  overflow: hidden;
+}
+.availabilityTrack span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #0f8f78, #69c59a);
+}
+.schoolMonitorStatusLine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 12px;
+  margin: 10px 0;
+}
+.onlineDot { color: #16835f; }
+.offlineDot { color: #bf403d; }
+.pendingDot { color: #a87518; }
+.schoolLatestEvent {
+  display: grid;
+  gap: 3px;
+  min-height: 48px;
+  border-top: 1px solid #e6ecef;
+  padding-top: 10px;
+}
+.schoolOpenButton {
+  width: 100%;
+  justify-content: center;
+  margin-top: 12px;
+}
+.multiSchoolToolbar {
+  background: #fff;
+  border: 1px solid #d9e2ea;
+  border-radius: 12px;
+  padding: 12px;
+}
+.cameraResultBar {
+  background: #eef4f7;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 12px 0;
+  color: #486378;
+}
+.cameraResultBar > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+.cameraTelemetry {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 14px;
+  padding: 8px 11px;
+  background: #f6f9fb;
+  border-top: 1px solid #dce5ea;
+  font-size: 11px;
+  color: #60798b;
+}
+.cameraUnavailable {
+  min-height: 230px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  text-align: center;
+  padding: 25px;
+  background: linear-gradient(135deg, #142c43, #254a68);
+  color: white;
+}
+.cameraUnavailable span {
+  max-width: 360px;
+  color: #d5e4ed;
+  font-size: 12px;
+}
+.cameraActions .favoriteActive {
+  color: #a66d00;
+  background: #fff7dd;
+  border-color: #e7c867;
+}
+.monitorPagination {
+  justify-content: center;
+  margin: 18px 0 4px;
+}
+.monitorPagination button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+@media (max-width: 1100px) {
+  .monitorSummaryStrip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 720px) {
+  .monitorTopbar,
+  .cameraResultBar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .monitorSummaryStrip {
+    grid-template-columns: 1fr 1fr;
+  }
+  .schoolMonitorGrid {
+    grid-template-columns: 1fr;
+  }
+  .schoolMonitorStats {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* EduVigIA v1.2.0 — Gravadores e streams automáticos */
+.moduleTabs {
+  display: flex;
+  gap: 9px;
+  margin-bottom: 15px;
+  background: #fff;
+  border: 1px solid #d9e2ea;
+  border-radius: 12px;
+  padding: 8px;
+}
+.moduleTabs button {
+  border: 1px solid transparent;
+  background: transparent;
+  color: #4a6579;
+  border-radius: 9px;
+  padding: 10px 14px;
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 700;
+}
+.moduleTabs button.active {
+  color: #075f58;
+  background: #e8f5f2;
+  border-color: #b8ddd5;
+}
+.autoStreamBox {
+  display: grid;
+  gap: 7px;
+  margin: 13px 0;
+  padding: 13px;
+  border: 1px solid #bfd9d4;
+  border-radius: 11px;
+  background: #f1faf8;
+  color: #315e59;
+}
+.autoStreamBox b {
+  color: #075f58;
+}
+.autoStreamBox code {
+  background: #fff;
+  border: 1px solid #d5e6e2;
+  border-radius: 5px;
+  padding: 2px 6px;
+  color: #123d5b;
+  overflow-wrap: anywhere;
+}
+.autoStreamBox small {
+  color: #667e7a;
+}
+
+
+/* v1.3.0 — estados globais de falha */
+.fatalError {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 14px;
+  padding: 30px;
+  text-align: center;
+  background: #eef3f6;
+  color: #173a5d;
+}
+.fatalError img {
+  width: min(360px, 80vw);
+  max-height: 130px;
+  object-fit: contain;
+}
+.fatalError button {
+  border: 0;
+  border-radius: 9px;
+  padding: 11px 18px;
+  background: #087466;
+  color: white;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+
+/* EduVigIA v1.4.0 — Descoberta Hikvision/ISAPI */
+.discoverySummary {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+  padding: 14px;
+  background: #eef7f5;
+  border: 1px solid #c9e2dc;
+  border-radius: 12px;
+  margin-bottom: 14px;
+}
+.discoverySummary > div {
+  display: grid;
+  gap: 4px;
+}
+.discoverySummary b {
+  font-size: 18px;
+  color: #16415e;
+}
+.discoverySummary span {
+  color: #60798b;
+}
+.discoveryChannels {
+  display: grid;
+  gap: 12px;
+  max-height: 55vh;
+  overflow: auto;
+  padding-right: 5px;
+}
+.discoveryChannel {
+  border: 1px solid #d9e3e9;
+  background: #fff;
+  border-radius: 12px;
+  padding: 13px;
+}
+.discoveryChannel > .checkField:first-child {
+  font-weight: 800;
+  color: #17445f;
+  margin-bottom: 10px;
+}
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e9ed;
+}
+
+
+/* EduVigIA v1.5.0 — Central Operacional */
+.operationsToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: #fff;
+  border: 1px solid #d8e2e8;
+  border-radius: 12px;
+  padding: 12px 15px;
+  margin-bottom: 14px;
+}
+.operationsToolbar > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+.operationsToolbarActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.operationsToolbarActions button {
+  border: 1px solid #cad6df;
+  background: #fff;
+  color: #254a64;
+  border-radius: 8px;
+  padding: 9px 12px;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  cursor: pointer;
+}
+.liveIndicator {
+  color: #0a8b6c;
+  font-weight: 900;
+  letter-spacing: .04em;
+}
+.operationsError {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #fff0ef;
+  border: 1px solid #efc0bc;
+  color: #a12f2b;
+  margin-bottom: 14px;
+}
+.operationsKpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  gap: 13px;
+  margin-bottom: 15px;
+}
+.operationKpi {
+  background: #fff;
+  border: 1px solid #d8e2e8;
+  border-radius: 13px;
+  padding: 15px;
+  display: grid;
+  gap: 5px;
+  box-shadow: 0 7px 18px rgba(21, 55, 83, .06);
+}
+.operationKpi span {
+  color: #60788b;
+  font-size: 13px;
+}
+.operationKpi b {
+  color: #133d61;
+  font-size: 30px;
+}
+.operationKpi small {
+  color: #738896;
+}
+.dangerKpi {
+  border-color: #e7b7b3;
+  background: #fff8f7;
+}
+.dangerKpi b {
+  color: #b5332f;
+}
+.operationsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 15px;
+}
+.operationsPanel {
+  background: #fff;
+  border: 1px solid #d8e2e8;
+  border-radius: 13px;
+  padding: 15px;
+  min-width: 0;
+}
+.operationsList {
+  display: grid;
+  gap: 10px;
+}
+.operationItem {
+  border: 1px solid #e0e7ec;
+  border-radius: 11px;
+  padding: 12px;
+  display: grid;
+  gap: 6px;
+  background: #fbfcfd;
+}
+.operationItemHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+.operationItem > span {
+  color: #536f82;
+}
+.operationItem small {
+  color: #748894;
+}
+.operationActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 5px;
+}
+.operationActions button {
+  border: 1px solid #cbd7df;
+  background: #fff;
+  color: #24485f;
+  border-radius: 7px;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+.operationActions .primaryButton {
+  background: #087466;
+  color: #fff;
+  border-color: #087466;
+}
+.teamStatusGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+.teamStatusCard {
+  border: 1px solid #e0e7ec;
+  border-radius: 10px;
+  padding: 11px;
+  display: grid;
+  gap: 5px;
+}
+.teamStatusCard span,
+.teamStatusCard small {
+  color: #647d8f;
+}
+.operationsTimeline {
+  display: grid;
+  gap: 12px;
+}
+.operationsTimeline article {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+}
+.operationsTimeline article > div {
+  display: grid;
+  gap: 3px;
+}
+.operationsTimeline article span,
+.operationsTimeline article small {
+  color: #667e8f;
+}
+.timelineDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 99px;
+  background: #0b806c;
+  margin-top: 5px;
+}
+@media (max-width: 1050px) {
+  .operationsKpis {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .operationsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 700px) {
+  .operationsToolbar,
+  .operationsToolbarActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .operationsKpis {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* EduVigIA v1.6.0 — Segurança e LGPD */
+.securityMessage {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #eef7f5;
+  border: 1px solid #c8e0da;
+  color: #1f5e54;
+  margin-bottom: 14px;
+}
+.securityKpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  gap: 13px;
+  margin-bottom: 15px;
+}
+.securityKpis article {
+  display: grid;
+  gap: 5px;
+  padding: 15px;
+  background: #fff;
+  border: 1px solid #d9e2e8;
+  border-radius: 12px;
+}
+.securityKpis span {
+  color: #60798b;
+}
+.securityKpis b {
+  color: #173f60;
+  font-size: 26px;
+}
+.securityKpis .secureCard {
+  background: #effaf6;
+  border-color: #bfe1d4;
+}
+.securityKpis .secureCard b {
+  color: #08715f;
+}
+.securityKpis .warningCard {
+  background: #fff8e9;
+  border-color: #edd69d;
+}
+.securityKpis .warningCard b {
+  color: #a36b00;
+}
+.securityGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 15px;
+  margin-bottom: 15px;
+}
+.securityDetails,
+.securityPolicyList {
+  display: grid;
+  gap: 10px;
+}
+.securityDetails p {
+  margin: 0;
+  color: #526e81;
+}
+.securityDetails small {
+  color: #9b6b14;
+}
+.securityPolicyList span {
+  padding: 9px 10px;
+  background: #f7fafb;
+  border: 1px solid #e2e9ed;
+  border-radius: 8px;
+  color: #526e81;
+}
+.securitySessions {
+  margin-top: 0;
+}
+@media (max-width: 1000px) {
+  .securityKpis {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .securityGrid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 650px) {
+  .securityKpis {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* EduVigIA v1.6.1 — Login institucional profissional */
+.loginScreenPro {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(420px, .8fr);
+  background:
+    radial-gradient(circle at 12% 14%, rgba(27, 147, 127, .2), transparent 34%),
+    linear-gradient(135deg, #082c43 0%, #0b4053 48%, #eef4f6 48%, #f8fbfc 100%);
+}
+.loginVisualPro {
+  position: relative;
+  padding: 54px clamp(32px, 6vw, 88px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: #fff;
+  overflow: hidden;
+}
+.loginVisualPro::after {
+  content: "";
+  position: absolute;
+  right: -110px;
+  bottom: -130px;
+  width: 420px;
+  height: 420px;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 45px rgba(255,255,255,.035),
+    0 0 0 90px rgba(255,255,255,.025);
+}
+.loginBrandBlock {
+  display: grid;
+  gap: 10px;
+  position: relative;
+  z-index: 1;
+}
+.loginBrandBlock img {
+  width: min(330px, 72%);
+  max-height: 104px;
+  object-fit: contain;
+  object-position: left center;
+}
+.loginBrandBlock span {
+  color: #bcd9df;
+  font-size: 13px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.loginHeroText {
+  position: relative;
+  z-index: 1;
+  max-width: 760px;
+  display: grid;
+  gap: 17px;
+}
+.loginEyebrow {
+  font-size: 12px;
+  color: #79d8c6;
+  font-weight: 900;
+  letter-spacing: .13em;
+}
+.loginHeroText h1 {
+  margin: 0;
+  font-size: clamp(38px, 5vw, 68px);
+  line-height: 1.03;
+  max-width: 760px;
+}
+.loginHeroText p {
+  margin: 0;
+  max-width: 650px;
+  color: #c8dce2;
+  font-size: 18px;
+  line-height: 1.65;
+}
+.loginFeatureGrid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.loginFeatureGrid article {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  padding: 15px;
+  background: rgba(255,255,255,.075);
+  border: 1px solid rgba(255,255,255,.14);
+  backdrop-filter: blur(10px);
+  border-radius: 13px;
+}
+.loginFeatureGrid article > svg {
+  color: #75d8c4;
+}
+.loginFeatureGrid article div {
+  display: grid;
+  gap: 4px;
+}
+.loginFeatureGrid b {
+  font-size: 14px;
+}
+.loginFeatureGrid span {
+  color: #bcd2d9;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.loginCopyright {
+  position: relative;
+  z-index: 1;
+  color: #9dbbc4;
+}
+.loginAccessPanel {
+  display: grid;
+  place-items: center;
+  padding: 35px;
+}
+.loginCardPro {
+  width: min(100%, 470px);
+  padding: 32px;
+  border-radius: 19px;
+  border: 1px solid #dce6eb;
+  box-shadow: 0 25px 65px rgba(12, 47, 69, .16);
+  background: rgba(255,255,255,.97);
+  display: grid;
+  gap: 19px;
+}
+.loginCardHeader {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 13px;
+  align-items: center;
+}
+.loginCardHeader h2 {
+  margin: 0 0 4px;
+  color: #153d5c;
+  font-size: 25px;
+}
+.loginCardHeader p {
+  margin: 0;
+  color: #6b8190;
+}
+.loginShieldIcon {
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(135deg, #087466, #0b9380);
+  box-shadow: 0 8px 22px rgba(8, 116, 102, .24);
+}
+.loginInputWrap {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid #cfdbe2;
+  border-radius: 10px;
+  padding: 0 12px;
+  background: #fff;
+}
+.loginInputWrap:focus-within {
+  border-color: #0a8a75;
+  box-shadow: 0 0 0 3px rgba(10,138,117,.11);
+}
+.loginInputWrap > svg {
+  color: #6e8594;
+}
+.loginInputWrap input {
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 13px 0 !important;
+  min-width: 0;
+}
+.passwordToggle {
+  border: 0;
+  background: transparent;
+  color: #607a8b;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.loginSubmit {
+  width: 100%;
+  justify-content: center;
+  min-height: 48px;
+  font-size: 15px;
+}
+.loginSubmit:disabled {
+  opacity: .72;
+  cursor: wait;
+}
+.spinIcon {
+  animation: loginSpin .9s linear infinite;
+}
+@keyframes loginSpin {
+  to { transform: rotate(360deg); }
+}
+.loginSecurityNotice {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 11px 12px;
+  border-radius: 9px;
+  background: #eef7f5;
+  border: 1px solid #cce2dc;
+  color: #496e68;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.loginFirstAccess {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  padding-top: 3px;
+  color: #758a98;
+  font-size: 12px;
+}
+.loginFirstAccess code {
+  padding: 4px 7px;
+  border-radius: 5px;
+  background: #f1f5f7;
+  color: #31566d;
+}
+.loginVersion {
+  text-align: center;
+  color: #8ca0ad;
+}
+.loginCardPro .loginError {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: center;
+}
+@media (max-width: 1050px) {
+  .loginScreenPro {
+    grid-template-columns: 1fr;
+    background: linear-gradient(180deg, #082f45 0%, #0b4657 45%, #eef4f6 45%, #f8fbfc 100%);
+  }
+  .loginVisualPro {
+    min-height: 52vh;
+    gap: 34px;
+  }
+  .loginFeatureGrid {
+    grid-template-columns: 1fr;
+  }
+  .loginAccessPanel {
+    padding: 28px 20px 42px;
+  }
+}
+@media (max-width: 620px) {
+  .loginVisualPro {
+    padding: 34px 22px;
+  }
+  .loginHeroText h1 {
+    font-size: 36px;
+  }
+  .loginHeroText p {
+    font-size: 15px;
+  }
+  .loginCardPro {
+    padding: 24px 19px;
+  }
+  .loginFirstAccess {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+
+/* ==========================================================
+   EduVigIA v1.6.2 — Visual escolar aprovado
+   ========================================================== */
+
+html, body, #root {
+  min-width: 0 !important;
+  width: 100%;
+  min-height: 100%;
+}
+body {
+  overflow-x: hidden;
+}
+
+/* LOGIN ESCOLAR */
+.schoolLoginPage {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(430px, .92fr);
+  grid-template-rows: 1fr auto;
+  background: #f7fbff;
+  color: #102d55;
+}
+.schoolLoginHero {
+  position: relative;
+  min-height: calc(100vh - 64px);
+  padding: clamp(28px, 4vw, 62px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  background-image:
+    linear-gradient(90deg, rgba(244,250,255,.08), rgba(244,250,255,.02)),
+    url("/eduvigia-login-escola.png");
+  background-size: auto 100%;
+  background-position: left center;
+  background-repeat: no-repeat;
+}
+.schoolLoginHero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(236,247,255,.04) 0%, rgba(236,247,255,.12) 70%, rgba(247,251,255,.96) 100%);
+  pointer-events: none;
+}
+.schoolLoginBrand,
+.schoolLoginBadges,
+.schoolLoginStatement {
+  position: relative;
+  z-index: 2;
+}
+.schoolLoginBrand {
+  display: none;
+}
+.schoolLoginBadges {
+  display: grid;
+  width: min(270px, 46%);
+  gap: 14px;
+  margin-top: 70px;
+}
+.schoolLoginBadges article {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 15px;
+  background: rgba(255,255,255,.90);
+  border: 1px solid rgba(185,210,228,.8);
+  box-shadow: 0 10px 30px rgba(32, 78, 116, .12);
+  backdrop-filter: blur(9px);
+}
+.schoolLoginBadges article:nth-child(2) {
+  margin-left: 62%;
+}
+.schoolLoginBadges article:nth-child(3) {
+  margin-top: 40px;
+}
+.schoolLoginBadges svg {
+  color: #1266a8;
+}
+.schoolLoginBadges div {
+  display: grid;
+  gap: 2px;
+}
+.schoolLoginBadges b {
+  font-size: 13px;
+}
+.schoolLoginBadges span {
+  font-size: 11px;
+  color: #6b8196;
+}
+.schoolLoginStatement {
+  align-self: flex-start;
+  width: min(520px, 82%);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 16px;
+  align-items: center;
+  padding: 20px 22px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.93);
+  border: 1px solid rgba(190,210,227,.88);
+  box-shadow: 0 18px 42px rgba(31,75,108,.17);
+}
+.schoolLoginStatement svg {
+  color: #0b5ea0;
+}
+.schoolLoginStatement div {
+  display: grid;
+  gap: 6px;
+}
+.schoolLoginStatement b {
+  color: #123e73;
+  font-size: 16px;
+}
+.schoolLoginStatement span {
+  color: #617a91;
+  line-height: 1.5;
+}
+
+.schoolLoginAccess {
+  position: relative;
+  min-height: calc(100vh - 64px);
+  padding: 76px clamp(28px, 5vw, 72px) 34px;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(184,219,245,.26), transparent 36%),
+    linear-gradient(180deg, #f8fbff, #eef5fb);
+}
+.schoolLoginHelp {
+  position: absolute;
+  top: 25px;
+  right: 34px;
+  display: flex;
+  gap: 8px;
+  font-size: 13px;
+  color: #607c95;
+}
+.schoolLoginHelp b {
+  color: #1666ad;
+}
+.schoolLoginCard {
+  width: min(100%, 580px);
+  padding: clamp(27px, 3.5vw, 42px);
+  display: grid;
+  gap: 19px;
+  background: rgba(255,255,255,.97);
+  border: 1px solid #d8e5ef;
+  border-radius: 22px;
+  box-shadow: 0 25px 65px rgba(24, 64, 101, .17);
+}
+.schoolLoginLogo {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  margin-bottom: 2px;
+}
+.schoolLoginLogo img {
+  width: clamp(300px, 36vw, 500px);
+  max-width: 100%;
+  height: clamp(108px, 12vw, 150px);
+  object-fit: contain;
+}
+.schoolLoginLogo span {
+  text-align: center;
+  color: #617a94;
+  font-size: 13px;
+}
+.schoolLoginWelcome {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 13px;
+  align-items: center;
+}
+.schoolCapIcon {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #fff3d7;
+  font-size: 27px;
+}
+.schoolLoginWelcome h1 {
+  margin: 0 0 4px;
+  font-size: 26px;
+  color: #0c2850;
+}
+.schoolLoginWelcome p {
+  margin: 0;
+  color: #667d94;
+  line-height: 1.45;
+}
+.schoolLoginInput {
+  min-height: 52px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 0 14px;
+  border: 1px solid #c9d8e4;
+  border-radius: 10px;
+  background: #fff;
+  color: #667f96;
+}
+.schoolLoginInput:focus-within {
+  border-color: #2377bb;
+  box-shadow: 0 0 0 4px rgba(35,119,187,.10);
+}
+.schoolLoginInput input {
+  width: 100%;
+  border: 0 !important;
+  outline: 0;
+  box-shadow: none !important;
+  padding: 14px 0 !important;
+  color: #173855;
+}
+.schoolPasswordToggle {
+  border: 0;
+  background: transparent;
+  color: #55738d;
+}
+.schoolForgotPassword {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -9px;
+}
+.schoolForgotPassword button {
+  border: 0;
+  background: transparent;
+  color: #1768ad;
+  font-size: 13px;
+}
+.schoolLoginSubmit {
+  min-height: 52px;
+  border: 0;
+  border-radius: 9px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 9px;
+  background: linear-gradient(180deg, #2574c5, #1261ad);
+  color: #fff;
+  font-weight: 800;
+  box-shadow: 0 8px 20px rgba(28,103,174,.22);
+}
+.schoolLoginSubmit:disabled {
+  opacity: .72;
+}
+.schoolLoginDivider {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 12px;
+  align-items: center;
+  color: #7890a4;
+  font-size: 12px;
+}
+.schoolLoginDivider::before,
+.schoolLoginDivider::after {
+  content: "";
+  height: 1px;
+  background: #d8e3eb;
+}
+.schoolGoogleButton {
+  min-height: 48px;
+  border: 1px solid #ccd9e4;
+  border-radius: 9px;
+  background: #fff;
+  color: #28445f;
+  display: flex;
+  gap: 11px;
+  justify-content: center;
+  align-items: center;
+}
+.schoolGoogleButton b {
+  color: #4285f4;
+  font-size: 18px;
+}
+.schoolSecurityFooter {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 11px;
+  align-items: center;
+  padding: 15px;
+  margin: 1px -42px -42px;
+  border-radius: 0 0 22px 22px;
+  border-top: 1px solid #e1e9ef;
+  background: #f5faf7;
+  color: #237642;
+}
+.schoolSecurityFooter div {
+  display: grid;
+  gap: 3px;
+}
+.schoolSecurityFooter span {
+  color: #667c76;
+  font-size: 12px;
+}
+.schoolFirstAccess {
+  display: none;
+}
+.schoolLoginCard .loginVersion {
+  position: absolute;
+  bottom: 8px;
+  right: 16px;
+  color: #8497a8;
+}
+.schoolLoginAccess {
+  position: relative;
+}
+.schoolLoginCard {
+  position: relative;
+}
+.schoolLoginError {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px;
+}
+.schoolLoginFooter {
+  grid-column: 1 / -1;
+  min-height: 64px;
+  padding: 0 36px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background: linear-gradient(90deg, #e6f8f2, #f6fbff);
+  color: #367394;
+  border-top: 1px solid #d9e8ec;
+}
+.schoolLoginFooter small {
+  margin-left: auto;
+  color: #71889b;
+}
+
+/* SHELL E MARCA — RESISTENTES AO ZOOM */
+.appShell {
+  grid-template-columns: 270px minmax(0, 1fr) !important;
+  background: #f4f7fb;
+}
+.appSidebar {
+  width: 270px !important;
+  background: linear-gradient(180deg, #052f68 0%, #031f49 100%) !important;
+  border-right: 0 !important;
+  box-shadow: 7px 0 24px rgba(6,35,72,.14);
+}
+.sidebarBrand {
+  height: 230px !important;
+  min-height: 230px;
+  padding: 20px 16px !important;
+  border-bottom: 1px solid rgba(255,255,255,.1) !important;
+  overflow: visible !important;
+}
+.sidebarBrand img {
+  width: clamp(205px, 16vw, 245px) !important;
+  height: clamp(170px, 14vw, 205px) !important;
+  max-height: none !important;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 20px rgba(0,0,0,.2));
+}
+.sidebarNav {
+  padding: 16px 12px !important;
+  gap: 6px !important;
+}
+.sidebarItem {
+  min-height: 51px !important;
+  border-radius: 11px !important;
+  color: #e8f1fb !important;
+  padding: 0 17px !important;
+}
+.sidebarItem:hover {
+  background: rgba(255,255,255,.10) !important;
+}
+.sidebarItem.active {
+  background: linear-gradient(90deg, #0b75d1, #1168b8) !important;
+  box-shadow: 0 8px 18px rgba(1,17,46,.27) !important;
+}
+.sidebarFooter {
+  color: #adc6df !important;
+  background: rgba(0,0,0,.12) !important;
+  border-top: 1px solid rgba(255,255,255,.1) !important;
+}
+.sidebarFooter strong {
+  color: #fff !important;
+}
+.mobileSidebarClose {
+  display: none;
+}
+.topbar {
+  min-height: 74px !important;
+  height: auto !important;
+  padding: 10px 24px !important;
+}
+.topSearch {
+  width: min(430px, 42vw) !important;
+  margin: 0 auto !important;
+  background: #fff !important;
+  border: 1px solid #cedae4;
+}
+.contentArea {
+  padding: 20px 22px 34px !important;
+  max-width: 1700px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* DASHBOARD MAIS PRÓXIMO DA REFERÊNCIA */
+.pageHeading.compact {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 4px 4px 15px;
+}
+.pageHeading.compact h1 {
+  font-size: 24px;
+  color: #0d2850;
+}
+.pageHeading.compact h1 span {
+  display: block;
+  margin-top: 6px;
+  font-size: 14px;
+  color: #6c8195;
+  font-weight: 500;
+}
+.onlineStatus {
+  background: #fff;
+  border: 1px solid #d8e2ea;
+  border-radius: 10px;
+  padding: 10px 13px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  color: #34526c;
+}
+.onlineStatus b {
+  color: #14883e;
+  background: #eaf8ef;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.metricGrid {
+  grid-template-columns: repeat(6, minmax(150px, 1fr)) !important;
+  gap: 10px !important;
+}
+.metricCard {
+  min-height: 96px;
+  border-radius: 12px !important;
+  box-shadow: 0 5px 14px rgba(25,60,94,.07);
+}
+.operationsGrid {
+  gap: 13px !important;
+}
+.dashboardPanel,
+.cameraWall,
+.schoolMap {
+  border-radius: 12px !important;
+  box-shadow: 0 5px 16px rgba(25,60,94,.06);
+}
+
+/* RESPONSIVIDADE / ZOOM */
+@media (max-width: 1320px) {
+  .appShell {
+    grid-template-columns: 236px minmax(0, 1fr) !important;
+  }
+  .appSidebar {
+    width: 236px !important;
+  }
+  .sidebarBrand {
+    height: 205px !important;
+    min-height: 205px;
+  }
+  .sidebarBrand img {
+    width: 210px !important;
+    height: 178px !important;
+  }
+  .metricGrid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+@media (max-width: 1050px) {
+  .appShell {
+    display: block !important;
+  }
+  .appSidebar {
+    position: fixed !important;
+    left: 0;
+    top: 0;
+    width: min(310px, 88vw) !important;
+    transform: translateX(-102%);
+    transition: transform .24s ease;
+    z-index: 1000;
+  }
+  .sidebarOpen .appSidebar {
+    transform: translateX(0);
+  }
+  .sidebarClosed .appSidebar {
+    transform: translateX(-102%);
+  }
+  .mobileSidebarClose {
+    display: grid;
+    place-items: center;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 38px;
+    height: 38px;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(255,255,255,.12);
+    color: #fff;
+    z-index: 3;
+  }
+  .sidebarBrand {
+    height: 220px !important;
+  }
+  .sidebarBrand img {
+    width: 240px !important;
+    height: 195px !important;
+  }
+  .contentArea {
+    padding: 16px !important;
+  }
+  .schoolLoginPage {
+    grid-template-columns: 1fr;
+  }
+  .schoolLoginHero {
+    min-height: 55vh;
+  }
+  .schoolLoginAccess {
+    min-height: auto;
+    padding: 52px 20px 36px;
+  }
+  .schoolLoginFooter {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  .schoolLoginHero {
+    min-height: 420px;
+    padding: 22px;
+    background-position: 28% center;
+  }
+  .schoolLoginBadges {
+    display: none;
+  }
+  .schoolLoginStatement {
+    width: 100%;
+  }
+  .schoolLoginCard {
+    padding: 24px 19px;
+  }
+  .schoolLoginLogo img {
+    width: 100%;
+    height: 112px;
+  }
+  .schoolSecurityFooter {
+    margin: 1px -19px -24px;
+  }
+  .schoolLoginHelp {
+    display: none;
+  }
+  .metricGrid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .topSearch {
+    width: 100% !important;
+    order: 3;
+  }
+  .topbar {
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 480px) {
+  .metricGrid {
+    grid-template-columns: 1fr !important;
+  }
+  .profile div {
+    display: none;
+  }
+}
+
+
+/* EduVigIA v1.6.4 — Ajuste final do login e da área da marca */
+.schoolLoginPage {
+  grid-template-columns: minmax(0, 1.06fr) minmax(430px, .94fr);
+}
+.schoolLoginHero {
+  min-height: calc(100vh - 64px);
+  padding: 0 !important;
+  background: none !important;
+}
+.schoolLoginHeroImage {
+  position: absolute;
+  inset: 0;
+  background-image: url("/eduvigia-login-escola.png");
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+}
+.schoolLoginHero::after {
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0.00) 0%,
+    rgba(255,255,255,0.04) 52%,
+    rgba(255,255,255,0.12) 72%,
+    rgba(248,251,255,0.26) 88%,
+    rgba(248,251,255,0.38) 100%) !important;
+}
+.schoolLoginBrand,
+.schoolLoginBadges,
+.schoolLoginStatement {
+  display: none !important;
+}
+.schoolLoginAccess {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(184,219,245,.18), transparent 34%),
+    linear-gradient(180deg, #f9fbff, #eff5fb);
+}
+.schoolLoginCard {
+  width: min(100%, 560px);
+}
+.schoolLoginLogo img {
+  width: clamp(290px, 34vw, 470px);
+  height: clamp(104px, 11vw, 140px);
+}
+
+.appSidebar {
+  background: linear-gradient(180deg, #08336d 0%, #042551 100%) !important;
+}
+.sidebarBrand {
+  background: #ffffff !important;
+  border-bottom: 1px solid #dfe8f1 !important;
+  box-shadow: inset 0 -1px 0 rgba(12, 45, 84, .04);
+  height: 164px !important;
+  min-height: 164px !important;
+  padding: 18px 14px !important;
+}
+.sidebarBrand img {
+  width: clamp(188px, 14vw, 228px) !important;
+  height: clamp(88px, 7vw, 118px) !important;
+  filter: none !important;
+}
+.sidebarNav {
+  padding-top: 18px !important;
+}
+@media (max-width: 1320px) {
+  .sidebarBrand {
+    height: 150px !important;
+    min-height: 150px !important;
+  }
+  .sidebarBrand img {
+    width: 196px !important;
+    height: 96px !important;
+  }
+}
+@media (max-width: 1050px) {
+  .schoolLoginHero {
+    min-height: 50vh !important;
+  }
+  .schoolLoginHero::after {
+    background: linear-gradient(180deg,
+      rgba(255,255,255,0.02) 0%,
+      rgba(255,255,255,0.10) 65%,
+      rgba(248,251,255,0.20) 100%) !important;
+  }
+  .sidebarBrand {
+    height: 150px !important;
+    min-height: 150px !important;
+    padding-right: 44px !important;
+  }
+  .sidebarBrand img {
+    width: 210px !important;
+    height: 102px !important;
+  }
+}
+@media (max-width: 760px) {
+  .schoolLoginHero {
+    min-height: 340px !important;
+  }
+  .schoolLoginHeroImage {
+    background-position: 42% center;
+  }
+}
+
+
+/* EduVigIA v1.6.5 — Fundo azul atrás do formulário de login */
+.schoolLoginAccess {
+  background:
+    radial-gradient(circle at 22% 18%, rgba(86, 176, 255, .30), transparent 34%),
+    radial-gradient(circle at 82% 78%, rgba(12, 87, 188, .28), transparent 38%),
+    linear-gradient(145deg, #63b8f4 0%, #2f8bdd 42%, #1266bd 100%) !important;
+}
+
+.schoolLoginAccess::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(120deg, rgba(255,255,255,.10), transparent 30%),
+    radial-gradient(circle at 80% 15%, rgba(255,255,255,.16), transparent 24%);
+  pointer-events: none;
+}
+
+.schoolLoginHelp {
+  color: rgba(255,255,255,.88) !important;
+  z-index: 2;
+}
+
+.schoolLoginHelp b {
+  color: #ffffff !important;
+}
+
+.schoolLoginCard {
+  position: relative;
+  z-index: 2;
+  background: #ffffff !important;
+  border: 1px solid rgba(255,255,255,.82) !important;
+  box-shadow:
+    0 28px 70px rgba(5, 42, 91, .26),
+    0 0 0 1px rgba(255,255,255,.30) !important;
+}
+
+.schoolLoginFooter {
+  background: #ffffff !important;
+  border-top: 1px solid #dbe6ef !important;
+}
+
+@media (max-width: 1050px) {
+  .schoolLoginAccess {
+    background:
+      radial-gradient(circle at 18% 12%, rgba(94, 185, 255, .28), transparent 32%),
+      linear-gradient(145deg, #5eb3f1 0%, #2b86d7 48%, #1368bd 100%) !important;
+  }
+}
+
+
+/* EduVigIA v1.7.0 — Infraestrutura e operação */
+.infraToolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  border: 1px solid #d9e3ea;
+  border-radius: 12px;
+  background: #fff;
+}
+.infraToolbar > div {
+  display: grid;
+  gap: 4px;
+}
+.infraToolbar b {
+  color: #0e6f60;
+}
+.infraToolbar span {
+  color: #6a8192;
+  font-size: 13px;
+}
+.infraToolbar button {
+  border: 1px solid #cbd8e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #214b67;
+  padding: 9px 12px;
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+}
+.infraKpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  gap: 13px;
+  margin-bottom: 15px;
+}
+.infraKpis article {
+  display: grid;
+  gap: 5px;
+  padding: 15px;
+  border-radius: 12px;
+  border: 1px solid #d8e2e8;
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(24, 62, 92, .06);
+}
+.infraKpis span,
+.infraKpis small {
+  color: #667f91;
+}
+.infraKpis b {
+  color: #123f62;
+  font-size: 27px;
+}
+.infraGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 15px;
+}
+.infraServiceList {
+  display: grid;
+  gap: 9px;
+}
+.infraServiceList article {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 11px 12px;
+  border: 1px solid #e1e8ed;
+  border-radius: 9px;
+  background: #fafcfd;
+}
+.infraServiceList article > div {
+  display: grid;
+  gap: 3px;
+}
+.infraServiceList b {
+  text-transform: capitalize;
+  color: #284b63;
+}
+.infraServiceList span {
+  color: #748998;
+  font-size: 12px;
+}
+.storageMeter {
+  display: grid;
+  gap: 12px;
+}
+.storageMeter > div {
+  height: 18px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #e7edf1;
+}
+.storageMeter > div > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #0c8872, #1d78c5);
+}
+.storageMeter b {
+  color: #244d67;
+}
+.storageMeter small {
+  color: #718798;
+  overflow-wrap: anywhere;
+}
+.infraPorts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(100px, 1fr));
+  gap: 9px;
+}
+.infraPorts article {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 9px;
+  background: #f6f9fb;
+  border: 1px solid #e0e8ed;
+}
+.infraPorts span {
+  color: #6a8192;
+  font-size: 12px;
+  text-transform: capitalize;
+}
+.infraPorts b {
+  color: #163f5e;
+  font-size: 19px;
+}
+.infraBackup {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 13px;
+  align-items: center;
+  padding: 15px;
+  border-radius: 11px;
+  background: #eef8f5;
+  border: 1px solid #cae4dc;
+  color: #18705e;
+}
+.infraBackup div {
+  display: grid;
+  gap: 5px;
+}
+.infraBackup span,
+.infraBackup small {
+  color: #617d76;
+}
+@media (max-width: 1050px) {
+  .infraKpis {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .infraGrid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 650px) {
+  .infraToolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .infraKpis {
+    grid-template-columns: 1fr;
+  }
+  .infraPorts {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+
+/* EduVigIA v1.8.0 — Suporte e homologação */
+.schoolLoginHelp {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  align-items: center;
+}
+.schoolLoginHelp:hover b {
+  text-decoration: underline;
+}
+.supportForm {
+  display: grid;
+  gap: 15px;
+}
+.supportIntro {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border-radius: 11px;
+  background: #edf7fb;
+  border: 1px solid #cce3ec;
+  color: #17607e;
+}
+.supportIntro > div {
+  display: grid;
+  gap: 4px;
+}
+.supportIntro span {
+  color: #5f7d8d;
+}
+.supportResult {
+  padding: 12px 14px;
+  border-radius: 9px;
+  background: #eef8f5;
+  border: 1px solid #cbe4dc;
+  color: #176b59;
+  font-weight: 700;
+}
+.supportChannels {
+  display: flex;
+  gap: 10px 18px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f7fafb;
+  border: 1px solid #e1e8ed;
+}
+.supportChannels span {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: #5f7788;
+  font-size: 13px;
+}
+.homologationSummary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 15px;
+}
+.homologationSummary article {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  border: 1px solid #d8e2e8;
+  border-radius: 11px;
+  background: #fff;
+}
+.homologationSummary span {
+  color: #687f90;
+}
+.homologationSummary b {
+  color: #153f60;
+  font-size: 27px;
+}
+.homologationChecklist {
+  margin-bottom: 15px;
+}
+.checklistRows {
+  display: grid;
+  gap: 9px;
+}
+.checklistRows article {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 11px;
+  align-items: center;
+  padding: 11px 12px;
+  border: 1px solid #e0e7ec;
+  border-radius: 9px;
+  background: #fafcfd;
+}
+.checklistRows article > svg {
+  color: #0b806c;
+}
+.checklistRows article > div {
+  display: grid;
+  gap: 3px;
+}
+.checklistRows b {
+  color: #294c64;
+}
+.checklistRows span {
+  color: #718797;
+  font-size: 13px;
+}
+@media (max-width: 760px) {
+  .homologationSummary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .checklistRows article {
+    grid-template-columns: auto 1fr;
+  }
+  .checklistRows .statusPill {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
+
+/* EduVigIA v1.8.1 — estabilização */
+.schoolForgotPassword button {
+  cursor: pointer;
+}
+.schoolForgotPassword button:hover {
+  text-decoration: underline;
+}
+
+
+/* EduVigIA v1.8.3 — gestão completa de usuários */
+.userDirectory .cardHeader > div {
+  display: grid;
+  gap: 3px;
+}
+.userDirectory .cardHeader small {
+  color: #718798;
+  font-weight: 500;
+}
+.userSearchBox {
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 9px;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 0 12px;
+  border: 1px solid #d3dfe7;
+  border-radius: 9px;
+  background: #fff;
+  color: #698194;
+}
+.userSearchBox input {
+  border: 0 !important;
+  outline: 0;
+  box-shadow: none !important;
+  padding: 11px 0 !important;
+}
+.userRecord {
+  align-items: center;
+}
+.userEditForm {
+  grid-column: 1 / -1;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 8px;
+}
+.userActiveToggle {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  color: #38586d;
+  font-weight: 700;
+}
+.userActiveToggle input {
+  width: 17px;
+  height: 17px;
+}
+.userEditActions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: end;
+  gap: 9px;
+}
+.userEditActions button {
+  min-height: 40px;
+  padding: 0 14px;
+}
+@media (max-width: 760px) {
+  .userEditForm {
+    grid-template-columns: 1fr;
+  }
+  .userEditActions {
+    justify-content: stretch;
+  }
+  .userEditActions button {
+    flex: 1;
+  }
+}
+
+/* EduVigIA v1.8.4-R1 — troca obrigatória de senha */
+.passwordGatePage {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background:
+    radial-gradient(circle at 15% 15%, rgba(22, 151, 167, 0.16), transparent 32%),
+    linear-gradient(145deg, #eef7f8 0%, #f7fbfc 50%, #e7f0f5 100%);
+}
+.passwordGateCard {
+  width: min(100%, 520px);
+  padding: 32px;
+  border: 1px solid #d4e2e8;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgba(14, 52, 80, 0.16);
+}
+.passwordGateCard > img {
+  display: block;
+  width: min(230px, 70%);
+  margin: 0 auto 18px;
+}
+.passwordGateIcon {
+  width: 66px;
+  height: 66px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 14px;
+  border-radius: 18px;
+  background: #e7f6f7;
+  color: #087f90;
+}
+.passwordGateCard h1 {
+  margin: 0;
+  text-align: center;
+  color: #123b5b;
+  font-size: clamp(24px, 4vw, 32px);
+}
+.passwordGateCard > p {
+  margin: 12px 0 22px;
+  text-align: center;
+  color: #526d7f;
+  line-height: 1.6;
+}
+.passwordGateCard form {
+  display: grid;
+  gap: 14px;
+}
+.passwordPolicy {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f1f7fa;
+  color: #486779;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.passwordGateActions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #e0e9ee;
+}
+.passwordGateActions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  background: transparent;
+  color: #315a72;
+  cursor: pointer;
+  font-weight: 700;
+}
+@media (max-width: 560px) {
+  .passwordGatePage { padding: 14px; }
+  .passwordGateCard { padding: 24px 18px; border-radius: 15px; }
+  .passwordGateActions { flex-direction: column; align-items: center; }
+}
+
+/* EduVigIA 1.8.5-R1 — estados do player com autorização temporária */
+.secureStreamState {
+  width: 100%;
+  min-height: 190px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 18px;
+  text-align: center;
+  background: linear-gradient(145deg, rgba(13, 34, 58, 0.96), rgba(17, 55, 84, 0.96));
+  color: #f7fbff;
+}
+
+.secureStreamState svg {
+  opacity: 0.9;
+}
+
+.secureStreamState span {
+  max-width: 340px;
+  font-size: 0.78rem;
+  opacity: 0.82;
+}
+
+.secureStreamState.loading svg {
+  animation: secureStreamSpin 1.2s linear infinite;
+}
+
+.secureStreamState.error {
+  background: linear-gradient(145deg, rgba(72, 24, 28, 0.96), rgba(103, 34, 39, 0.96));
+}
+
+.secureStreamState button {
+  margin-top: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.12);
+  color: inherit;
+  cursor: pointer;
+}
+
+@keyframes secureStreamSpin {
+  to { transform: rotate(360deg); }
+}
+
+
+/* EduVigIA 1.8.6-R1 — integração Hikvision/NVR e operação em lote */
+.formActions, .headerActions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.headerActions { justify-content: flex-end; }
+.channelDiscoveryStatus { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 0 12px; }
+.updateExistingOption { margin-top: 16px; padding: 12px; border: 1px solid var(--border, #d7dee8); border-radius: 10px; }
+.errorText { color: #b42318 !important; overflow-wrap: anywhere; }
+.statusPill.warning { background: #fff4cc; color: #7a4d00; border-color: #f1c75b; }
+@media (prefers-color-scheme: dark) {
+  .statusPill.warning { background: rgba(245, 158, 11, 0.16); color: #fbbf24; border-color: rgba(245, 158, 11, 0.35); }
+  .errorText { color: #fda29b !important; }
+}
+
+
+/* Fase 4 — infraestrutura, observabilidade e capacidade */
+.infraKpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.infraCapacityGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.infraCapacityGrid article { border: 1px solid var(--line, #dbe4ef); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
+.infraCapacityGrid span { font-size: 12px; opacity: .72; }
+.infraCapacityGrid b { font-size: 20px; }
+.infraCapacityNote { display: block; margin-top: 14px; opacity: .75; }
+
+/* Fase 7 — Central de Alertas, Evidências e Despacho */
+.alertCenterHero {
+  display: flex;
+  justify-content: space-between;
+  gap: 22px;
+  align-items: center;
+  padding: 22px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border-color, #d9e3ea);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(22, 96, 136, 0.10), rgba(20, 139, 126, 0.06));
+}
+.alertCenterHero h2 { margin: 8px 0 5px; font-size: 22px; }
+.alertCenterHero p { margin: 0; color: var(--muted-text, #5d6f80); max-width: 760px; }
+.alertCenterHeroActions { display: flex; gap: 9px; flex-wrap: wrap; }
+.alertCenterHeroActions button { display: inline-flex; align-items: center; gap: 7px; }
+.alertCenterKpis {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(130px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.alertCenterKpis article {
+  display: grid;
+  gap: 5px;
+  padding: 16px;
+  border: 1px solid var(--border-color, #dce5eb);
+  border-radius: 12px;
+  background: var(--card-bg, #fff);
+}
+.alertCenterKpis article span { color: var(--muted-text, #667788); font-size: 12px; }
+.alertCenterKpis article b { font-size: 26px; }
+.alertCenterKpis article small { color: var(--muted-text, #667788); }
+.alertCenterKpis article.critical { border-color: rgba(194, 45, 45, 0.35); }
+.alertPriorityStrip {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.alertPriorityStrip span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #dce5eb);
+  border-radius: 999px;
+  background: var(--card-bg, #fff);
+  font-size: 12px;
+}
+.alertFilters {
+  display: grid;
+  grid-template-columns: minmax(280px, 1.5fr) repeat(3, minmax(150px, 0.55fr)) auto;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.alertFilters .searchBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border: 1px solid var(--border-color, #d9e3ea);
+  border-radius: 9px;
+  background: var(--input-bg, #fff);
+}
+.alertFilters .searchBox input { width: 100%; border: 0; background: transparent; outline: 0; }
+.alertCenterTableCard { padding: 0; overflow: hidden; }
+.alertCenterTableCard .cardHeader { padding: 15px 17px; }
+.alertCenterTable .largeTableHead,
+.alertCenterTable .largeTableRow {
+  grid-template-columns: minmax(230px, 1.45fr) 110px minmax(190px, 1fr) minmax(145px, 0.8fr) minmax(140px, 0.75fr) minmax(220px, 1fr);
+}
+.alertRow { position: relative; padding-top: 11px; padding-bottom: 11px; }
+.alertRow.newAlertRow::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: #d28a00;
+}
+.alertRowActions { display: flex !important; gap: 6px; flex-wrap: wrap; align-content: center; }
+.alertRowActions button { display: inline-flex; align-items: center; gap: 5px; }
+.alertDetailGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.alertEvidencePanel,
+.alertLivePanel,
+.alertTimelinePanel {
+  border: 1px solid var(--border-color, #dce5eb);
+  border-radius: 12px;
+  padding: 13px;
+  background: var(--card-bg, #fff);
+}
+.alertEvidencePanel img { width: 100%; min-height: 240px; max-height: 440px; object-fit: contain; border-radius: 9px; background: #0b1116; }
+.alertEvidenceEmpty {
+  min-height: 240px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 7px;
+  text-align: center;
+  border: 1px dashed var(--border-color, #cbd7df);
+  border-radius: 9px;
+  color: var(--muted-text, #667788);
+}
+.alertEvidenceMeta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.alertEvidenceMeta span { display: grid; gap: 3px; font-size: 11px; color: var(--muted-text, #667788); }
+.alertEvidenceMeta b { color: var(--text-color, #17212b); }
+.alertLiveFrame { min-height: 300px; border-radius: 9px; overflow: hidden; background: #0b1116; }
+.alertLiveFrame iframe { width: 100%; height: 340px; border: 0; display: block; }
+.alertDetailSummary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 14px 0; }
+.alertDetailSummary article { display: grid; gap: 4px; padding: 12px; border: 1px solid var(--border-color, #dce5eb); border-radius: 10px; }
+.alertDetailSummary span { font-size: 11px; color: var(--muted-text, #667788); }
+.alertAssignmentBox {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(220px, 0.8fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 13px;
+  margin-bottom: 13px;
+  border: 1px solid var(--border-color, #dce5eb);
+  border-radius: 11px;
+}
+.alertAssignmentBox > div { display: grid; gap: 3px; }
+.alertAssignmentBox span { color: var(--muted-text, #667788); font-size: 12px; }
+.alertWorkflowActions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.alertTimelinePanel { margin-top: 8px; }
+
+@media (max-width: 1180px) {
+  .alertCenterKpis { grid-template-columns: repeat(3, 1fr); }
+  .alertFilters { grid-template-columns: 1fr 1fr; }
+  .alertDetailGrid { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .alertCenterHero { align-items: flex-start; flex-direction: column; }
+  .alertCenterKpis { grid-template-columns: 1fr 1fr; }
+  .alertFilters { grid-template-columns: 1fr; }
+  .alertDetailSummary { grid-template-columns: 1fr 1fr; }
+  .alertAssignmentBox { grid-template-columns: 1fr; }
+}
+
+/* F2 — VMS básico / perfis MAIN e SUB */
+.vmsProfileGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 14px 0;
+}
+.vmsProfileCard {
+  min-width: 0;
+  border: 1px solid var(--border, #dbe2ea);
+  border-radius: 14px;
+  padding: 14px;
+  background: var(--surface, #fff);
+}
+.vmsProfileHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.vmsProfileHeader > div { display: grid; gap: 3px; min-width: 0; }
+.vmsProfileHeader span { font-size: 12px; opacity: .78; }
+.qualityBadge {
+  flex: 0 0 auto;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 11px !important;
+  font-weight: 800;
+  letter-spacing: .06em;
+}
+.compactProfileGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.monitorTile:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+  background: #05080d;
+}
+.monitorTile:fullscreen iframe { min-height: calc(100vh - 118px); }
+.monitorTile:fullscreen .cameraTelemetry,
+.monitorTile:fullscreen .cameraActions { background: #0c1119; }
+@media (max-width: 900px) {
+  .vmsProfileGrid { grid-template-columns: 1fr; }
+  .compactProfileGrid { grid-template-columns: 1fr; }
+}
+
+/* F3 — PTZ operacional */
+.ptzConfigCard{border:1px solid var(--border,#d7dee8);border-radius:14px;padding:16px;margin:14px 0;background:linear-gradient(180deg,#fff,#f8fbff)}
+.ptzConfigHeader{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:12px}.ptzConfigHeader>div{display:flex;flex-direction:column;gap:3px}.ptzConfigHeader span{font-size:12px;color:var(--muted,#64748b)}
+.inlineCheckField{align-self:end;min-height:42px}.ptzMetaLine{color:#1d4ed8;font-weight:600}
+.ptzPanel{margin:8px;border:1px solid rgba(148,163,184,.45);border-radius:12px;padding:10px;background:rgba(15,23,42,.92);color:#fff;position:relative;z-index:3}
+.ptzPanelHeader{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}.ptzPanelHeader>div{display:flex;align-items:baseline;gap:8px}.ptzPanelHeader small{opacity:.7}.ptzPanel button{touch-action:none;user-select:none}
+.ptzLeaseBusy{font-size:12px;padding:6px 8px;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.35);border-radius:8px;margin-bottom:8px}
+.ptzControls{display:grid;grid-template-columns:minmax(150px,220px) 1fr;gap:12px}.ptzPad{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.ptzPad button,.ptzZoom button{min-height:38px;border-radius:8px}.ptzStop{font-size:10px;font-weight:800;letter-spacing:.04em}.ptzZoom{display:grid;grid-template-columns:1fr 1fr;align-content:start;gap:7px}.ptzZoom label,.ptzZoom input[type=range]{grid-column:1/-1}.ptzPresetBox{margin-top:10px;padding-top:10px;border-top:1px solid rgba(148,163,184,.25)}.ptzPresetCreate{display:grid;grid-template-columns:72px 1fr auto;gap:6px}.ptzPresetCreate input{min-width:0}.ptzPresetList{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}.ptzPresetList button{font-size:11px}.ptzMessage{display:block;margin-top:7px;opacity:.85}@media(max-width:900px){.ptzControls{grid-template-columns:1fr}.ptzPresetCreate{grid-template-columns:65px 1fr}.ptzPresetCreate button{grid-column:1/-1}}
+
+/* F3-R2 — multi-channel / multi-sensor */
+.sensorBadge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: .04em;
+  background: rgba(255,255,255,.16);
+  border: 1px solid rgba(255,255,255,.25);
+}
+.sensor-thermal { background: rgba(255, 122, 0, .28); }
+.sensor-visible { background: rgba(0, 122, 255, .22); }
+.sensor-fusion { background: rgba(112, 68, 210, .25); }
+.mutedText { color: var(--muted, #6b7280); margin-top: -4px; margin-bottom: 14px; }
+
+
+/* F4 - Playback e Evidencias */
+.playbackLayout{display:grid;grid-template-columns:minmax(0,1fr);gap:18px}.playbackFilters{display:grid;grid-template-columns:minmax(220px,2fr) repeat(2,minmax(180px,1fr)) auto;gap:12px;align-items:end}.playbackFilters label,.playbackEvidenceCard>label{display:flex;flex-direction:column;gap:6px;min-width:0}.playbackFilters label span,.playbackEvidenceCard>label span{font-size:.78rem;font-weight:700;color:var(--muted,#667085)}.playbackFilters input,.playbackFilters select,.playbackEvidenceCard select{width:100%;min-width:0}.playbackCameraMeta{display:flex;flex-direction:column;gap:3px;margin-top:14px;padding:12px;border:1px solid rgba(15,23,42,.08);border-radius:12px}.playbackCameraMeta span{font-size:.84rem;color:var(--muted,#667085)}.playbackSegments{display:flex;flex-direction:column;gap:9px}.playbackSegments article{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px;border:1px solid rgba(15,23,42,.08);border-radius:12px}.playbackSegmentIcon{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:rgba(37,99,235,.08)}.playbackSegmentInfo{display:flex;flex-direction:column;gap:3px;min-width:0}.playbackSegmentInfo span{font-size:.8rem;color:var(--muted,#667085)}.playbackSegmentActions,.forensicActions{display:flex;gap:8px;flex-wrap:wrap}.playbackPreviewCard video{width:100%;max-height:560px;background:#000;border-radius:12px}.forensicSeal{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;margin-top:14px;padding:14px;border:1px solid rgba(34,197,94,.3);border-radius:12px;background:rgba(34,197,94,.05)}.forensicSeal div:nth-child(2){display:flex;flex-direction:column;gap:4px;min-width:0}.forensicSeal span{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.72rem;overflow-wrap:anywhere}.forensicSeal small{color:var(--muted,#667085)}@media(max-width:1000px){.playbackFilters{grid-template-columns:1fr 1fr}.playbackFilters label:first-child{grid-column:1/-1}}@media(max-width:650px){.playbackFilters{grid-template-columns:1fr}.playbackFilters label:first-child{grid-column:auto}.playbackSegments article,.forensicSeal{grid-template-columns:1fr}.playbackSegmentActions,.forensicActions{justify-content:flex-start}}
+
+
+/* F5 - Video Wall Operacional */
+.videoWallShell{display:grid;grid-template-columns:minmax(230px,280px) minmax(0,1fr);gap:16px;align-items:start}.videoWallSidebar,.videoWallWorkspace{min-width:0}.videoWallSidebar{border:1px solid var(--border-color,#dce5eb);border-radius:14px;background:var(--card-bg,#fff);overflow:hidden}.videoWallLayoutList{display:flex;flex-direction:column;padding:8px;gap:6px}.videoWallLayoutList>button{display:flex;justify-content:space-between;gap:8px;text-align:left;padding:11px;border:1px solid transparent;border-radius:10px;background:transparent}.videoWallLayoutList>button.active{border-color:rgba(37,99,235,.28);background:rgba(37,99,235,.07)}.videoWallLayoutList>button div{display:flex;flex-direction:column;min-width:0;gap:3px}.videoWallLayoutList span{font-size:.75rem;color:var(--muted,#667085)}.videoWallLayoutList small{font-size:.65rem;font-weight:800;color:#2563eb}.videoWallToolbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}.videoWallToolbar input{flex:1 1 190px;min-width:0}.videoWallToolbar select{flex:0 1 190px;min-width:0}.videoWallSlotConfig{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px}.videoWallSlotConfig label{display:flex;flex-direction:column;gap:4px;min-width:0}.videoWallSlotConfig label span{font-size:.72rem;font-weight:700;color:var(--muted,#667085)}.videoWallSlotConfig select{width:100%;min-width:0}.videoWallStage{display:grid;gap:4px;padding:4px;background:#05080d;border-radius:12px;min-height:520px;overflow:hidden}.videoWallStage.wall-1{grid-template-columns:1fr}.videoWallStage.wall-4{grid-template-columns:repeat(2,minmax(0,1fr))}.videoWallStage.wall-9{grid-template-columns:repeat(3,minmax(0,1fr))}.videoWallStage.wall-16{grid-template-columns:repeat(4,minmax(0,1fr))}.videoWallTile{position:relative;min-width:0;min-height:0;background:#0b1118;overflow:hidden;display:flex;flex-direction:column}.videoWallVideo{flex:1;min-height:0}.videoWallVideo iframe{display:block;width:100%;height:100%;min-height:180px;border:0}.videoWallCaption{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 9px;color:#fff;background:#0b1118}.videoWallCaption>div{display:flex;flex-direction:column;min-width:0}.videoWallCaption b,.videoWallCaption span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.videoWallCaption span{font-size:.68rem;opacity:.7}.videoWallCaption small{font-size:.65rem;font-weight:800}.videoWallEmpty{display:grid;place-items:center;align-content:center;gap:5px;min-height:180px;color:#93a4b5}.videoWallFooter{display:flex;justify-content:space-between;gap:10px;margin-top:8px;font-size:.76rem;color:var(--muted,#667085)}.videoWallStage:fullscreen{width:100vw;height:100vh;border-radius:0;padding:4px;background:#000}.videoWallStage:fullscreen .videoWallVideo iframe{min-height:0;height:100%}.videoWallStage:fullscreen .videoWallTile{height:100%}@media(max-width:1100px){.videoWallShell{grid-template-columns:1fr}.videoWallLayoutList{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.videoWallStage.wall-16{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:700px){.videoWallLayoutList,.videoWallSlotConfig,.videoWallStage.wall-4,.videoWallStage.wall-9,.videoWallStage.wall-16{grid-template-columns:1fr}.videoWallStage{min-height:0}.videoWallVideo iframe{min-height:220px}}
+
+/* F6 — Mapa Operacional */
+.mapOperationalToolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.mapOperationalToolbar select,
+.mapOperationalToolbar input {
+  min-height: 40px;
+}
+.mapSearch {
+  flex: 1 1 320px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border, #dbe3ec);
+  background: #fff;
+  border-radius: 10px;
+  padding: 0 12px;
+}
+.mapSearch input { flex: 1; border: 0; outline: 0; background: transparent; }
+.mapKpis {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.mapKpis article {
+  background: #fff;
+  border: 1px solid var(--border, #dbe3ec);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mapKpis article span { font-size: 12px; color: #65758b; }
+.mapKpis article b { font-size: 24px; color: #17233a; }
+.operationalMapLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  gap: 14px;
+  min-width: 0;
+}
+.mapStageCard,
+.mapSidePanel {
+  background: #fff;
+  border: 1px solid var(--border, #dbe3ec);
+  border-radius: 14px;
+  overflow: hidden;
+  min-width: 0;
+}
+.operationalMapCanvas {
+  position: relative;
+  min-height: 560px;
+  overflow: hidden;
+  background: #e9eef3;
+  isolation: isolate;
+}
+.mapFallbackGrid {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(#d9e1e8 1px, transparent 1px), linear-gradient(90deg, #d9e1e8 1px, transparent 1px);
+  background-size: 32px 32px;
+  z-index: 0;
+}
+.mapTile {
+  position: absolute;
+  width: 256px;
+  height: 256px;
+  max-width: none;
+  user-select: none;
+  pointer-events: none;
+  z-index: 1;
+}
+.schoolMapMarker {
+  position: absolute;
+  z-index: 3;
+  transform: translate(-50%, -100%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 210px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  padding: 7px 10px;
+  box-shadow: 0 4px 16px rgba(23, 35, 58, .25);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.schoolMapMarker span { overflow: hidden; text-overflow: ellipsis; }
+.schoolMapMarker b {
+  min-width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(0,0,0,.15);
+}
+.schoolMapMarker.normal { background: #168a45; color: #fff; }
+.schoolMapMarker.attention { background: #e6ad00; color: #17233a; }
+.schoolMapMarker.critical { background: #c62828; color: #fff; }
+.schoolMapMarker.selected { outline: 3px solid rgba(21, 96, 189, .45); outline-offset: 2px; }
+.mapControls {
+  position: absolute;
+  z-index: 4;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  gap: 6px;
+}
+.mapControls button {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid #cbd6e1;
+  background: #fff;
+  color: #17233a;
+  font-size: 20px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 2px 8px rgba(23,35,58,.12);
+}
+.mapAttribution {
+  position: absolute;
+  z-index: 4;
+  right: 8px;
+  bottom: 6px;
+  background: rgba(255,255,255,.9);
+  color: #4f5e70;
+  font-size: 10px;
+  padding: 3px 6px;
+  border-radius: 4px;
+}
+.mapLegend {
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  border-top: 1px solid #e3e9ef;
+  font-size: 12px;
+}
+.mapLegend span { display: flex; align-items: center; gap: 6px; }
+.mapLegend i,
+.mapStatusDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.mapLegend i.normal, .mapStatusDot.normal { background: #168a45; }
+.mapLegend i.attention, .mapStatusDot.attention { background: #e6ad00; }
+.mapLegend i.critical, .mapStatusDot.critical { background: #c62828; }
+.mapLegend small { margin-left: auto; color: #69798c; }
+.mapSidePanel { padding: 16px; overflow: auto; }
+.mapSelectedHeader { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+.mapSelectedHeader .mapStatusDot { margin-top: 7px; flex: 0 0 auto; }
+.mapSelectedHeader h3 { margin: 0 0 3px; font-size: 18px; }
+.mapSelectedHeader span { color: #69798c; font-size: 12px; }
+.mapSidePanel p { color: #4e5e70; line-height: 1.45; }
+.mapSelectedStats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 14px 0;
+}
+.mapSelectedStats div {
+  background: #f7f9fb;
+  border: 1px solid #e2e8ef;
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
+.mapSelectedStats b { font-size: 20px; }
+.mapSelectedStats span { font-size: 11px; color: #6a7888; }
+.mapSideActions { display: grid; gap: 8px; margin-top: 14px; }
+.mapSideActions button { display: flex; align-items: center; justify-content: center; gap: 7px; }
+.mapUnlocated { margin-top: 20px; border-top: 1px solid #e3e9ef; padding-top: 14px; }
+.mapUnlocated h4 { margin: 0 0 8px; }
+.mapUnlocated button {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  padding: 9px 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #edf1f5;
+}
+.mapUnlocated button span { font-size: 11px; color: #788697; }
+@media (max-width: 1100px) {
+  .operationalMapLayout { grid-template-columns: 1fr; }
+  .mapKpis { grid-template-columns: repeat(3, 1fr); }
+  .operationalMapCanvas { min-height: 500px; }
+}
+@media (max-width: 700px) {
+  .mapKpis { grid-template-columns: repeat(2, 1fr); }
+  .operationalMapCanvas { min-height: 430px; }
+  .schoolMapMarker span { max-width: 105px; }
+}
+
+
+/* F7 — Plantas Baixas */
+.floorPlanToolbar,.floorPlanUpload{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:16px}.floorPlanToolbar .field,.floorPlanUpload .field{min-width:180px;flex:1}.floorPlanWorkspace{display:grid;grid-template-columns:minmax(250px,320px) minmax(0,1fr);gap:16px;align-items:start}.floorPlanSide,.floorPlanCanvas{border:1px solid var(--line,#dbe3ea);border-radius:16px;background:var(--card,#fff)}.floorPlanSide{padding:16px;display:flex;flex-direction:column;gap:12px}.floorPlanSide>span,.floorPlanSide small{color:var(--muted,#667085)}.floorPlanCanvas{position:relative;overflow:hidden;min-height:520px;display:flex;align-items:center;justify-content:center;background:#f7f9fb}.floorPlanCanvas.placing{cursor:crosshair}.floorPlanCanvas>img{display:block;max-width:100%;width:100%;height:auto;object-fit:contain;user-select:none}.floorPlanCameraMarker{position:absolute;z-index:3;border:0;border-radius:999px;background:#fff;box-shadow:0 3px 12px rgba(15,23,42,.22);padding:7px;display:flex;align-items:center;justify-content:center;color:#175cd3}.floorPlanCameraMarker span{position:absolute;top:calc(100% + 5px);left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(15,23,42,.88);color:#fff;padding:3px 7px;border-radius:6px;font-size:11px}.floorPlanCameraMarker.offline{color:#d92d20}.floorPlanCameraMarker.pending{color:#dc6803}.floorPlanPlacementList{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow:auto}.floorPlanPlacementList>div{display:grid;grid-template-columns:10px minmax(0,1fr) auto auto auto;gap:7px;align-items:center;padding:8px;border:1px solid var(--line,#e4e7ec);border-radius:10px}.floorPlanPlacementList b,.floorPlanPlacementList span{display:block}.floorPlanPlacementList span{font-size:12px;color:var(--muted,#667085)}.floorPlanPlacementList button{padding:5px 7px}.floorPlanStatus{width:9px;height:9px;border-radius:50%;background:#f79009}.floorPlanStatus.online{background:#12b76a}.floorPlanStatus.offline{background:#f04438}@media(max-width:980px){.floorPlanWorkspace{grid-template-columns:1fr}.floorPlanCanvas{min-height:380px}}

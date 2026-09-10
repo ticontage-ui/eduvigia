@@ -1,0 +1,42 @@
+logLevel: info
+
+authMethod: http
+authHTTPAddress: http://api:8000/internal/mediamtx-auth
+authHTTPExclude:
+  - action: api
+  - action: metrics
+  - action: pprof
+  - action: publish
+    path: teste
+
+api: yes
+apiAddress: :9997
+
+metrics: yes
+metricsAddress: :9998
+
+rtsp: yes
+rtspAddress: :8554
+
+hls: yes
+hlsAddress: :8888
+hlsEncryption: yes
+hlsServerKey: /certs/eduvigia.key
+hlsServerCert: /certs/eduvigia.crt
+hlsAlwaysRemux: yes
+
+webrtc: yes
+webrtcAddress: :8889
+webrtcEncryption: yes
+webrtcServerKey: /certs/eduvigia.key
+webrtcServerCert: /certs/eduvigia.crt
+webrtcLocalUDPAddress: :18189
+webrtcAdditionalHosts:
+  - "127.0.0.1"
+  - "localhost"
+
+paths:
+  teste:
+    source: publisher
+  all_others:
+    source: publisher

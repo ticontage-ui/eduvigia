@@ -1,0 +1,29 @@
+CONTINUIDADE DO PROJETO EDUVIGIA
+
+Leia primeiro:
+C:\Users\<usuario>\Documents\eduvigia\documentacao\continuidade
+
+Regras:
+- não recomeçar o projeto;
+- confirmar a versão atual;
+- usar ZIP completo + PowerShell 5.1 completo;
+- incluir -PreflightOnly, SHA-256, backup, rollback, log e validação;
+- preservar .env, chave, banco, volumes, evidências, MediaMTX, usuários e escolas;
+- nunca usar docker compose down -v;
+- não alterar identidade visual sem pedido;
+- não declarar IA, Bem-Estar, reconhecimento facial ou PTZ como concluídos;
+- não saltar para v2.0.0.
+
+Prioridade atual:
+resolver a exibição da câmera Hikvision no navegador.
+
+Estado:
+- câmera 192.168.1.64;
+- host 192.168.1.100;
+- portas 80, 554 e 8000 aprovadas;
+- stream provisionado;
+- MediaMTX ready=true e available=true;
+- WebRTC/mosaico ainda pendente;
+- verificar webrtcAdditionalHosts, UDP 18189, ICE e substream 102.
+
+Antes de escrever código, apresente inventário, diagnóstico, plano reversível, arquivos afetados, critérios de aceite e rollback.

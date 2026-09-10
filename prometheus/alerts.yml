@@ -1,0 +1,46 @@
+groups:
+  - name: eduvigia
+    rules:
+      - alert: EduVigIADatabaseUnavailable
+        expr: eduvigia_database_up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: Banco do EduVigIA indisponível
+
+      - alert: EduVigIAHighServerErrors
+        expr: increase(eduvigia_http_responses_5xx_total[5m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Aumento de respostas HTTP 5xx
+
+      - alert: EduVigIANoMetrics
+        expr: up{job="eduvigia-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: API do EduVigIA sem métricas
+
+  - name: eduvigia-alert-center
+    rules:
+      - alert: EduVigIACriticalAlertsPending
+        expr: eduvigia_alerts_critical > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Há alertas críticos ativos na Central de Alertas"
+          description: "A Central de Alertas possui pelo menos um evento crítico que exige triagem operacional."
+
+      - alert: EduVigIAAlertBacklog
+        expr: eduvigia_alerts_new > 20
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Fila de alertas aguardando triagem"
+          description: "Mais de 20 alertas permanecem no estado NOVO há pelo menos 5 minutos."

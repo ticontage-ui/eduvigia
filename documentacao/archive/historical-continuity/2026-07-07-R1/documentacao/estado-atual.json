@@ -1,0 +1,24 @@
+{
+  "project": "EduVigIA",
+  "consolidated_at": "2026-07-07",
+  "revision": "R1",
+  "expected_version": "1.8.3",
+  "project_path_reference": "C:\\Users\\ticon\\Documents\\eduvigia",
+  "camera": {
+    "ip": "192.168.1.64",
+    "host_ip": "192.168.1.100",
+    "ports_ok": [
+      80,
+      554,
+      8000
+    ],
+    "main": "/Streaming/Channels/101",
+    "sub": "/Streaming/Channels/102",
+    "id": 5,
+    "name": "DOME",
+    "stream_path": "esc-marechal-consta-cam-recife-main",
+    "mediamtx_ready": true,
+    "mediamtx_available": true,
+    "browser_playback_confirmed": false
+  }
+}

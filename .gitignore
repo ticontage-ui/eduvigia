@@ -1,0 +1,46 @@
+﻿
+# ==========================================================
+# EduVigIA - arquivos locais / privados
+# ==========================================================
+
+.env
+.env.*
+!.env.example
+
+*.key
+*.pem
+*.pfx
+*.p12
+*.crt
+
+*.db
+*.sqlite
+*.sqlite3
+
+data/
+certs/
+backups/
+backup/
+
+node_modules/
+dist/
+
+__pycache__/
+.pytest_cache/
+.venv/
+venv/
+
+*.log
+*.zip
+
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Runtime/local
+*.pid
+*.tmp
+*.bak

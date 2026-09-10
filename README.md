@@ -1,0 +1,144 @@
+# EduVigIA 2.0 — Baseline F7
+
+Versão atual: **2.0.0-F7-R1**
+
+A F2 consolida o **VMS Básico** sobre a F1 homologada, mantendo a separação de acesso entre Secretaria de Educação, Guarda Municipal e Escola.
+
+## Entregas F2
+
+- cadastro e inventário de NVR/DVR;
+- descoberta Hikvision/ISAPI;
+- câmera direta, canal NVR/DVR e RTSP customizado;
+- dois perfis independentes por câmera: `MAIN` e `SUB`;
+- metadados separados por perfil: codec, resolução, FPS, bitrate e status;
+- MAIN Hikvision em `x01` e SUB em `x02`;
+- mosaicos 1/4/9/16;
+- qualidade `AUTO`, `SUB` e `MAIN`;
+- em `AUTO`: SUB nos mosaicos 4/9/16 e MAIN em grade 1/fullscreen;
+- favoritos persistidos por usuário;
+- status online/offline atualizado para as câmeras visíveis em lotes de até 16;
+- reconexão do player;
+- proteção contra exposição de credenciais RTSP nas respostas da API.
+
+## Migrations
+
+- F0: `20260908_200_f0`
+- F1: `20260908_201_f1`
+- F2: `20260908_202_f2`
+
+## Ambiente local
+
+Painel oficial de desenvolvimento:
+
+```text
+http://localhost:5177
+```
+
+WebRTC/HLS em DEV permanecem em HTTP para evitar bloqueio por certificado autoassinado. O Compose de produção mantém mídia em HTTPS.
+
+## Homologação
+
+Após a atualização execute:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+    -File ".\scripts\HOMOLOGAR-EDUVIGIA-F2.ps1" `
+    -ProjectPath "$PWD"
+```
+
+Gate esperado:
+
+```text
+EDUVIGIA_F2_VMS_BASIC=APPROVED
+```
+
+## Próxima fase após homologação
+
+**F3 — VMS Media / Fundação de mídia em escala**, conforme o roadmap vigente.
+
+
+## F3 — PTZ Operacional
+
+A F3 adiciona controle PTZ Hikvision/ISAPI com pan/tilt/zoom, STOP, velocidade 1–7, presets persistidos, lease de controle para evitar dois operadores comandando a mesma câmera simultaneamente, auditoria e RBAC `ptz:control`.
+
+- O controle aparece no Monitoramento somente em câmeras com `ptz_enabled=true`.
+- Em câmera IP direta, o ISAPI usa IP/credenciais da própria câmera e a porta PTZ configurada.
+- Em câmera vinculada a NVR/DVR, o controle usa as credenciais/portas do gravador e o canal PTZ da câmera.
+- O suporte homologado nesta fase é Hikvision ISAPI. A abstração de dados deixa espaço para ONVIF futuro, mas ONVIF PTZ não é declarado como homologado.
+- O software pode ser homologado sem movimentar hardware; o gate de campo permanece pendente até existir uma câmera PTZ disponível para teste supervisionado.
+
+## F3-R2 — Multi-Channel / Multi-Sensor Foundation
+
+A F3-R2 separa o equipamento físico dos canais lógicos de vídeo. Um único IP/credencial pode expor múltiplos sensores, por exemplo uma câmera Hikvision bi-spectrum com canal óptico e canal térmico.
+
+Modelo operacional:
+
+```text
+VideoDevice (1 IP / 1 credencial)
+  ├─ Camera CH1 — VISIBLE — MAIN/SUB
+  ├─ Camera CH2 — THERMAL — MAIN/SUB
+  └─ Camera CHn — FUSION/GENERIC — MAIN/SUB quando suportado
+```
+
+- tabela física `video_devices`;
+- `cameras` passa a representar canal/sensor lógico quando `device_id` estiver definido;
+- tipos de sensor: `VISIBLE`, `THERMAL`, `FUSION`, `GENERIC`;
+- descoberta Hikvision normaliza canais `101/102`, `201/202`, etc.;
+- MAIN/SUB permanecem independentes;
+- credenciais pertencem ao dispositivo físico e não são duplicadas nos canais;
+- canais do mesmo dispositivo podem aparecer lado a lado no Monitoramento;
+- PTZ F3 permanece preservado e pode usar as credenciais compartilhadas do dispositivo.
+
+Migration: `20260909_204_f3r2`.
+
+Homologação:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+    -File ".\scripts\HOMOLOGAR-EDUVIGIA-F3R2.ps1" `
+    -ProjectPath "$PWD"
+```
+
+Gates principais esperados:
+
+```text
+EDUVIGIA_F3R2_MULTICHANNEL_CORE=APPROVED
+EDUVIGIA_F3R2_THERMAL_HARDWARE=PENDING_FIELD_TEST
+```
+
+O teste físico de uma câmera térmica/bi-spectrum permanece obrigatório antes de considerar o comportamento de hardware homologado.
+
+## F5 — Video Wall Operacional
+A F5 adiciona layouts persistentes de Video Wall por operador, grades 1/4/9/16, seleção de canais lógicos multi-sensor, perfil AUTO/SUB/MAIN e tela cheia. A gravação/playback da F4 permanece independente do Video Wall.
+
+## F6 — Mapas Operacionais
+
+A F6 adiciona o mapa geográfico multi-escola da operação municipal, reutilizando as coordenadas já existentes no cadastro de escolas e sem criar migration artificial.
+
+- marcador por escola georreferenciada;
+- estados `NORMAL`, `ATTENTION` e `CRITICAL` derivados de saúde de vídeo, alertas e ocorrências abertas;
+- agregação de câmeras online/offline/pendentes;
+- filtro por situação e busca por escola/endereço/cidade;
+- painel lateral da escola e atalho para Monitoramento;
+- escolas sem coordenadas são listadas separadamente para saneamento cadastral;
+- escopo RBAC: perfis municipais veem o município; perfis escolares veem apenas a escola vinculada;
+- tiles configuráveis por `EDUVIGIA_MAP_TILE_URL` e `EDUVIGIA_MAP_ATTRIBUTION`;
+- DEV usa OpenStreetMap por padrão; produção on-prem pode apontar para servidor cartográfico interno.
+
+A F6 não altera o schema. O Alembic permanece no head `20260910_206_f5`.
+
+## F7 — Plantas Baixas / Floor Plans
+
+A F7 introduz plantas operacionais por escola, prédio e pavimento. A planta é armazenada no diretório persistente de dados e os canais de câmera são posicionados em coordenadas percentuais, preservando a separação VISÍVEL/TÉRMICO da F3-R2.
+
+- upload autenticado de JPG, PNG e WebP de até 15 MB;
+- validação de assinatura real do arquivo e bloqueio de SVG;
+- tabelas `floor_plans` e `floor_plan_cameras`;
+- posição `x_percent` / `y_percent` e orientação `rotation_deg`;
+- uma mesma câmera não pode aparecer duas vezes na mesma planta;
+- câmera e planta devem pertencer à mesma escola;
+- `floorplans:view` para perfis operacionais e `floorplans:write` apenas para gestão/implantação autorizada;
+- gestor escolar edita somente plantas da própria escola;
+- canais óptico e térmico podem ser posicionados separadamente.
+
+Migration: `20260910_207_f7`.

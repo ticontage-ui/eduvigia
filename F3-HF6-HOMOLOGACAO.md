@@ -1,0 +1,40 @@
+# EduVigIA F3-R1-HF6 — Matriz de homologação
+
+## Gates obrigatórios
+- VERSION
+- COMPOSE_DEV_CONFIG
+- COMPOSE_PROD_CONFIG
+- NO_RUNTIME_ENV_FILE
+- POSTGRES_ENV_ALLOWLIST
+- API_ENV_ALLOWLIST
+- RUNTIME_ENDPOINTS
+- POSTGRES_RUNTIME_ENV_MINIMAL
+- ALEMBIC_F3_HEAD
+- F2_BASE_CONTRACT_PRESERVED
+- BACKEND_F3_PTZ_CONTRACT
+- DATABASE_F3_PTZ_CONTRACT
+- PTZ_SECURITY_RBAC_CONTRACT
+- FRONTEND_F3_PTZ_CONTRACT
+- TEST_RUNNER_IMAGE
+- API_IMAGE_DETERMINISTIC
+- TEST_RUNNER_APP_IMPORT
+- BACKEND_REGRESSION_ISOLATED
+- TEST_GATE_ISOLATED_FROM_RUNTIME_DB
+- MIGRATION_BEFORE_API_BOOT_CONTRACT
+- BOOTSTRAP_MINIMAL_DOCKER_RUN
+- PS51_DOCKER_STDERR_COMPAT
+- WEB_BUILD_RUNTIME
+
+## Contrato de ambiente
+- `postgres` não pode usar `env_file`.
+- `api` não pode usar `env_file`.
+- `postgres` recebe somente as variáveis de inicialização PostgreSQL definidas explicitamente pelo Compose.
+- variáveis da aplicação como `DATABASE_URL`, `REDIS_URL`, `EDUVIGIA_*` e `CORS_ORIGINS` não podem aparecer no ambiente runtime do PostgreSQL.
+- a API recebe somente a allowlist explícita de configuração necessária.
+
+## Resultado final esperado
+- `EDUVIGIA_F3_PTZ_CORE=APPROVED`
+- `EDUVIGIA_F3_PTZ_HARDWARE=PENDING_FIELD_TEST`
+- `EDUVIGIA_F3_HF6_ENV_ALLOWLIST=APPROVED`
+- `EDUVIGIA_F3_HF6_UPDATE=APPROVED`
+- `BASELINE=2.0.0-F3-R1-HF6`

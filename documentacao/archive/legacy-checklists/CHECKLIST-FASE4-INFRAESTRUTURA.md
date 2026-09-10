@@ -1,0 +1,23 @@
+# Checklist — EduVigIA 1.8.7-R1
+
+- [ ] SHA-256 do pacote aprovado
+- [ ] manifesto interno aprovado
+- [ ] build API/Web aprovado
+- [ ] compilação Python aprovada
+- [ ] 31 testes automatizados aprovados
+- [ ] PostgreSQL saudável com `pg_stat_statements`
+- [ ] Redis saudável com AOF
+- [ ] MediaMTX saudável
+- [ ] `/live` aprovado
+- [ ] `/ready` aprovado
+- [ ] `/metrics` aprovado
+- [ ] Nginx HTTP aprovado na porta 8088
+- [ ] Nginx HTTPS disponível na porta 8443
+- [ ] certificado local exclusivo gerado
+- [ ] Prometheus pronto na porta 19090
+- [ ] coleta da API e MediaMTX aprovada
+- [ ] backup em formato customizado validado
+- [ ] restauração isolada aprovada
+- [ ] rollback automático preservado
+- [ ] nenhuma credencial em texto simples
+- [x] O preflight auxiliar valida o processo Uvicorn ativo e não recria o estado de startup em processo separado.
