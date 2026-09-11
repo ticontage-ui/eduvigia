@@ -1455,7 +1455,7 @@ export default function App() {
   };
 
   const supportDialog = supportOpen ? (
-          <Modal title="Fale com o suporte" onClose={() => setSupportOpen(false)}>
+          <DetailModal title="Fale com o suporte" onClose={() => setSupportOpen(false)}>
             <form className="supportForm" onSubmit={submitSupport}>
               <div className="supportIntro">
                 <Headphones size={30} />
@@ -1515,7 +1515,7 @@ export default function App() {
                 </button>
               </div>
             </form>
-          </Modal>
+          </DetailModal>
   ) : null;
 
   if (!authReady) {
@@ -2663,7 +2663,7 @@ function CamerasPage({
       )}
 
       {recorderDiscovery && (
-        <Modal title="Descoberta Hikvision / ISAPI" onClose={onCloseDiscovery}>
+        <DetailModal title="Descoberta Hikvision / ISAPI" onClose={onCloseDiscovery}>
           <div className="discoverySummary">
             <div>
               <b>{recorderDiscovery.device?.device_name || "Gravador Hikvision"}</b>
@@ -2790,7 +2790,7 @@ function CamerasPage({
               <Plus size={16} /> Aplicar canais selecionados
             </button>
           </div>
-        </Modal>
+        </DetailModal>
       )}
     </Page>
   );
