@@ -301,6 +301,7 @@ export default function App() {
   const [recorderDiscovery, setRecorderDiscovery] = useState(null);
   const [selectedImportChannels, setSelectedImportChannels] = useState([]);
   const [updateExistingChannels, setUpdateExistingChannels] = useState(false);
+  const [editingSchoolId, setEditingSchoolId] = useState(null);
   const [editingRecorderId, setEditingRecorderId] = useState(null);
   const [editingCameraId, setEditingCameraId] = useState(null);
 
@@ -356,6 +357,19 @@ export default function App() {
     warranty_until: "",
     notes: "",
   });
+
+  const refreshNotifications = async () => {
+    try {
+      const [notificationRows, unread] = await Promise.all([
+        api("/notifications"),
+        api("/notifications/unread-count"),
+      ]);
+      setNotifications(notificationRows);
+      setUnreadCount(unread.unread || 0);
+    } catch (error) {
+      if (localStorage.getItem("eduvigia_token")) setMessage(error.message);
+    }
+  };
 
   const load = async () => {
     try {
@@ -448,6 +462,17 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!authUser) return undefined;
+    const timer = window.setInterval(() => refreshNotifications(), 10000);
+    const onFocus = () => refreshNotifications();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [authUser?.id]);
+
+  useEffect(() => {
     const onHash = () => setSection(routeFromHash());
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
@@ -471,34 +496,62 @@ export default function App() {
   const schoolName = (id) =>
     schools.find((school) => school.id === id)?.name || "Escola não localizada";
 
-  const createSchool = async (event) => {
+  const emptySchoolForm = () => ({
+    code: "",
+    name: "",
+    address: "",
+    neighborhood: "",
+    city: "",
+    phone: "",
+    email: "",
+    latitude: "",
+    longitude: "",
+    kit_type: "KIT_01",
+    responsible: "",
+    operational_status: "IMPLANTACAO",
+    notes: "",
+  });
+
+  const saveSchool = async (event) => {
     event.preventDefault();
     try {
-      await api("/schools", {
-        method: "POST",
+      await api(editingSchoolId ? `/schools/${editingSchoolId}` : "/schools", {
+        method: editingSchoolId ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(schoolForm),
       });
-      setSchoolForm({
-        code: "",
-        name: "",
-        address: "",
-        neighborhood: "",
-        city: "",
-        phone: "",
-        email: "",
-        latitude: "",
-        longitude: "",
-        kit_type: "KIT_01",
-        responsible: "",
-        operational_status: "IMPLANTACAO",
-        notes: "",
-      });
+      setSchoolForm(emptySchoolForm());
+      setEditingSchoolId(null);
       await load();
-      setMessage("Escola cadastrada com sucesso.");
+      setMessage(editingSchoolId ? "Escola atualizada com sucesso." : "Escola cadastrada com sucesso.");
     } catch (error) {
       setMessage(error.message);
     }
+  };
+
+  const editSchool = (school) => {
+    setEditingSchoolId(school.id);
+    setSchoolForm({
+      code: school.code || "",
+      name: school.name || "",
+      address: school.address || "",
+      neighborhood: school.neighborhood || "",
+      city: school.city || "",
+      phone: school.phone || "",
+      email: school.email || "",
+      latitude: school.latitude || "",
+      longitude: school.longitude || "",
+      kit_type: school.kit_type || "KIT_01",
+      responsible: school.responsible || "",
+      operational_status: school.operational_status || "IMPLANTACAO",
+      notes: school.notes || "",
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const cancelSchoolEdit = () => {
+    setEditingSchoolId(null);
+    setSchoolForm(emptySchoolForm());
   };
 
   const discoverRecorder = async (id) => {
@@ -943,7 +996,7 @@ export default function App() {
 
   const testAllCameras = async () => {
     try {
-      setMessage("Executando teste em lote de até 32 câmeras...");
+      setMessage("Executando teste em lote de até 64 câmeras...");
       const result = await api("/cameras/test-batch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1345,15 +1398,23 @@ export default function App() {
     }
   };
 
-  const readNotification = async (id) => {
+  const readNotification = async (item) => {
     try {
-      await api(`/notifications/${id}/read`, { method: "PATCH" });
-      setNotifications((current) =>
-        current.map((item) =>
-          item.id === id ? { ...item, read_at: new Date().toISOString() } : item
-        )
-      );
-      setUnreadCount((current) => Math.max(0, current - 1));
+      if (!item.read_at) {
+        await api(`/notifications/${item.id}/read`, { method: "PATCH" });
+        setNotifications((current) =>
+          current.map((row) =>
+            row.id === item.id ? { ...row, read_at: new Date().toISOString() } : row
+          )
+        );
+        setUnreadCount((current) => Math.max(0, current - 1));
+      }
+      const targetByEntity = { alert: "alerts", occurrence: "occurrences", school: "schools", equipment: "equipment" };
+      const target = targetByEntity[item.entity_type];
+      if (target) {
+        setNotificationOpen(false);
+        navigate(target);
+      }
     } catch (error) {
       setMessage(error.message);
     }
@@ -1526,7 +1587,7 @@ export default function App() {
           ))}
         </nav>
         <div className="sidebarFooter">
-          <strong>EduVigIA v2.0.0-F7-R1</strong>
+          <strong>EduVigIA v2.0.0-F7-R2</strong>
           <span>Central operacional ativa</span>
           <span>Integração de vídeo preparada</span>
         </div>
@@ -1587,7 +1648,7 @@ export default function App() {
                   type="button"
                   key={item.id}
                   className={`notificationItem ${item.read_at ? "read" : "unread"} ${item.severity.toLowerCase()}`}
-                  onClick={() => !item.read_at && readNotification(item.id)}
+                  onClick={() => readNotification(item)}
                 >
                   <div>
                     <b>{item.title}</b>
@@ -1628,8 +1689,11 @@ export default function App() {
               schools={filteredSchools}
               form={schoolForm}
               setForm={setSchoolForm}
-              onSubmit={createSchool}
+              onSubmit={saveSchool}
               onToggle={toggleSchool}
+              onEdit={editSchool}
+              onCancelEdit={cancelSchoolEdit}
+              editingSchoolId={editingSchoolId}
               canWrite={can("schools:write")}
               onDetails={openSchoolDetails}
             />
@@ -1739,6 +1803,8 @@ export default function App() {
           {section === "alerts" && can("alerts:view") && (
             <AlertsPage
               alerts={alerts}
+              schools={schools}
+              cameras={cameras}
               onAlertAction={alertAction}
               onAlertOccurrence={alertToOccurrence}
               canOperate={can("alerts:operate")}
@@ -2032,12 +2098,12 @@ function Dashboard({
   );
 }
 
-function SchoolsPage({ schools, form, setForm, onSubmit, onToggle, canWrite, onDetails }) {
+function SchoolsPage({ schools, form, setForm, onSubmit, onToggle, onEdit, onCancelEdit, editingSchoolId, canWrite, onDetails }) {
   return (
     <Page title="Escolas" subtitle="Cadastro completo e situação operacional das unidades">
       <div className={`twoColumn wideForm ${!canWrite ? "singleColumn" : ""}`}>
         {canWrite && <form className="formCard" onSubmit={onSubmit}>
-          <h2>Nova escola</h2>
+          <h2>{editingSchoolId ? "Editar escola" : "Nova escola"}</h2>
           <div className="formGrid">
             <Field label="Código da unidade">
               <input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="ESC-001" />
@@ -2065,8 +2131,11 @@ function SchoolsPage({ schools, form, setForm, onSubmit, onToggle, canWrite, onD
             </Field>
             <Field label="Kit">
               <select value={form.kit_type} onChange={(e) => setForm({ ...form, kit_type: e.target.value })}>
-                <option value="KIT_01">Kit 01 — 4 câmeras</option>
-                <option value="KIT_02">Kit 02 — 8 câmeras</option>
+                {Array.from({ length: 16 }, (_, index) => {
+                  const number = index + 1;
+                  const code = `KIT_${String(number).padStart(2, "0")}`;
+                  return <option value={code} key={code}>Kit {String(number).padStart(2, "0")} — {number * 4} câmeras</option>;
+                })}
               </select>
             </Field>
             <Field label="Situação operacional">
@@ -2087,7 +2156,10 @@ function SchoolsPage({ schools, form, setForm, onSubmit, onToggle, canWrite, onD
           <Field label="Observações">
             <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
           </Field>
-          <button className="primaryButton"><Plus size={18} />Cadastrar escola</button>
+          <div className="formActions">
+            <button className="primaryButton"><Plus size={18} />{editingSchoolId ? "Salvar alterações" : "Cadastrar escola"}</button>
+            {editingSchoolId && <button type="button" onClick={onCancelEdit}>Cancelar edição</button>}
+          </div>
         </form>}
 
         <div className="dataCard">
@@ -2106,6 +2178,7 @@ function SchoolsPage({ schools, form, setForm, onSubmit, onToggle, canWrite, onD
                 <div className="recordActions">
                   <span className={`statusPill ${school.active ? "success" : "danger"}`}>{school.active ? "ATIVA" : "INATIVA"}</span>
                   <button type="button" onClick={() => onDetails(school.id)}>Detalhes</button>
+                  {canWrite && <button type="button" onClick={() => onEdit(school)}>Editar</button>}
                   {canWrite && <button type="button" onClick={() => onToggle(school.id)}>{school.active ? "Inativar" : "Ativar"}</button>}
                 </div>
               </article>
@@ -2550,7 +2623,7 @@ function CamerasPage({
               <h2>Câmeras e canais cadastrados</h2>
               <div className="headerActions">
                 <span>{cameras.length}</span>
-                {canWrite && cameras.length > 0 && <button type="button" onClick={onTestAll}>Testar até 32 câmeras</button>}
+                {canWrite && cameras.length > 0 && <button type="button" onClick={onTestAll}>Testar até 64 câmeras</button>}
               </div>
             </div>
             <div className="records">
@@ -2562,7 +2635,7 @@ function CamerasPage({
                     <span className="recordIcon"><Camera /></span>
                     <div>
                       <b>{camera.name}</b>
-                      <span>{schoolName(camera.school_id)} · {camera.location}{camera.device_id ? ` · CH${camera.logical_channel} · ${camera.sensor_type}` : ""}</span>
+                      <span>{camera.code || "Código pendente"} · {schoolName(camera.school_id)} · {camera.location}{camera.device_id ? ` · CH${camera.logical_channel} · ${camera.sensor_type}` : ""}</span>
                       <small>
                         {camera.source_type === "NVR" || camera.source_type === "DVR"
                           ? `${camera.source_type} ${recorder?.name || ""} · canal ${camera.nvr_channel}`
@@ -3508,10 +3581,10 @@ function OperationalCenterPage({
 }
 
 
-function AlertsPage({ alerts: initialAlerts, onAlertAction, onAlertOccurrence, canOperate }) {
+function AlertsPage({ alerts: initialAlerts, schools = [], cameras = [], onAlertAction, onAlertOccurrence, canOperate }) {
   const [items, setItems] = useState(initialAlerts || []);
   const [overview, setOverview] = useState({ summary: {}, by_priority: {} });
-  const [filters, setFilters] = useState({ search: "", status: "", priority: "", source: "" });
+  const [filters, setFilters] = useState({ search: "", status: "", priority: "" });
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -3519,6 +3592,7 @@ function AlertsPage({ alerts: initialAlerts, onAlertAction, onAlertOccurrence, c
   const [lastKnownId, setLastKnownId] = useState(0);
   const [evidenceUrl, setEvidenceUrl] = useState("");
   const [assignmentName, setAssignmentName] = useState("");
+  const [alertForm, setAlertForm] = useState({ school_id: "", camera_id: "", event_type: "", priority: "MEDIA", summary: "" });
 
   useEffect(() => {
     setItems(initialAlerts || []);
@@ -3552,7 +3626,6 @@ function AlertsPage({ alerts: initialAlerts, onAlertAction, onAlertOccurrence, c
       if (filters.search) params.set("search", filters.search);
       if (filters.status) params.set("status", filters.status);
       if (filters.priority) params.set("priority", filters.priority);
-      if (filters.source) params.set("source", filters.source);
       params.set("limit", "300");
       const [rows, summary] = await Promise.all([
         api(`/alerts?${params.toString()}`),
@@ -3575,7 +3648,7 @@ function AlertsPage({ alerts: initialAlerts, onAlertAction, onAlertOccurrence, c
 
   useEffect(() => {
     loadAlerts();
-  }, [filters.status, filters.priority, filters.source]);
+  }, [filters.status, filters.priority]);
 
   useEffect(() => {
     const timer = window.setInterval(() => loadAlerts({ notifyNew: true }), 7000);
@@ -3636,6 +3709,32 @@ function AlertsPage({ alerts: initialAlerts, onAlertAction, onAlertOccurrence, c
     }
   };
 
+  const createManualAlert = async (event) => {
+    event.preventDefault();
+    try {
+      await api("/alerts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          school_id: Number(alertForm.school_id),
+          camera_id: alertForm.camera_id ? Number(alertForm.camera_id) : null,
+          event_type: alertForm.event_type,
+          priority: alertForm.priority,
+          summary: alertForm.summary || null,
+        }),
+      });
+      setAlertForm({ school_id: "", camera_id: "", event_type: "", priority: "MEDIA", summary: "" });
+      await loadAlerts();
+      setMessage("Alerta operacional criado com sucesso.");
+    } catch (error) {
+      setMessage(error.message);
+    }
+  };
+
+  const alertCameras = alertForm.school_id
+    ? cameras.filter((camera) => Number(camera.school_id) === Number(alertForm.school_id))
+    : [];
+
   const summary = overview.summary || {};
   const priority = overview.by_priority || {};
 
@@ -3644,8 +3743,8 @@ function AlertsPage({ alerts: initialAlerts, onAlertAction, onAlertOccurrence, c
       <div className="alertCenterHero">
         <div>
           <span className="liveIndicator">● MONITORAMENTO ATIVO</span>
-          <h2>Fila operacional integrada à IA</h2>
-          <p>Todo evento recebido pelo motor local é transformado em alerta rastreável, com evidência e histórico de atendimento.</p>
+          <h2>Fila operacional de segurança</h2>
+          <p>Eventos manuais e eventos dos módulos da plataforma são tratados como alertas rastreáveis, com evidência e histórico de atendimento.</p>
         </div>
         <div className="alertCenterHeroActions">
           <button type="button" className={soundEnabled ? "primaryButton" : "secondaryButton"} onClick={() => { setSoundEnabled((value) => !value); if (!soundEnabled) playAlertSound(); }}>
@@ -3658,6 +3757,38 @@ function AlertsPage({ alerts: initialAlerts, onAlertAction, onAlertOccurrence, c
       </div>
 
       {message && <div className="operationsError">{message}</div>}
+
+      {canOperate && (
+        <form className="dataCard alertManualForm" onSubmit={createManualAlert}>
+          <div className="cardHeader"><h2>Novo alerta operacional</h2><span>Manual</span></div>
+          <div className="formGrid">
+            <Field label="Escola">
+              <select required value={alertForm.school_id} onChange={(event) => setAlertForm({ ...alertForm, school_id: event.target.value, camera_id: "" })}>
+                <option value="">Selecione</option>
+                {schools.filter((school) => school.active).map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
+              </select>
+            </Field>
+            <Field label="Câmera (opcional)">
+              <select value={alertForm.camera_id} onChange={(event) => setAlertForm({ ...alertForm, camera_id: event.target.value })}>
+                <option value="">Sem câmera vinculada</option>
+                {alertCameras.map((camera) => <option key={camera.id} value={camera.id}>{camera.code || `CAM-${camera.id}`} · {camera.name}</option>)}
+              </select>
+            </Field>
+            <Field label="Evento">
+              <input required minLength={3} maxLength={120} value={alertForm.event_type} onChange={(event) => setAlertForm({ ...alertForm, event_type: event.target.value })} placeholder="Ex.: Acesso não autorizado" />
+            </Field>
+            <Field label="Prioridade">
+              <select value={alertForm.priority} onChange={(event) => setAlertForm({ ...alertForm, priority: event.target.value })}>
+                <option value="BAIXA">Baixa</option><option value="MEDIA">Média</option><option value="ALTA">Alta</option><option value="CRITICA">Crítica</option>
+              </select>
+            </Field>
+          </div>
+          <Field label="Resumo">
+            <textarea maxLength={500} value={alertForm.summary} onChange={(event) => setAlertForm({ ...alertForm, summary: event.target.value })} placeholder="Contexto operacional do alerta" />
+          </Field>
+          <button className="primaryButton" type="submit"><Plus size={16} />Criar alerta</button>
+        </form>
+      )}
 
       <div className="alertCenterKpis">
         <article><span>Novos</span><b>{summary.new || 0}</b><small>Aguardando triagem</small></article>
@@ -3699,11 +3830,6 @@ function AlertsPage({ alerts: initialAlerts, onAlertAction, onAlertOccurrence, c
           <option value="MEDIA">Média</option>
           <option value="BAIXA">Baixa</option>
         </select>
-        <select value={filters.source} onChange={(event) => setFilters({ ...filters, source: event.target.value })}>
-          <option value="">Todas as origens</option>
-          <option value="SISTEMA">Sistema</option>
-          <option value="MANUAL">Manual</option>
-        </select>
         <button type="button" onClick={() => loadAlerts()}><Search size={15} /> Filtrar</button>
       </div>
 
@@ -3711,7 +3837,7 @@ function AlertsPage({ alerts: initialAlerts, onAlertAction, onAlertOccurrence, c
         <div className="cardHeader"><h2>Alertas em tempo real</h2><span>{items.length}</span></div>
         <div className="largeTable alertCenterTable">
           <div className="largeTableHead">
-            <span>Evento</span><span>Prioridade</span><span>Escola / Câmera</span><span>Origem / Confiança</span><span>Status</span><span>Ações</span>
+            <span>Evento</span><span>Prioridade</span><span>Escola / Câmera</span><span>Responsável</span><span>Status</span><span>Ações</span>
           </div>
           {items.length === 0 && <Empty text="Nenhum alerta encontrado para os filtros selecionados." />}
           {items.map((alert) => (
@@ -3723,7 +3849,7 @@ function AlertsPage({ alerts: initialAlerts, onAlertAction, onAlertOccurrence, c
               </div>
               <span className={`priority ${alert.priority.toLowerCase()}`}><i />{priorityLabel(alert.priority)}</span>
               <div><b>{alert.school_name}</b><small>{alert.camera_name}</small></div>
-              <div><b>{alert.source || "SISTEMA"}</b><small>{alert.confidence != null ? `${Math.round(alert.confidence * 100)}% de confiança` : "Sem confiança informada"}</small></div>
+              <div><b>{alert.assigned_user_name || "Não atribuído"}</b><small>Atendimento operacional</small></div>
               <div><span className={`statusPill ${alert.status === "NOVO" ? "warning" : alert.status === "DESCARTADO" ? "neutral" : alert.status === "ENCERRADO" ? "success" : "info"}`}>{alert.status.replaceAll("_", " ")}</span><small>{alert.assigned_user_name || "Sem responsável"}</small></div>
               <div className="rowActions alertRowActions">
                 <button type="button" onClick={() => openDetails(alert.id)}><Eye size={14} /> Detalhes</button>
@@ -3739,16 +3865,15 @@ function AlertsPage({ alerts: initialAlerts, onAlertAction, onAlertOccurrence, c
         <DetailModal title={`Alerta #${selected.id} — ${selected.event_type}`} onClose={() => setSelected(null)}>
           <div className="alertDetailGrid">
             <section className="alertEvidencePanel">
-              <div className="cardHeader"><h3>Evidência</h3><span>{selected.source}</span></div>
+              <div className="cardHeader"><h3>Evidência</h3><span>Evento #{selected.id}</span></div>
               {evidenceUrl ? (
                 <img src={evidenceUrl} alt={`Evidência do alerta ${selected.id}`} />
               ) : (
                 <div className="alertEvidenceEmpty"><FileImage size={40} /><b>Sem evidência disponível</b><span>O evento pode ter sido criado sem captura de quadro.</span></div>
               )}
               <div className="alertEvidenceMeta">
-                <span>Confiança <b>{selected.confidence != null ? `${Math.round(selected.confidence * 100)}%` : "N/D"}</b></span>
                 <span>Prioridade <b>{priorityLabel(selected.priority)}</b></span>
-                <span>Origem <b>{selected.source}</b></span>
+                <span>Registrado <b>{new Date(selected.event_occurred_at || selected.created_at).toLocaleString("pt-BR")}</b></span>
               </div>
             </section>
 
@@ -4764,7 +4889,7 @@ function LoginPage({ form, setForm, onSubmit, message, loading, onSupport, onFor
             <span>Primeiro acesso administrativo</span>
             <code>admin@eduvigia.local</code>
           </div>
-          <small className="loginVersion">EduVigIA v2.0.0-F7-R1</small>
+          <small className="loginVersion">EduVigIA v2.0.0-F7-R2</small>
         </form>
       </section>
 

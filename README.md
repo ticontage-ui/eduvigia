@@ -1,6 +1,26 @@
 # EduVigIA 2.0 — Baseline F7
 
-Versão atual: **2.0.0-F7-R1**
+Versão atual: **2.0.0-F7-R2**
+
+## F7-R2 — Estabilização operacional
+
+A revisão `2.0.0-F7-R2` estabiliza módulos já existentes antes da F8 SOS Digital:
+
+- edição completa de escolas no frontend, com validação de código duplicado no backend;
+- kits escolares de `KIT_01` (4 câmeras) até `KIT_16` (64 câmeras), em incrementos de 4;
+- código automático e persistente de câmera no formato `CAM-000001`, gerado pelo backend;
+- testes em lote ampliados para até 64 câmeras/canais;
+- notificações com escopo por escola e leitura individual por usuário, sem que um usuário marque a notificação como lida para todos;
+- ativação/inativação de escola gera notificação operacional no sino respeitando o escopo da escola;
+- clique em notificação navega para o módulo correspondente;
+- Central de Alertas passa a permitir criação manual para perfis com `alerts:operate`;
+- interface e contrato público de Alertas deixam de expor `Origem / Confiança` ligados ao escopo antigo de IA;
+- remoção do resíduo funcional `BEM_ESTAR` na conversão alerta → ocorrência;
+- protocolo de ocorrência passa a usar sequência transacional no PostgreSQL, eliminando `count()+1`;
+- migration F7-R2: `20260911_208_f7r2`.
+
+A migration deve ser aplicada **antes** de iniciar o runtime F7-R2. O runtime F7-R1 permanece operacional durante a preparação e validação isolada da candidata.
+
 
 A F2 consolida o **VMS Básico** sobre a F1 homologada, mantendo a separação de acesso entre Secretaria de Educação, Guarda Municipal e Escola.
 

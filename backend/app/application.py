@@ -155,6 +155,7 @@ class Camera(Base):
     __tablename__ = "cameras"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    code: Mapped[str | None] = mapped_column(String(40), nullable=True, unique=True, index=True)
     school_id: Mapped[int] = mapped_column(ForeignKey("schools.id", ondelete="CASCADE"))
     name: Mapped[str] = mapped_column(String(160))
     location: Mapped[str] = mapped_column(String(160))
@@ -282,6 +283,12 @@ class Occurrence(Base):
     )
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+
+class OccurrenceSequence(Base):
+    __tablename__ = "occurrence_sequences"
+
+    year: Mapped[int] = mapped_column(Integer, primary_key=True)
+    last_value: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class DispatchTeam(Base):
@@ -518,6 +525,9 @@ class Notification(Base):
     user_id: Mapped[int | None] = mapped_column(
         ForeignKey("user_accounts.id", ondelete="CASCADE"), nullable=True, index=True
     )
+    school_id: Mapped[int | None] = mapped_column(
+        ForeignKey("schools.id", ondelete="CASCADE"), nullable=True, index=True
+    )
     title: Mapped[str] = mapped_column(String(180))
     message: Mapped[str] = mapped_column(Text)
     severity: Mapped[str] = mapped_column(String(20), default="INFO")
@@ -529,6 +539,21 @@ class Notification(Base):
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
 
+
+class NotificationRead(Base):
+    __tablename__ = "notification_reads"
+    __table_args__ = (UniqueConstraint("notification_id", "user_id", name="uq_notification_reads_notification_user"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    notification_id: Mapped[int] = mapped_column(
+        ForeignKey("notifications.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_accounts.id", ondelete="CASCADE"), index=True
+    )
+    read_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
 
 
 class Evidence(Base):
@@ -639,7 +664,10 @@ class SchoolIn(BaseModel):
     email: str | None = None
     latitude: str | None = None
     longitude: str | None = None
-    kit_type: Literal["KIT_01", "KIT_02"] = "KIT_01"
+    kit_type: Literal[
+        "KIT_01", "KIT_02", "KIT_03", "KIT_04", "KIT_05", "KIT_06", "KIT_07", "KIT_08",
+        "KIT_09", "KIT_10", "KIT_11", "KIT_12", "KIT_13", "KIT_14", "KIT_15", "KIT_16"
+    ] = "KIT_01"
     responsible: str | None = None
     operational_status: Literal["IMPLANTACAO", "OPERACIONAL", "MANUTENCAO", "INATIVA"] = "IMPLANTACAO"
     notes: str | None = None
@@ -788,6 +816,7 @@ class CameraIn(BaseModel):
 
 class CameraOut(CameraIn):
     model_config = ConfigDict(from_attributes=True)
+    code: str | None = None
     password: str | None = Field(default=None, exclude=True)
     rtsp_url: str | None = Field(default=None, exclude=True)
     rtsp_url_main: str | None = Field(default=None, exclude=True)
@@ -893,8 +922,6 @@ class AlertOut(BaseModel):
     event_type: str
     priority: str
     status: str
-    source: str = "SISTEMA"
-    confidence: float | None = None
     summary: str | None = None
     evidence_path: str | None = None
     assigned_user_id: int | None = None
@@ -904,6 +931,14 @@ class AlertOut(BaseModel):
     event_occurred_at: datetime | None = None
     created_at: datetime
     updated_at: datetime | None = None
+
+
+class AlertCreateIn(BaseModel):
+    school_id: int
+    camera_id: int | None = None
+    event_type: str = Field(min_length=3, max_length=120)
+    priority: Literal["BAIXA", "MEDIA", "ALTA", "CRITICA"] = "MEDIA"
+    summary: str | None = Field(default=None, max_length=500)
 
 
 class AlertWorkflowIn(BaseModel):
@@ -1119,6 +1154,7 @@ class NotificationOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     user_id: int | None
+    school_id: int | None = None
     title: str
     message: str
     severity: str
@@ -1362,12 +1398,14 @@ def notify(
     severity: str = "INFO",
     module: str = "Sistema",
     user_id: int | None = None,
+    school_id: int | None = None,
     entity_type: str | None = None,
     entity_id: int | None = None,
 ) -> None:
     db.add(
         Notification(
             user_id=user_id,
+            school_id=school_id,
             title=title,
             message=message,
             severity=severity,
@@ -1380,8 +1418,40 @@ def notify(
 
 def occurrence_protocol(db: Session) -> str:
     year = datetime.now().year
-    sequence = db.query(Occurrence).count() + 1
-    return f"EDU-{year}-{sequence:05d}"
+    if DATABASE_URL.startswith("postgresql"):
+        db.execute(
+            text(
+                "INSERT INTO occurrence_sequences (year, last_value) VALUES (:year, 0) "
+                "ON CONFLICT (year) DO NOTHING"
+            ),
+            {"year": year},
+        )
+        sequence = db.execute(
+            text(
+                "UPDATE occurrence_sequences SET last_value = last_value + 1 "
+                "WHERE year = :year RETURNING last_value"
+            ),
+            {"year": year},
+        ).scalar_one()
+    else:
+        sequence_row = db.get(OccurrenceSequence, year)
+        if not sequence_row:
+            sequence_row = OccurrenceSequence(year=year, last_value=0)
+            db.add(sequence_row)
+            db.flush()
+        sequence_row.last_value += 1
+        db.flush()
+        sequence = sequence_row.last_value
+    return f"EDU-{year}-{int(sequence):05d}"
+
+
+def ensure_camera_code(db: Session, camera: Camera) -> str:
+    if camera.code:
+        return camera.code
+    if not camera.id:
+        db.flush()
+    camera.code = f"CAM-{int(camera.id):06d}"
+    return camera.code
 
 
 def ensure_schema() -> None:
@@ -1491,7 +1561,7 @@ def ensure_schema() -> None:
 
 
 
-APP_VERSION = "2.0.0-F7-R1"
+APP_VERSION = "2.0.0-F7-R2"
 DATA_DIR = Path(os.getenv("EDUVIGIA_DATA_DIR", "/app/data"))
 EVIDENCE_DIR = DATA_DIR / "evidence"
 PLAYBACK_DIR = DATA_DIR / "playback"
@@ -3082,6 +3152,10 @@ def update_school(
     row = db.get(School, school_id)
     if not row:
         raise HTTPException(404, "Escola não encontrada")
+    if payload.code:
+        duplicate = db.query(School).filter(School.code == payload.code, School.id != school_id).first()
+        if duplicate:
+            raise HTTPException(409, "Já existe uma escola com este código")
     for key, value in payload.model_dump().items():
         setattr(row, key, value)
     audit(db, "Escolas", "Edição", f"{row.id} - {row.name}")
@@ -3100,6 +3174,17 @@ def toggle_school(
     if not row:
         raise HTTPException(404, "Escola não encontrada")
     row.active = not row.active
+    action_label = "ativada" if row.active else "inativada"
+    notify(
+        db,
+        title=f"Escola {action_label}",
+        message=f"{row.name} foi {action_label} no cadastro institucional.",
+        severity="INFO" if row.active else "WARNING",
+        module="Escolas",
+        school_id=row.id,
+        entity_type="school",
+        entity_id=row.id,
+    )
     audit(db, "Escolas", "Ativação/Inativação", f"{row.name}: {row.active}")
     db.commit()
     db.refresh(row)
@@ -4283,6 +4368,7 @@ def import_recorder_channels(
             )
             db.add(camera)
             db.flush()
+            ensure_camera_code(db, camera)
             created += 1
             status_label = "CREATED"
 
@@ -4309,7 +4395,7 @@ def import_recorder_channels(
         )
 
     if payload.test_after_import:
-        for camera in affected[:32]:
+        for camera in affected[:64]:
             result = test_camera_profiles(db, camera, profiles=("MAIN", "SUB"), provision=True)
             for detail in details:
                 if detail.get("camera_id") == camera.id:
@@ -4354,8 +4440,8 @@ def test_recorder_channels(
     cameras = query.order_by(Camera.nvr_channel.asc()).all()
     if not cameras:
         raise HTTPException(404, "Nenhum canal cadastrado para testar")
-    if len(cameras) > 32:
-        raise HTTPException(400, "Teste em lote limitado a 32 canais por execução")
+    if len(cameras) > 64:
+        raise HTTPException(400, "Teste em lote limitado a 64 canais por execução")
 
     profiles = ("MAIN", "SUB") if payload.profile == "BOTH" else (payload.profile,)
     results = []
@@ -4625,7 +4711,7 @@ def create_video_device_channels(
             codec=item.sub_codec, resolution=item.sub_resolution, fps=item.sub_fps, ptz_enabled=item.ptz_enabled,
             ptz_protocol="HIKVISION_ISAPI", ptz_channel=item.logical_channel,
         )
-        db.add(row); db.flush(); ensure_secure_camera_streams(db, row)
+        db.add(row); db.flush(); ensure_camera_code(db, row); ensure_secure_camera_streams(db, row)
         try:
             ok, detail = provision_camera_path(row, db); row.last_error = None if ok else detail
         except Exception as error:
@@ -4670,6 +4756,7 @@ def cameras(
         term = f"%{search}%"
         query = query.filter(
             Camera.name.ilike(term)
+            | Camera.code.ilike(term)
             | Camera.location.ilike(term)
             | Camera.ip_address.ilike(term)
         )
@@ -4696,6 +4783,7 @@ def create_camera(
     row = Camera(**values)
     db.add(row)
     db.flush()
+    ensure_camera_code(db, row)
 
     ensure_secure_camera_streams(db, row, payload.stream_name)
 
@@ -4821,11 +4909,11 @@ def test_cameras_batch(
     if payload.camera_ids:
         unique_ids = sorted(set(int(value) for value in payload.camera_ids))
         query = query.filter(Camera.id.in_(unique_ids))
-    cameras = query.order_by(Camera.id.asc()).limit(33).all()
+    cameras = query.order_by(Camera.id.asc()).limit(65).all()
     if not cameras:
         raise HTTPException(404, "Nenhuma câmera encontrada para testar")
-    if len(cameras) > 32:
-        raise HTTPException(400, "Teste em lote limitado a 32 câmeras por execução")
+    if len(cameras) > 64:
+        raise HTTPException(400, "Teste em lote limitado a 64 câmeras por execução")
 
     results = []
     for camera in cameras:
@@ -6007,13 +6095,62 @@ def delete_camera(
     return {"ok": True}
 
 
+
+
+@app.post("/alerts", response_model=AlertOut)
+def create_alert(
+    payload: AlertCreateIn,
+    request: Request,
+    db: Session = Depends(db_session),
+    actor: UserAccount = Depends(require_permission("alerts:operate")),
+):
+    school = db.get(School, payload.school_id)
+    if not school:
+        raise HTTPException(404, "Escola não encontrada")
+    ensure_school_access(actor, school.id)
+    camera = None
+    if payload.camera_id:
+        camera = ensure_camera_access(actor, db.get(Camera, payload.camera_id))
+        if camera.school_id != school.id:
+            raise HTTPException(422, "A câmera não pertence à escola selecionada")
+    row = Alert(
+        school_id=school.id,
+        camera_id=camera.id if camera else None,
+        school_name=school.name,
+        camera_name=camera.name if camera else "Sem câmera vinculada",
+        event_type=payload.event_type.strip(),
+        priority=payload.priority,
+        status="NOVO",
+        source="MANUAL",
+        confidence=None,
+        summary=(payload.summary or "").strip() or None,
+        event_occurred_at=datetime.now(timezone.utc),
+    )
+    db.add(row)
+    db.flush()
+    add_alert_activity(db, row, "CRIADO", to_status="NOVO", user=actor)
+    notify(
+        db,
+        title="Novo alerta operacional",
+        message=f"{row.event_type} — {row.school_name}",
+        severity="CRITICAL" if row.priority == "CRITICA" else "WARNING",
+        module="Central de Alertas",
+        school_id=row.school_id,
+        entity_type="alert",
+        entity_id=row.id,
+    )
+    audit(db, "Central de Alertas", "Cadastro manual", f"Alerta #{row.id}: {row.event_type}", request=request, user=actor)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
 @app.get("/alerts", response_model=list[AlertOut])
 def alerts(
     status: str | None = Query(default=None),
     priority: str | None = Query(default=None),
     school_id: int | None = Query(default=None),
     camera_id: int | None = Query(default=None),
-    source: str | None = Query(default=None),
     search: str | None = Query(default=None),
     limit: int = Query(default=200, ge=1, le=500),
     db: Session = Depends(db_session),
@@ -6030,8 +6167,6 @@ def alerts(
     if camera_id:
         camera = ensure_camera_access(user, db.get(Camera, camera_id))
         query = query.filter(Alert.camera_id == camera.id)
-    if source:
-        query = query.filter(Alert.source == source.upper())
     if search:
         term = f"%{search.strip()}%"
         query = query.filter(
@@ -6122,6 +6257,7 @@ def alert_workflow(
         message=f"{row.event_type} — {row.school_name} — {row.camera_name}",
         severity="CRITICAL" if row.priority == "CRITICA" else "WARNING",
         module="Central de Alertas",
+        school_id=row.school_id,
         entity_type="alert",
         entity_id=row.id,
     )
@@ -6191,6 +6327,7 @@ def alert_action(
         message=f"{row.event_type} — {row.school_name} — {row.camera_name}",
         severity="WARNING" if action != "dismiss" else "INFO",
         module="Central de Alertas",
+        school_id=row.school_id,
         entity_type="alert",
         entity_id=row.id,
     )
@@ -6218,7 +6355,7 @@ def alert_to_occurrence(
         protocol=occurrence_protocol(db),
         school_id=school.id,
         school_name=alert_row.school_name,
-        category="BEM_ESTAR" if "isol" in alert_row.event_type.lower() else "SEGURANCA",
+        category="SEGURANCA",
         priority=alert_row.priority,
         description=(alert_row.summary or f"{alert_row.event_type} detectado na câmera {alert_row.camera_name}.")
         + (f" Evidência: {alert_row.evidence_path}." if alert_row.evidence_path else ""),
@@ -6253,6 +6390,7 @@ def alert_to_occurrence(
         message=f"{row.protocol} aberta para {row.school_name}",
         severity="CRITICAL" if row.priority == "CRITICA" else "WARNING",
         module="Ocorrências",
+        school_id=row.school_id,
         entity_type="occurrence",
         entity_id=row.id,
     )
@@ -6304,6 +6442,7 @@ def create_occurrence(
         message=f"{row.protocol} — {row.school_name}",
         severity="WARNING",
         module="Ocorrências",
+        school_id=row.school_id,
         entity_type="occurrence",
         entity_id=row.id,
     )
@@ -6384,6 +6523,7 @@ def update_occurrence(
         message=f"{row.protocol}: {previous_status} → {row.status}",
         severity="INFO" if row.status == "ENCERRADA" else "WARNING",
         module="Ocorrências",
+        school_id=row.school_id,
         entity_type="occurrence",
         entity_id=row.id,
     )
@@ -7165,6 +7305,19 @@ def download_evidence(
     )
 
 
+def scope_notification_query(query, user: UserAccount):
+    restricted_school_id = scoped_school_id(user)
+    if restricted_school_id is None:
+        return query.filter((Notification.user_id.is_(None)) | (Notification.user_id == user.id))
+    return query.filter(
+        (Notification.user_id == user.id)
+        | (
+            Notification.user_id.is_(None)
+            & ((Notification.school_id.is_(None)) | (Notification.school_id == restricted_school_id))
+        )
+    )
+
+
 @app.get("/notifications", response_model=list[NotificationOut])
 def list_notifications(
     unread_only: bool = Query(default=False),
@@ -7172,12 +7325,37 @@ def list_notifications(
     db: Session = Depends(db_session),
     user: UserAccount = Depends(require_user),
 ):
-    query = db.query(Notification).filter(
-        (Notification.user_id.is_(None)) | (Notification.user_id == user.id)
-    )
+    query = scope_notification_query(db.query(Notification), user)
     if unread_only:
-        query = query.filter(Notification.read_at.is_(None))
-    return query.order_by(Notification.created_at.desc()).limit(limit).all()
+        already_read = db.query(NotificationRead.id).filter(
+            NotificationRead.user_id == user.id,
+            NotificationRead.notification_id == Notification.id,
+        ).exists()
+        query = query.filter(~already_read)
+    rows = query.order_by(Notification.created_at.desc()).limit(limit).all()
+    read_rows = {
+        item.notification_id: item.read_at
+        for item in db.query(NotificationRead).filter(
+            NotificationRead.user_id == user.id,
+            NotificationRead.notification_id.in_([row.id for row in rows] or [-1]),
+        ).all()
+    }
+    return [
+        NotificationOut(
+            id=row.id,
+            user_id=row.user_id,
+            school_id=row.school_id,
+            title=row.title,
+            message=row.message,
+            severity=row.severity,
+            module=row.module,
+            entity_type=row.entity_type,
+            entity_id=row.entity_id,
+            read_at=read_rows.get(row.id),
+            created_at=row.created_at,
+        )
+        for row in rows
+    ]
 
 
 @app.get("/notifications/unread-count")
@@ -7185,15 +7363,22 @@ def notification_unread_count(
     db: Session = Depends(db_session),
     user: UserAccount = Depends(require_user),
 ):
-    total = (
-        db.query(Notification)
-        .filter(
-            ((Notification.user_id.is_(None)) | (Notification.user_id == user.id)),
-            Notification.read_at.is_(None),
-        )
-        .count()
-    )
-    return {"unread": total}
+    query = scope_notification_query(db.query(Notification), user)
+    already_read = db.query(NotificationRead.id).filter(
+        NotificationRead.user_id == user.id,
+        NotificationRead.notification_id == Notification.id,
+    ).exists()
+    return {"unread": query.filter(~already_read).count()}
+
+
+def _visible_notification(db: Session, user: UserAccount, notification_id: int) -> Notification:
+    row = db.get(Notification, notification_id)
+    if not row:
+        raise HTTPException(404, "Notificação não encontrada")
+    visible = scope_notification_query(db.query(Notification), user).filter(Notification.id == notification_id).first()
+    if not visible:
+        raise HTTPException(404, "Notificação não encontrada")
+    return row
 
 
 @app.patch("/notifications/{notification_id}/read", response_model=NotificationOut)
@@ -7202,13 +7387,23 @@ def mark_notification_read(
     db: Session = Depends(db_session),
     user: UserAccount = Depends(require_user),
 ):
-    row = db.get(Notification, notification_id)
-    if not row or (row.user_id is not None and row.user_id != user.id):
-        raise HTTPException(404, "Notificação não encontrada")
-    row.read_at = datetime.now(timezone.utc)
+    row = _visible_notification(db, user, notification_id)
+    receipt = db.query(NotificationRead).filter(
+        NotificationRead.notification_id == row.id,
+        NotificationRead.user_id == user.id,
+    ).first()
+    now = datetime.now(timezone.utc)
+    if not receipt:
+        receipt = NotificationRead(notification_id=row.id, user_id=user.id, read_at=now)
+        db.add(receipt)
+    else:
+        receipt.read_at = now
     db.commit()
-    db.refresh(row)
-    return row
+    return NotificationOut(
+        id=row.id, user_id=row.user_id, school_id=row.school_id, title=row.title, message=row.message,
+        severity=row.severity, module=row.module, entity_type=row.entity_type, entity_id=row.entity_id,
+        read_at=receipt.read_at, created_at=row.created_at,
+    )
 
 
 @app.patch("/notifications/read-all")
@@ -7216,19 +7411,20 @@ def mark_all_notifications_read(
     db: Session = Depends(db_session),
     user: UserAccount = Depends(require_user),
 ):
-    rows = (
-        db.query(Notification)
-        .filter(
-            ((Notification.user_id.is_(None)) | (Notification.user_id == user.id)),
-            Notification.read_at.is_(None),
-        )
-        .all()
-    )
+    ids = [row.id for row in scope_notification_query(db.query(Notification), user).all()]
+    existing_ids = {
+        item.notification_id
+        for item in db.query(NotificationRead).filter(
+            NotificationRead.user_id == user.id,
+            NotificationRead.notification_id.in_(ids or [-1]),
+        ).all()
+    }
     now = datetime.now(timezone.utc)
-    for row in rows:
-        row.read_at = now
+    missing = [notification_id for notification_id in ids if notification_id not in existing_ids]
+    for notification_id in missing:
+        db.add(NotificationRead(notification_id=notification_id, user_id=user.id, read_at=now))
     db.commit()
-    return {"ok": True, "updated": len(rows)}
+    return {"ok": True, "updated": len(missing)}
 
 
 @app.get("/system/health")
@@ -7716,6 +7912,7 @@ def create_maintenance(
         message=f"{equipment.name}: {payload.description}",
         severity="WARNING",
         module="Equipamentos",
+        school_id=equipment.school_id,
         entity_type="equipment",
         entity_id=equipment.id,
     )

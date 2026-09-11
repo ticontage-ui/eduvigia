@@ -70,7 +70,7 @@ services:
     container_name: eduvigia_api
     restart: unless-stopped
     environment:
-      APP_VERSION: ${APP_VERSION:-2.0.0-F7-R1}
+      APP_VERSION: ${APP_VERSION:-2.0.0-F7-R2}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       CORS_ORIGINS: ${CORS_ORIGINS:-https://localhost}
       EDUVIGIA_MAP_TILE_URL: ${EDUVIGIA_MAP_TILE_URL:-https://tile.openstreetmap.org/{z}/{x}/{y}.png}
