@@ -3977,3 +3977,84 @@ body {
 
 /* F7-R3 — Eventos & Saúde de Câmeras */
 .cameraEventKpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:16px}.cameraEventKpis article{display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:center;padding:14px;border:1px solid var(--line,#e4e7ec);border-radius:14px;background:var(--card,#fff)}.cameraEventKpis article svg{grid-row:1/3;color:#175cd3}.cameraEventKpis article span{font-size:12px;color:var(--muted,#667085)}.cameraEventKpis article b{font-size:24px}.cameraEventFilters{display:grid;grid-template-columns:repeat(5,minmax(140px,1fr));gap:10px;margin:12px 0 16px}.cameraEventFilters select{min-width:0}.cameraEventTable .largeTableHeader,.cameraEventTable .largeTableRow{grid-template-columns:minmax(210px,1.35fr) minmax(210px,1.25fr) 110px 110px 90px 170px}.cameraHealthTable .largeTableHeader,.cameraHealthTable .largeTableRow{grid-template-columns:minmax(230px,1.35fr) 110px minmax(180px,1fr) 120px 120px minmax(230px,1.2fr)}.cameraRecorderHealthGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.cameraRecorderHealthGrid article{border:1px solid var(--line,#e4e7ec);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}.cameraRecorderHealthGrid article>div{display:flex;align-items:center;gap:8px}.cameraRecorderHealthGrid small{color:var(--muted,#667085)}.cameraEventTestForm{margin-top:16px}.cameraEventTestForm .formMessage{display:block;margin-top:10px}.dangerText{color:#b42318!important}@media(max-width:1200px){.cameraEventKpis{grid-template-columns:repeat(3,minmax(0,1fr))}.cameraEventFilters{grid-template-columns:repeat(2,minmax(0,1fr))}.cameraRecorderHealthGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:760px){.cameraEventKpis,.cameraEventFilters,.cameraRecorderHealthGrid{grid-template-columns:1fr}.cameraEventTable,.cameraHealthTable{overflow-x:auto}.cameraEventTable .largeTableHeader,.cameraEventTable .largeTableRow{min-width:980px}.cameraHealthTable .largeTableHeader,.cameraHealthTable .largeTableRow{min-width:1080px}}
+
+
+/* F7-R3 SYNC HF4 — monitor layout homologado + logo lateral discretamente maior */
+.monitorGrid.grid-4 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.monitorGrid.grid-6 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.monitorGrid.grid-16 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.monitorGrid.grid-25 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.monitorGrid.grid-36 {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+.monitorGrid.grid-25 .monitorTile,
+.monitorGrid.grid-36 .monitorTile {
+  min-height: 210px;
+}
+.cameraResultMeta {
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 2px;
+  text-align: right;
+}
+.cameraResultMeta span:first-child {
+  font-weight: 700;
+  color: #173a5d;
+}
+.cameraResultMeta span:last-child {
+  font-size: 12px;
+  color: #667085;
+}
+.monitorGrid.grid-25 .monitorTile.advancedTile,
+.monitorGrid.grid-36 .monitorTile.advancedTile {
+  min-height: 250px;
+}
+
+/* Ajuste visual solicitado: aumento discreto da marca oficial no menu lateral. */
+.sidebarBrand img {
+  width: clamp(200px, 15vw, 240px) !important;
+  height: clamp(94px, 7.5vw, 124px) !important;
+}
+
+@media (max-width: 1320px) {
+  .monitorGrid.grid-6,
+  .monitorGrid.grid-9,
+  .monitorGrid.grid-16,
+  .monitorGrid.grid-25,
+  .monitorGrid.grid-36 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .sidebarBrand img {
+    width: 208px !important;
+    height: 100px !important;
+  }
+}
+@media (max-width: 1050px) {
+  .sidebarBrand img {
+    width: 218px !important;
+    height: 106px !important;
+  }
+}
+@media (max-width: 900px) {
+  .monitorGrid.grid-4,
+  .monitorGrid.grid-6,
+  .monitorGrid.grid-9,
+  .monitorGrid.grid-16,
+  .monitorGrid.grid-25,
+  .monitorGrid.grid-36 {
+    grid-template-columns: 1fr;
+  }
+  .cameraResultMeta {
+    align-items: flex-start;
+    text-align: left;
+  }
+}

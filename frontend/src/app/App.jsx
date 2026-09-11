@@ -1470,7 +1470,7 @@ export default function App() {
   };
 
   const supportDialog = supportOpen ? (
-          <Modal title="Fale com o suporte" onClose={() => setSupportOpen(false)}>
+          <DetailModal title="Fale com o suporte" onClose={() => setSupportOpen(false)}>
             <form className="supportForm" onSubmit={submitSupport}>
               <div className="supportIntro">
                 <Headphones size={30} />
@@ -1530,7 +1530,7 @@ export default function App() {
                 </button>
               </div>
             </form>
-          </Modal>
+          </DetailModal>
   ) : null;
 
   if (!authReady) {
@@ -1791,6 +1791,7 @@ export default function App() {
                 await load();
               }}
               canPtz={can("ptz:control")}
+              userId={authUser?.id}
               onRefreshStatus={(cameraIds) => api("/monitoring/status-refresh", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -2692,7 +2693,7 @@ function CamerasPage({
       )}
 
       {recorderDiscovery && (
-        <Modal title="Descoberta Hikvision / ISAPI" onClose={onCloseDiscovery}>
+        <DetailModal title="Descoberta Hikvision / ISAPI" onClose={onCloseDiscovery}>
           <div className="discoverySummary">
             <div>
               <b>{recorderDiscovery.device?.device_name || "Gravador Hikvision"}</b>
@@ -2819,7 +2820,7 @@ function CamerasPage({
               <Plus size={16} /> Aplicar canais selecionados
             </button>
           </div>
-        </Modal>
+        </DetailModal>
       )}
     </Page>
   );
@@ -3036,10 +3037,19 @@ function MonitorPage({
   onProvisionAll = () => {},
   onRefreshStatus = async () => ({ cameras: [] }),
   canPtz = false,
+  userId = null,
 }) {
   const [view, setView] = useState("schools");
   const [selectedSchoolId, setSelectedSchoolId] = useState("");
-  const [gridSize, setGridSize] = useState(4);
+  const monitorLayoutStorageKey = `eduvigia_monitor_layout_${userId || "default"}`;
+  const [layoutMode, setLayoutMode] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`eduvigia_monitor_layout_${userId || "default"}`);
+      return ["AUTO", "1", "4", "6", "9", "16", "25", "36"].includes(saved) ? saved : "AUTO";
+    } catch {
+      return "AUTO";
+    }
+  });
   const [qualityMode, setQualityMode] = useState("AUTO");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -3048,6 +3058,23 @@ function MonitorPage({
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [favorites, setFavorites] = useState([]);
   const [runtimeStatuses, setRuntimeStatuses] = useState({});
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(monitorLayoutStorageKey);
+      setLayoutMode(["AUTO", "1", "4", "6", "9", "16", "25", "36"].includes(saved) ? saved : "AUTO");
+    } catch {
+      setLayoutMode("AUTO");
+    }
+  }, [monitorLayoutStorageKey]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(monitorLayoutStorageKey, layoutMode);
+    } catch {
+      // Preferência local indisponível; mantém a sessão atual.
+    }
+  }, [monitorLayoutStorageKey, layoutMode]);
 
   useEffect(() => {
     let cancelled = false;
@@ -3123,14 +3150,44 @@ function MonitorPage({
     return Number(b.id)-Number(a.id);
   });
 
-  const totalPages = Math.max(1, Math.ceil(filteredCameras.length / gridSize));
+  const automaticGridSize = filteredCameras.length <= 1
+    ? 1
+    : filteredCameras.length <= 4
+      ? 4
+      : filteredCameras.length <= 6
+        ? 6
+        : filteredCameras.length <= 9
+          ? 9
+          : filteredCameras.length <= 16
+            ? 16
+            : filteredCameras.length <= 25
+              ? 25
+              : 36;
+  const effectiveGridSize = layoutMode === "AUTO" ? automaticGridSize : Number(layoutMode);
+  const totalPages = Math.max(1, Math.ceil(filteredCameras.length / effectiveGridSize));
   const safePage = Math.min(page, totalPages);
-  const pageItems = filteredCameras.slice((safePage - 1) * gridSize, safePage * gridSize);
+  const pageItems = filteredCameras.slice(
+    (safePage - 1) * effectiveGridSize,
+    safePage * effectiveGridSize
+  );
+  const gridLabel = effectiveGridSize === 1
+    ? "1 × 1"
+    : effectiveGridSize === 4
+      ? "2 × 2"
+      : effectiveGridSize === 6
+        ? "3 × 2"
+        : effectiveGridSize === 9
+          ? "3 × 3"
+          : effectiveGridSize === 16
+            ? "4 × 4"
+            : effectiveGridSize === 25
+              ? "5 × 5"
+              : "6 × 6";
   const activeOccurrences = occurrences.filter((item) => item.status !== "ENCERRADA");
 
   useEffect(() => {
     setPage(1);
-  }, [selectedSchoolId, gridSize, search, statusFilter, groupFilter, favoritesOnly]);
+  }, [selectedSchoolId, layoutMode, search, statusFilter, groupFilter, favoritesOnly]);
 
   const openSchool = (schoolId) => {
     setSelectedSchoolId(String(schoolId));
@@ -3167,7 +3224,7 @@ function MonitorPage({
     };
     refresh();
     return () => { cancelled = true; if (timer) window.clearTimeout(timer); };
-  }, [view, safePage, gridSize, selectedSchoolId, search, statusFilter, groupFilter, favoritesOnly, pageItems.map((item) => item.id).join(",")]);
+  }, [view, safePage, effectiveGridSize, selectedSchoolId, search, statusFilter, groupFilter, favoritesOnly, pageItems.map((item) => item.id).join(",")]);
 
   return (
     <Page
@@ -3301,11 +3358,19 @@ function MonitorPage({
               <option value="PENDING">Somente pendentes</option>
             </select>
 
-            <select value={gridSize} onChange={(event) => setGridSize(Number(event.target.value))}>
-              <option value={1}>Grade 1</option>
-              <option value={4}>Grade 4</option>
-              <option value={9}>Grade 9</option>
-              <option value={16}>Grade 16</option>
+            <select
+              value={layoutMode}
+              onChange={(event) => setLayoutMode(event.target.value)}
+              aria-label="Layout de monitoramento"
+            >
+              <option value="AUTO">Layout automático</option>
+              <option value="1">1 câmera · 1 × 1</option>
+              <option value="4">4 câmeras · 2 × 2</option>
+              <option value="6">6 câmeras · 3 × 2</option>
+              <option value="9">9 câmeras · 3 × 3</option>
+              <option value="16">16 câmeras · 4 × 4</option>
+              <option value="25">25 câmeras · 5 × 5</option>
+              <option value="36">36 câmeras · 6 × 6</option>
             </select>
 
             <select value={qualityMode} onChange={(event) => setQualityMode(event.target.value)}>
@@ -3329,8 +3394,9 @@ function MonitorPage({
               <b>{selectedSchool?.name || "Todas as escolas"}</b>
               <span>{filteredCameras.length} câmera(s) encontrada(s)</span>
             </div>
-            <div>
-              Página {safePage} de {totalPages}
+            <div className="cameraResultMeta">
+              <span>{layoutMode === "AUTO" ? `Automático · ${gridLabel}` : `Manual · ${gridLabel}`}</span>
+              <span>Página {safePage} de {totalPages}</span>
             </div>
           </div>
 
@@ -3342,14 +3408,14 @@ function MonitorPage({
             </div>
           )}
 
-          <div className={`monitorGrid grid-${gridSize}`}>
+          <div className={`monitorGrid grid-${effectiveGridSize}`}>
             {pageItems.map((camera) => (
               <CameraMonitorTile
                 key={camera.id}
                 camera={camera}
                 schoolName={schoolMap[String(camera.school_id)]?.name || `Escola #${camera.school_id}`}
                 qualityMode={qualityMode}
-                gridSize={gridSize}
+                gridSize={effectiveGridSize}
                 favorite={favorites.includes(camera.id)}
                 onToggleFavorite={toggleFavorite}
                 runtimeStatus={runtimeStatuses[camera.id]}
