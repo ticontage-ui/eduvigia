@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Activity,
   AlertTriangle,
   BarChart3,
   Bell,
@@ -124,6 +125,7 @@ const MENU = [
   ["Central Operacional", Siren, "operations"],
   ["Escolas", Building2, "schools"],
   ["Câmeras", Camera, "cameras"],
+  ["Eventos & Saúde", Activity, "camera-events"],
   ["Monitoramento", Video, "monitor"],
   ["Mapa Operacional", MapPinned, "maps"],
   ["Plantas Baixas", FileImage, "floorplans"],
@@ -182,6 +184,10 @@ export default function App() {
   const [schools, setSchools] = useState([]);
   const [cameras, setCameras] = useState([]);
   const [alerts, setAlerts] = useState([]);
+  const [cameraEvents, setCameraEvents] = useState([]);
+  const [cameraHealth, setCameraHealth] = useState([]);
+  const [recorderHealth, setRecorderHealth] = useState([]);
+  const [cameraEventOverview, setCameraEventOverview] = useState({});
   const [occurrences, setOccurrences] = useState([]);
   const [teams, setTeams] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
@@ -373,13 +379,17 @@ export default function App() {
 
   const load = async () => {
     try {
-      const [d, s, c, r, vd, a, o, t, audit, eq, reports, settings, notificationRows, unread, health] = await Promise.all([
+      const [d, s, c, r, vd, a, ce, ch, rh, ceo, o, t, audit, eq, reports, settings, notificationRows, unread, health] = await Promise.all([
         api("/dashboard"),
         api("/schools"),
         api("/cameras"),
         api("/recorders"),
         api("/video-devices").catch(() => []),
         api("/alerts"),
+        api("/camera-events?limit=200").catch(() => []),
+        api("/camera-health").catch(() => []),
+        api("/recorder-health").catch(() => []),
+        api("/camera-events/overview").catch(() => ({})),
         api("/occurrences"),
         api("/teams").catch(() => []),
         api("/audit").catch(() => []),
@@ -396,6 +406,10 @@ export default function App() {
       setRecorders(r);
       setVideoDevices(vd);
       setAlerts(a);
+      setCameraEvents(ce);
+      setCameraHealth(ch);
+      setRecorderHealth(rh);
+      setCameraEventOverview(ceo);
       setOccurrences(o);
       setTeams(t);
       setAuditLogs(audit);
@@ -1313,6 +1327,7 @@ export default function App() {
       operations: "command:view",
       schools: "schools:view",
       cameras: "cameras:view",
+      "camera-events": "events:view",
       monitor: "monitor:view",
       maps: "maps:view",
       floorplans: "floorplans:view",
@@ -1587,7 +1602,7 @@ export default function App() {
           ))}
         </nav>
         <div className="sidebarFooter">
-          <strong>EduVigIA v2.0.0-F7-R2</strong>
+          <strong>EduVigIA v2.0.0-F7-R3</strong>
           <span>Central operacional ativa</span>
           <span>Integração de vídeo preparada</span>
         </div>
@@ -1745,6 +1760,20 @@ export default function App() {
               onDelete={deleteCamera}
               canWrite={can("cameras:write")}
               onProvision={provisionCamera}
+            />
+          )}
+
+          {section === "camera-events" && can("events:view") && (
+            <CameraEventsHealthPage
+              events={cameraEvents}
+              health={cameraHealth}
+              recorderHealth={recorderHealth}
+              overview={cameraEventOverview}
+              schools={schools}
+              cameras={cameras}
+              recorders={recorders}
+              canOperate={can("events:operate")}
+              onRefresh={load}
             />
           )}
 
@@ -3581,6 +3610,294 @@ function OperationalCenterPage({
 }
 
 
+
+function CameraEventsHealthPage({
+  events = [],
+  health = [],
+  recorderHealth = [],
+  overview = {},
+  schools = [],
+  cameras = [],
+  recorders = [],
+  canOperate = false,
+  onRefresh,
+}) {
+  const [filters, setFilters] = useState({
+    school: "",
+    camera: "",
+    type: "",
+    severity: "",
+    state: "ALL",
+  });
+  const [testForm, setTestForm] = useState({
+    camera_id: "",
+    provider_event_type: "MOTION",
+    event_state: "ACTIVE",
+    severity: "",
+  });
+  const [busy, setBusy] = useState(false);
+  const [localMessage, setLocalMessage] = useState("");
+
+  const schoolMap = useMemo(
+    () => Object.fromEntries(schools.map((school) => [String(school.id), school.name])),
+    [schools]
+  );
+  const cameraMap = useMemo(
+    () => Object.fromEntries(cameras.map((camera) => [String(camera.id), camera])),
+    [cameras]
+  );
+  const recorderMap = useMemo(
+    () => Object.fromEntries(recorders.map((recorder) => [String(recorder.id), recorder])),
+    [recorders]
+  );
+
+  const eventTypes = useMemo(
+    () => Array.from(new Set(events.map((item) => item.event_type).filter(Boolean))).sort(),
+    [events]
+  );
+
+  const filteredEvents = useMemo(() => {
+    return events.filter((item) => {
+      if (filters.school && Number(item.school_id) !== Number(filters.school)) return false;
+      if (filters.camera && Number(item.camera_id) !== Number(filters.camera)) return false;
+      if (filters.type && item.event_type !== filters.type) return false;
+      if (filters.severity && item.severity !== filters.severity) return false;
+      if (filters.state === "ACTIVE" && !item.active) return false;
+      if (filters.state === "INACTIVE" && item.active) return false;
+      return true;
+    });
+  }, [events, filters]);
+
+  const filteredHealth = useMemo(() => {
+    return health.filter((item) => {
+      if (filters.school && Number(item.school_id) !== Number(filters.school)) return false;
+      if (filters.camera && Number(item.camera_id) !== Number(filters.camera)) return false;
+      return true;
+    });
+  }, [health, filters.school, filters.camera]);
+
+  const healthClass = (state) =>
+    state === "ONLINE" ? "success" : state === "DEGRADADO" ? "warning" : state === "OFFLINE" ? "danger" : "neutral";
+
+  const eventLabel = (type) =>
+    ({
+      CAMERA_ONLINE: "Câmera online",
+      CAMERA_OFFLINE: "Câmera offline",
+      VIDEO_LOSS: "Perda de vídeo",
+      VIDEO_RESTORED: "Vídeo restabelecido",
+      RTSP_FAILURE: "Falha RTSP",
+      RTSP_RESTORED: "RTSP restabelecido",
+      MOTION: "Movimento",
+      TAMPER: "Sabotagem / obstrução",
+      LINE_CROSSING: "Cruzamento de linha",
+      INTRUSION: "Intrusão",
+      REGION_ENTRANCE: "Entrada em região",
+      REGION_EXIT: "Saída de região",
+      OBJECT_LEFT: "Objeto abandonado",
+      OBJECT_REMOVED: "Objeto removido",
+      PEOPLE_COUNTING: "Contagem de pessoas",
+      OCCUPANCY: "Ocupação",
+      QUEUE: "Fila / permanência",
+      AUDIO_ALARM: "Evento de áudio",
+      DIGITAL_INPUT: "Entrada digital",
+      RECORDING_FAILURE: "Falha de gravação",
+      RECORDING_RESTORED: "Gravação restabelecida",
+      STORAGE_FAILURE: "Falha de armazenamento",
+      STORAGE_WARNING: "Alerta de armazenamento",
+      NTP_DRIFT: "Desvio NTP",
+      PTZ_FAULT: "Falha PTZ",
+      RECORDER_OFFLINE: "Gravador offline",
+      RECORDER_ONLINE: "Gravador online",
+      DEVICE_REBOOT: "Reinicialização",
+      UNKNOWN_DEVICE_EVENT: "Evento não catalogado",
+    }[type] || type || "Evento");
+
+  const simulate = async (event) => {
+    event.preventDefault();
+    if (!testForm.camera_id) {
+      setLocalMessage("Selecione uma câmera para o teste controlado.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await api("/camera-events/simulate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "GENERIC",
+          provider_event_type: testForm.provider_event_type,
+          event_state: testForm.event_state,
+          camera_id: Number(testForm.camera_id),
+          severity: testForm.severity || null,
+          metadata: { source: "browser_qa" },
+        }),
+      });
+      setLocalMessage("Evento de teste processado pelo motor de eventos.");
+      await onRefresh?.();
+    } catch (error) {
+      setLocalMessage(error.message || "Falha ao processar evento de teste.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Page
+      title="Eventos & Saúde"
+      subtitle="Eventos normalizados, telemetria e saúde operacional de câmeras e gravadores"
+    >
+      <div className="cameraEventKpis">
+        <article><AlertTriangle size={20}/><span>Eventos ativos</span><b>{overview.active_events || 0}</b></article>
+        <article><Siren size={20}/><span>Críticos</span><b>{overview.critical_events || 0}</b></article>
+        <article><Camera size={20}/><span>Câmeras offline</span><b>{overview.offline_cameras || 0}</b></article>
+        <article><Wrench size={20}/><span>Câmeras degradadas</span><b>{overview.degraded_cameras || 0}</b></article>
+        <article><Server size={20}/><span>Gravadores offline</span><b>{overview.offline_recorders || 0}</b></article>
+      </div>
+
+      <div className="dataCard full">
+        <div className="cardHeader">
+          <div>
+            <h2>Eventos recebidos</h2>
+            <small>Deduplicação por dispositivo/canal/tipo com contador de repetição</small>
+          </div>
+          <button type="button" onClick={() => onRefresh?.()}><RefreshCw size={15}/> Atualizar</button>
+        </div>
+
+        <div className="cameraEventFilters">
+          <select value={filters.school} onChange={(e) => setFilters({ ...filters, school: e.target.value, camera: "" })}>
+            <option value="">Todas as escolas</option>
+            {schools.map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
+          </select>
+          <select value={filters.camera} onChange={(e) => setFilters({ ...filters, camera: e.target.value })}>
+            <option value="">Todas as câmeras</option>
+            {cameras
+              .filter((camera) => !filters.school || Number(camera.school_id) === Number(filters.school))
+              .map((camera) => <option key={camera.id} value={camera.id}>{camera.code || `CAM-${camera.id}`} · {camera.name}</option>)}
+          </select>
+          <select value={filters.type} onChange={(e) => setFilters({ ...filters, type: e.target.value })}>
+            <option value="">Todos os tipos</option>
+            {eventTypes.map((type) => <option key={type} value={type}>{eventLabel(type)}</option>)}
+          </select>
+          <select value={filters.severity} onChange={(e) => setFilters({ ...filters, severity: e.target.value })}>
+            <option value="">Todas as severidades</option>
+            {["INFO","BAIXA","MEDIA","ALTA","CRITICA"].map((value) => <option key={value}>{value}</option>)}
+          </select>
+          <select value={filters.state} onChange={(e) => setFilters({ ...filters, state: e.target.value })}>
+            <option value="ALL">Ativos e encerrados</option>
+            <option value="ACTIVE">Somente ativos</option>
+            <option value="INACTIVE">Somente encerrados</option>
+          </select>
+        </div>
+
+        <div className="largeTable cameraEventTable">
+          <div className="largeTableHeader">
+            <span>Evento</span><span>Origem operacional</span><span>Severidade</span><span>Estado</span><span>Repetições</span><span>Último recebimento</span>
+          </div>
+          {filteredEvents.length === 0 && <Empty text="Nenhum evento de câmera encontrado." />}
+          {filteredEvents.map((item) => {
+            const camera = item.camera_id ? cameraMap[String(item.camera_id)] : null;
+            const recorder = item.recorder_id ? recorderMap[String(item.recorder_id)] : null;
+            return (
+              <div className="largeTableRow" key={item.id}>
+                <div><b>{eventLabel(item.event_type)}</b><small>{item.provider} · {item.provider_event_type}</small></div>
+                <div><b>{camera?.name || recorder?.name || "Dispositivo"}</b><small>{schoolMap[String(item.school_id)] || `Escola #${item.school_id}`}{item.source_channel ? ` · CH${item.source_channel}` : ""}</small></div>
+                <span className={`priority ${(item.severity || "BAIXA").toLowerCase()}`}><i />{item.severity}</span>
+                <span className={`statusPill ${item.active ? "warning" : "success"}`}>{item.active ? "ATIVO" : "ENCERRADO"}</span>
+                <b>{item.repeat_count || 1}</b>
+                <small>{new Date(item.last_seen_at || item.occurred_at).toLocaleString("pt-BR")}</small>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="dataCard full">
+        <div className="cardHeader">
+          <div><h2>Saúde das câmeras</h2><small>RTSP, perfis de vídeo, gravação, armazenamento e telemetria disponível</small></div>
+          <span>{filteredHealth.length}</span>
+        </div>
+        <div className="largeTable cameraHealthTable">
+          <div className="largeTableHeader">
+            <span>Câmera</span><span>Saúde</span><span>Vídeo</span><span>Gravação</span><span>Storage</span><span>Telemetria</span>
+          </div>
+          {filteredHealth.length === 0 && <Empty text="Nenhuma câmera disponível para o filtro." />}
+          {filteredHealth.map((item) => {
+            const camera = cameraMap[String(item.camera_id)];
+            return (
+              <div className="largeTableRow" key={item.camera_id}>
+                <div><b>{camera?.code || `CAM-${item.camera_id}`} · {camera?.name || "Câmera"}</b><small>{schoolMap[String(item.school_id)] || `Escola #${item.school_id}`}</small></div>
+                <span className={`statusPill ${healthClass(item.state)}`}>{item.state}</span>
+                <div><b>RTSP {item.rtsp_online === true ? "OK" : item.rtsp_online === false ? "FALHA" : "N/D"}</b><small>MAIN {item.main_online === true ? "OK" : item.main_online === false ? "FALHA" : "N/D"} · SUB {item.sub_online === true ? "OK" : item.sub_online === false ? "FALHA" : "N/D"}</small></div>
+                <span>{item.recording_status || "UNKNOWN"}</span>
+                <span>{item.storage_status || "UNKNOWN"}</span>
+                <div><b>{item.resolution || "N/D"} · {item.codec || "N/D"}</b><small>{item.fps ?? "N/D"} FPS · {item.bitrate_kbps ?? "N/D"} kbps{item.ntp_offset_ms !== null && item.ntp_offset_ms !== undefined ? ` · NTP ${item.ntp_offset_ms} ms` : ""}</small></div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="dataCard full">
+        <div className="cardHeader">
+          <div><h2>Saúde dos gravadores</h2><small>Disponibilidade e estado operacional consolidado do NVR/DVR</small></div>
+          <span>{recorderHealth.length}</span>
+        </div>
+        <div className="cameraRecorderHealthGrid">
+          {recorderHealth.length === 0 && <Empty text="Nenhum gravador cadastrado." />}
+          {recorderHealth.map((item) => {
+            const recorder = recorderMap[String(item.recorder_id)];
+            return (
+              <article key={item.recorder_id}>
+                <div><Server size={18}/><b>{recorder?.name || `Gravador #${item.recorder_id}`}</b></div>
+                <span className={`statusPill ${healthClass(item.state)}`}>{item.state}</span>
+                <small>Gravação: {item.recording_status || "UNKNOWN"} · Storage: {item.storage_status || "UNKNOWN"}</small>
+                <small>Último contato: {item.last_seen_at ? new Date(item.last_seen_at).toLocaleString("pt-BR") : "N/D"}</small>
+                {item.last_error && <small className="dangerText">{item.last_error}</small>}
+              </article>
+            );
+          })}
+        </div>
+      </div>
+
+      {canOperate && (
+        <form className="dataCard full cameraEventTestForm" onSubmit={simulate}>
+          <div className="cardHeader">
+            <div><h2>Teste controlado do motor de eventos</h2><small>Somente para homologação; não substitui teste com equipamento real.</small></div>
+            <span>QA</span>
+          </div>
+          <div className="formGrid">
+            <Field label="Câmera">
+              <select required value={testForm.camera_id} onChange={(e) => setTestForm({ ...testForm, camera_id: e.target.value })}>
+                <option value="">Selecione</option>
+                {cameras.map((camera) => <option key={camera.id} value={camera.id}>{camera.code || `CAM-${camera.id}`} · {camera.name}</option>)}
+              </select>
+            </Field>
+            <Field label="Evento">
+              <select value={testForm.provider_event_type} onChange={(e) => setTestForm({ ...testForm, provider_event_type: e.target.value })}>
+                {["MOTION","TAMPER","LINE_CROSSING","INTRUSION","VIDEO_LOSS","RECORDING_FAILURE","STORAGE_FAILURE","DIGITAL_INPUT"].map((value) => <option key={value}>{value}</option>)}
+              </select>
+            </Field>
+            <Field label="Estado">
+              <select value={testForm.event_state} onChange={(e) => setTestForm({ ...testForm, event_state: e.target.value })}>
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="INACTIVE">INACTIVE / recuperação</option>
+              </select>
+            </Field>
+            <Field label="Severidade opcional">
+              <select value={testForm.severity} onChange={(e) => setTestForm({ ...testForm, severity: e.target.value })}>
+                <option value="">Automática</option>
+                {["INFO","BAIXA","MEDIA","ALTA","CRITICA"].map((value) => <option key={value}>{value}</option>)}
+              </select>
+            </Field>
+          </div>
+          <button className="primaryButton" type="submit" disabled={busy}><Siren size={16}/>{busy ? "Processando..." : "Gerar evento de teste"}</button>
+          {localMessage && <small className="formMessage">{localMessage}</small>}
+        </form>
+      )}
+    </Page>
+  );
+}
+
 function AlertsPage({ alerts: initialAlerts, schools = [], cameras = [], onAlertAction, onAlertOccurrence, canOperate }) {
   const [items, setItems] = useState(initialAlerts || []);
   const [overview, setOverview] = useState({ summary: {}, by_priority: {} });
@@ -4889,7 +5206,7 @@ function LoginPage({ form, setForm, onSubmit, message, loading, onSupport, onFor
             <span>Primeiro acesso administrativo</span>
             <code>admin@eduvigia.local</code>
           </div>
-          <small className="loginVersion">EduVigIA v2.0.0-F7-R2</small>
+          <small className="loginVersion">EduVigIA v2.0.0-F7-R3</small>
         </form>
       </section>
 

@@ -36,7 +36,7 @@ $EnvPath = Join-Path $Project ".env"
 if (-not (Test-Path $EnvPath)) { throw "Arquivo .env ausente." }
 if (-not $BackupRoot) { $BackupRoot = Join-Path $env:USERPROFILE "Documents\EduVigIA-Backups" }
 $Timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-$Destination = Join-Path $BackupRoot ("EDUVIGIA-BACKUP-2.0.0-F7-R2-{0}" -f $Timestamp)
+$Destination = Join-Path $BackupRoot ("EDUVIGIA-BACKUP-2.0.0-F7-R3-{0}" -f $Timestamp)
 New-Item -ItemType Directory -Path $Destination -Force | Out-Null
 
 $PostgresUser = Get-EnvValue $EnvPath "POSTGRES_USER"
@@ -76,7 +76,7 @@ try {
 
     Write-Host "[4/6] Gerando inventário e hashes..." -ForegroundColor Cyan
     $Inventory = @(
-        "version=2.0.0-F7-R2",
+        "version=2.0.0-F7-R3",
         "created_at=$((Get-Date).ToString('o'))",
         "project=$Project",
         "postgres_db=$PostgresDb"

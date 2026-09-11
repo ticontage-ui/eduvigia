@@ -30,7 +30,7 @@ from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from typing import Literal
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Request, UploadFile, File, Form
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, UploadFile, File, Form, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, ConfigDict, Field
@@ -260,6 +260,112 @@ class AlertActivity(Base):
     user_name: Mapped[str] = mapped_column(String(160), default="Sistema")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+
+
+class CameraEvent(Base):
+    __tablename__ = "camera_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    school_id: Mapped[int] = mapped_column(
+        ForeignKey("schools.id", ondelete="CASCADE"), index=True
+    )
+    camera_id: Mapped[int | None] = mapped_column(
+        ForeignKey("cameras.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    recorder_id: Mapped[int | None] = mapped_column(
+        ForeignKey("recorders.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    provider: Mapped[str] = mapped_column(String(40), default="GENERIC")
+    provider_event_type: Mapped[str] = mapped_column(String(160))
+    event_type: Mapped[str] = mapped_column(String(80), index=True)
+    event_state: Mapped[str] = mapped_column(String(20), default="ACTIVE", index=True)
+    severity: Mapped[str] = mapped_column(String(20), default="MEDIA")
+    correlation_key: Mapped[str] = mapped_column(String(240), index=True)
+    event_uid: Mapped[str | None] = mapped_column(String(180), nullable=True, unique=True)
+    source_channel: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    first_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+    repeat_count: Mapped[int] = mapped_column(Integer, default=1)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    alert_id: Mapped[int | None] = mapped_column(
+        ForeignKey("alerts.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    metadata_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    raw_payload_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class CameraHealth(Base):
+    __tablename__ = "camera_health"
+    __table_args__ = (UniqueConstraint("camera_id", name="uq_camera_health_camera"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    camera_id: Mapped[int] = mapped_column(
+        ForeignKey("cameras.id", ondelete="CASCADE"), index=True
+    )
+    school_id: Mapped[int] = mapped_column(
+        ForeignKey("schools.id", ondelete="CASCADE"), index=True
+    )
+    state: Mapped[str] = mapped_column(String(20), default="UNKNOWN", index=True)
+    rtsp_online: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    main_online: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    sub_online: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    recording_status: Mapped[str] = mapped_column(String(30), default="UNKNOWN")
+    storage_status: Mapped[str] = mapped_column(String(30), default="UNKNOWN")
+    tamper_active: Mapped[bool] = mapped_column(Boolean, default=False)
+    motion_active: Mapped[bool] = mapped_column(Boolean, default=False)
+    ntp_offset_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    fps: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    bitrate_kbps: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    resolution: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    codec: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    last_event_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_video_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class RecorderHealth(Base):
+    __tablename__ = "recorder_health"
+    __table_args__ = (UniqueConstraint("recorder_id", name="uq_recorder_health_recorder"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    recorder_id: Mapped[int] = mapped_column(
+        ForeignKey("recorders.id", ondelete="CASCADE"), index=True
+    )
+    school_id: Mapped[int] = mapped_column(
+        ForeignKey("schools.id", ondelete="CASCADE"), index=True
+    )
+    state: Mapped[str] = mapped_column(String(20), default="UNKNOWN", index=True)
+    recording_status: Mapped[str] = mapped_column(String(30), default="UNKNOWN")
+    storage_status: Mapped[str] = mapped_column(String(30), default="UNKNOWN")
+    last_event_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
 
@@ -912,6 +1018,90 @@ class FloorPlanPlacementsIn(BaseModel):
     placements: list[FloorPlanPlacementIn] = Field(default_factory=list, max_length=128)
 
 
+class CameraEventIn(BaseModel):
+    provider: Literal["GENERIC", "HIKVISION_ISAPI", "ONVIF", "EDUVIGIA_HEALTH"] = "GENERIC"
+    provider_event_type: str = Field(min_length=1, max_length=160)
+    event_state: str = Field(default="ACTIVE", max_length=40)
+    school_id: int | None = None
+    camera_id: int | None = None
+    recorder_id: int | None = None
+    source_channel: int | None = Field(default=None, ge=1, le=1024)
+    occurred_at: datetime | None = None
+    severity: Literal["INFO", "BAIXA", "MEDIA", "ALTA", "CRITICA"] | None = None
+    event_uid: str | None = Field(default=None, max_length=180)
+    metadata: dict = Field(default_factory=dict)
+    raw_payload: str | None = Field(default=None, max_length=20000)
+
+
+class CameraEventOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    school_id: int
+    camera_id: int | None
+    recorder_id: int | None
+    provider: str
+    provider_event_type: str
+    event_type: str
+    event_state: str
+    severity: str
+    source_channel: int | None
+    first_seen_at: datetime
+    last_seen_at: datetime
+    occurred_at: datetime
+    repeat_count: int
+    active: bool
+    alert_id: int | None
+    metadata: dict = Field(default_factory=dict)
+
+
+class CameraHealthOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    camera_id: int
+    school_id: int
+    state: str
+    rtsp_online: bool | None
+    main_online: bool | None
+    sub_online: bool | None
+    recording_status: str
+    storage_status: str
+    tamper_active: bool
+    motion_active: bool
+    ntp_offset_ms: int | None
+    fps: int | None
+    bitrate_kbps: int | None
+    resolution: str | None
+    codec: str | None
+    last_event_at: datetime | None
+    last_seen_at: datetime | None
+    last_video_at: datetime | None
+    last_error: str | None
+    updated_at: datetime
+
+
+class RecorderHealthOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    recorder_id: int
+    school_id: int
+    state: str
+    recording_status: str
+    storage_status: str
+    last_event_at: datetime | None
+    last_seen_at: datetime | None
+    last_error: str | None
+    updated_at: datetime
+
+
+class CameraEventIngestOut(BaseModel):
+    accepted: bool
+    heartbeat: bool = False
+    deduplicated: bool = False
+    event_id: int | None = None
+    alert_id: int | None = None
+    event_type: str | None = None
+    state: str | None = None
+    repeat_count: int = 0
+
+
 class AlertOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
@@ -1561,7 +1751,8 @@ def ensure_schema() -> None:
 
 
 
-APP_VERSION = "2.0.0-F7-R2"
+APP_VERSION = "2.0.0-F7-R3"
+EXPECTED_ALEMBIC_REVISION = "20260911_209_f7r3"
 DATA_DIR = Path(os.getenv("EDUVIGIA_DATA_DIR", "/app/data"))
 EVIDENCE_DIR = DATA_DIR / "evidence"
 PLAYBACK_DIR = DATA_DIR / "playback"
@@ -2159,7 +2350,7 @@ ROLE_PROFILES = {
         "label": "Gestor da Secretaria",
         "permissions": [
             "dashboard:view", "schools:view", "schools:write", "cameras:view",
-            "cameras:write", "monitor:view", "maps:view", "floorplans:view", "floorplans:write", "alerts:view", "occurrences:view",
+            "cameras:write", "monitor:view", "maps:view", "floorplans:view", "floorplans:write", "alerts:view", "events:view", "events:operate", "occurrences:view",
             "equipment:view", "equipment:write", "reports:view", "audit:view",
             "settings:view", "users:view",
             "ptz:control", "playback:view", "evidence:export", "evidence:verify",
@@ -2172,7 +2363,7 @@ ROLE_PROFILES = {
         "label": "Supervisor da Guarda",
         "permissions": [
             "dashboard:view", "command:view", "schools:view", "cameras:view",
-            "monitor:view", "maps:view", "floorplans:view", "alerts:view", "alerts:operate", "occurrences:view",
+            "monitor:view", "maps:view", "floorplans:view", "alerts:view", "alerts:operate", "events:view", "events:operate", "occurrences:view",
             "occurrences:operate", "dispatch:view", "dispatch:operate",
             "ptz:control", "playback:view", "evidence:export", "evidence:verify",
             "wall:view", "wall:write",
@@ -2184,7 +2375,7 @@ ROLE_PROFILES = {
         "label": "Operador da Guarda",
         "permissions": [
             "dashboard:view", "command:view", "schools:view", "cameras:view",
-            "monitor:view", "maps:view", "floorplans:view", "alerts:view", "alerts:operate", "occurrences:view",
+            "monitor:view", "maps:view", "floorplans:view", "alerts:view", "alerts:operate", "events:view", "events:operate", "occurrences:view",
             "occurrences:operate", "dispatch:view",
             "ptz:control", "playback:view", "evidence:export", "evidence:verify",
             "wall:view", "wall:write",
@@ -2196,7 +2387,7 @@ ROLE_PROFILES = {
         "label": "Despachante da Guarda",
         "permissions": [
             "dashboard:view", "command:view", "schools:view", "cameras:view",
-            "monitor:view", "maps:view", "floorplans:view", "alerts:view", "alerts:operate", "occurrences:view",
+            "monitor:view", "maps:view", "floorplans:view", "alerts:view", "alerts:operate", "events:view", "events:operate", "occurrences:view",
             "occurrences:operate", "dispatch:view", "dispatch:operate",
             "ptz:control", "playback:view", "evidence:export", "evidence:verify",
             "wall:view", "wall:write",
@@ -2208,7 +2399,7 @@ ROLE_PROFILES = {
         "label": "Gestor da Escola",
         "permissions": [
             "dashboard:view", "schools:view", "cameras:view", "monitor:view", "maps:view", "floorplans:view", "floorplans:write",
-            "alerts:view", "occurrences:view", "sos:use", "chat:use", "ptt:use",
+            "alerts:view", "events:view", "occurrences:view", "sos:use", "chat:use", "ptt:use",
             "ptz:control", "playback:view", "evidence:verify",
         ],
         "school_required": True,
@@ -2218,7 +2409,7 @@ ROLE_PROFILES = {
         "label": "Operador da Escola",
         "permissions": [
             "dashboard:view", "schools:view", "cameras:view", "monitor:view", "maps:view", "floorplans:view",
-            "alerts:view", "occurrences:view", "sos:use", "chat:use", "ptt:use",
+            "alerts:view", "events:view", "occurrences:view", "sos:use", "chat:use", "ptt:use",
             "ptz:control", "playback:view", "evidence:verify",
         ],
         "school_required": True,
@@ -2228,7 +2419,7 @@ ROLE_PROFILES = {
         "label": "Técnico",
         "permissions": [
             "dashboard:view", "schools:view", "cameras:view", "cameras:write",
-            "monitor:view", "maps:view", "floorplans:view", "floorplans:write", "equipment:view", "equipment:write",
+            "monitor:view", "maps:view", "floorplans:view", "floorplans:write", "events:view", "events:operate", "equipment:view", "equipment:write",
             "infrastructure:view", "homologation:view",
             "ptz:control", "playback:view", "evidence:verify", "wall:view",
         ],
@@ -2517,6 +2708,979 @@ def set_alert_status(
     return alert
 
 
+CAMERA_EVENT_LABELS = {
+    "CAMERA_ONLINE": "Câmera online",
+    "CAMERA_OFFLINE": "Câmera offline",
+    "VIDEO_LOSS": "Perda de vídeo",
+    "VIDEO_RESTORED": "Vídeo restabelecido",
+    "RTSP_FAILURE": "Falha no RTSP",
+    "RTSP_RESTORED": "RTSP restabelecido",
+    "MOTION": "Movimento detectado",
+    "TAMPER": "Sabotagem / obstrução",
+    "LINE_CROSSING": "Cruzamento de linha",
+    "INTRUSION": "Intrusão em área",
+    "REGION_ENTRANCE": "Entrada em região",
+    "REGION_EXIT": "Saída de região",
+    "OBJECT_LEFT": "Objeto abandonado",
+    "OBJECT_REMOVED": "Objeto removido",
+    "PEOPLE_COUNTING": "Contagem de pessoas",
+    "OCCUPANCY": "Ocupação",
+    "QUEUE": "Fila / permanência",
+    "AUDIO_ALARM": "Evento de áudio",
+    "DIGITAL_INPUT": "Entrada digital / alarme físico",
+    "RECORDING_FAILURE": "Falha de gravação",
+    "RECORDING_RESTORED": "Gravação restabelecida",
+    "STORAGE_FAILURE": "Falha de armazenamento",
+    "STORAGE_WARNING": "Alerta de armazenamento",
+    "NTP_DRIFT": "Desvio de horário / NTP",
+    "PTZ_FAULT": "Falha de PTZ",
+    "RECORDER_OFFLINE": "Gravador offline",
+    "RECORDER_ONLINE": "Gravador online",
+    "DEVICE_REBOOT": "Dispositivo reiniciado",
+    "UNKNOWN_DEVICE_EVENT": "Evento de dispositivo não catalogado",
+}
+
+CAMERA_EVENT_DEFAULT_SEVERITY = {
+    "CAMERA_ONLINE": "INFO",
+    "CAMERA_OFFLINE": "ALTA",
+    "VIDEO_LOSS": "ALTA",
+    "VIDEO_RESTORED": "INFO",
+    "RTSP_FAILURE": "ALTA",
+    "RTSP_RESTORED": "INFO",
+    "MOTION": "MEDIA",
+    "TAMPER": "ALTA",
+    "LINE_CROSSING": "ALTA",
+    "INTRUSION": "ALTA",
+    "REGION_ENTRANCE": "MEDIA",
+    "REGION_EXIT": "MEDIA",
+    "OBJECT_LEFT": "ALTA",
+    "OBJECT_REMOVED": "ALTA",
+    "PEOPLE_COUNTING": "INFO",
+    "OCCUPANCY": "INFO",
+    "QUEUE": "MEDIA",
+    "AUDIO_ALARM": "MEDIA",
+    "DIGITAL_INPUT": "ALTA",
+    "RECORDING_FAILURE": "ALTA",
+    "RECORDING_RESTORED": "INFO",
+    "STORAGE_FAILURE": "CRITICA",
+    "STORAGE_WARNING": "ALTA",
+    "NTP_DRIFT": "MEDIA",
+    "PTZ_FAULT": "MEDIA",
+    "RECORDER_OFFLINE": "ALTA",
+    "RECORDER_ONLINE": "INFO",
+    "DEVICE_REBOOT": "MEDIA",
+    "UNKNOWN_DEVICE_EVENT": "BAIXA",
+}
+
+CAMERA_EVENT_ALERT_TYPES = {
+    "CAMERA_OFFLINE",
+    "VIDEO_LOSS",
+    "RTSP_FAILURE",
+    "MOTION",
+    "TAMPER",
+    "LINE_CROSSING",
+    "INTRUSION",
+    "REGION_ENTRANCE",
+    "REGION_EXIT",
+    "OBJECT_LEFT",
+    "OBJECT_REMOVED",
+    "QUEUE",
+    "AUDIO_ALARM",
+    "DIGITAL_INPUT",
+    "RECORDING_FAILURE",
+    "STORAGE_FAILURE",
+    "STORAGE_WARNING",
+    "NTP_DRIFT",
+    "PTZ_FAULT",
+    "RECORDER_OFFLINE",
+    "DEVICE_REBOOT",
+}
+
+CAMERA_EVENT_AUTO_RECOVERY_TYPES = {
+    "CAMERA_OFFLINE",
+    "VIDEO_LOSS",
+    "RTSP_FAILURE",
+    "RECORDING_FAILURE",
+    "STORAGE_FAILURE",
+    "RECORDER_OFFLINE",
+}
+
+CAMERA_EVENT_RECOVERY_TO_FAULT = {
+    "CAMERA_ONLINE": "CAMERA_OFFLINE",
+    "VIDEO_RESTORED": "VIDEO_LOSS",
+    "RTSP_RESTORED": "RTSP_FAILURE",
+    "RECORDING_RESTORED": "RECORDING_FAILURE",
+    "RECORDER_ONLINE": "RECORDER_OFFLINE",
+}
+
+CAMERA_EVENT_PROVIDER_ALIASES = {
+    "cameraoffline": "CAMERA_OFFLINE",
+    "offline": "CAMERA_OFFLINE",
+    "cameraonline": "CAMERA_ONLINE",
+    "online": "CAMERA_ONLINE",
+    "videoloss": "VIDEO_LOSS",
+    "video_loss": "VIDEO_LOSS",
+    "videoexception": "VIDEO_LOSS",
+    "videorestored": "VIDEO_RESTORED",
+    "videorecovery": "VIDEO_RESTORED",
+    "rtspfailure": "RTSP_FAILURE",
+    "rtsp_failure": "RTSP_FAILURE",
+    "rtsprestored": "RTSP_RESTORED",
+    "motion": "MOTION",
+    "motiondetection": "MOTION",
+    "vmd": "MOTION",
+    "tamper": "TAMPER",
+    "tamperdetection": "TAMPER",
+    "videotampering": "TAMPER",
+    "linedetection": "LINE_CROSSING",
+    "linecrossing": "LINE_CROSSING",
+    "line_crossing": "LINE_CROSSING",
+    "fielddetection": "INTRUSION",
+    "intrusion": "INTRUSION",
+    "regionentrance": "REGION_ENTRANCE",
+    "regionenter": "REGION_ENTRANCE",
+    "regionexiting": "REGION_EXIT",
+    "regionexit": "REGION_EXIT",
+    "unattendedbaggage": "OBJECT_LEFT",
+    "objectleft": "OBJECT_LEFT",
+    "attendedbaggage": "OBJECT_REMOVED",
+    "objectremoved": "OBJECT_REMOVED",
+    "peoplecounting": "PEOPLE_COUNTING",
+    "people_counting": "PEOPLE_COUNTING",
+    "occupancy": "OCCUPANCY",
+    "queuedetection": "QUEUE",
+    "queue": "QUEUE",
+    "audioexception": "AUDIO_ALARM",
+    "audioalarm": "AUDIO_ALARM",
+    "digitalinput": "DIGITAL_INPUT",
+    "ioalarm": "DIGITAL_INPUT",
+    "recordingfailure": "RECORDING_FAILURE",
+    "recordingexception": "RECORDING_FAILURE",
+    "recordingrestored": "RECORDING_RESTORED",
+    "diskerror": "STORAGE_FAILURE",
+    "hdderror": "STORAGE_FAILURE",
+    "storagefailure": "STORAGE_FAILURE",
+    "diskfull": "STORAGE_WARNING",
+    "storagewarning": "STORAGE_WARNING",
+    "ntpdrift": "NTP_DRIFT",
+    "timeerror": "NTP_DRIFT",
+    "ptzfault": "PTZ_FAULT",
+    "recorderoffline": "RECORDER_OFFLINE",
+    "recorderonline": "RECORDER_ONLINE",
+    "devicereboot": "DEVICE_REBOOT",
+    "reboot": "DEVICE_REBOOT",
+}
+
+ACTIVE_EVENT_STATES = {"ACTIVE", "TRUE", "ON", "START", "STARTED", "TRIGGERED", "1"}
+INACTIVE_EVENT_STATES = {"INACTIVE", "FALSE", "OFF", "STOP", "STOPPED", "CLEARED", "RECOVERED", "0"}
+
+
+def _event_json(value: object) -> str | None:
+    if value is None:
+        return None
+    try:
+        return json.dumps(value, ensure_ascii=False, default=str, separators=(",", ":"))
+    except Exception:
+        return json.dumps({"value": str(value)}, ensure_ascii=False)
+
+
+def _event_metadata(row: CameraEvent) -> dict:
+    try:
+        value = json.loads(row.metadata_json or "{}")
+        return value if isinstance(value, dict) else {}
+    except Exception:
+        return {}
+
+
+def camera_event_out(row: CameraEvent) -> CameraEventOut:
+    return CameraEventOut(
+        id=row.id,
+        school_id=row.school_id,
+        camera_id=row.camera_id,
+        recorder_id=row.recorder_id,
+        provider=row.provider,
+        provider_event_type=row.provider_event_type,
+        event_type=row.event_type,
+        event_state=row.event_state,
+        severity=row.severity,
+        source_channel=row.source_channel,
+        first_seen_at=row.first_seen_at,
+        last_seen_at=row.last_seen_at,
+        occurred_at=row.occurred_at,
+        repeat_count=row.repeat_count,
+        active=row.active,
+        alert_id=row.alert_id,
+        metadata=_event_metadata(row),
+    )
+
+
+def normalize_camera_event_type(provider_event_type: str, provider: str = "GENERIC") -> str:
+    raw = (provider_event_type or "").strip()
+    if not raw:
+        return "UNKNOWN_DEVICE_EVENT"
+    canonical = raw.upper().replace("-", "_").replace(" ", "_")
+    if canonical in CAMERA_EVENT_LABELS:
+        return canonical
+
+    compact = re.sub(r"[^a-z0-9]+", "", raw.lower())
+    if compact in CAMERA_EVENT_PROVIDER_ALIASES:
+        return CAMERA_EVENT_PROVIDER_ALIASES[compact]
+
+    lower = raw.lower()
+    topic_patterns = (
+        ("cellmotion", "MOTION"),
+        ("motion", "MOTION"),
+        ("tamper", "TAMPER"),
+        ("videoloss", "VIDEO_LOSS"),
+        ("linecross", "LINE_CROSSING"),
+        ("linedetection", "LINE_CROSSING"),
+        ("intrusion", "INTRUSION"),
+        ("fielddetection", "INTRUSION"),
+        ("digitalinput", "DIGITAL_INPUT"),
+        ("recording", "RECORDING_FAILURE"),
+        ("storage", "STORAGE_FAILURE"),
+        ("disk", "STORAGE_FAILURE"),
+    )
+    for needle, event_type in topic_patterns:
+        if needle in lower:
+            return event_type
+    return "UNKNOWN_DEVICE_EVENT"
+
+
+def normalize_camera_event_state(value: str | None) -> tuple[str, bool]:
+    normalized = (value or "ACTIVE").strip().upper()
+    if normalized in ACTIVE_EVENT_STATES:
+        return "ACTIVE", True
+    if normalized in INACTIVE_EVENT_STATES:
+        return "INACTIVE", False
+    if normalized in {"INFO", "UPDATE", "UPDATED"}:
+        return "INFO", False
+    return "ACTIVE", True
+
+
+def _event_correlation_key(
+    *,
+    school_id: int,
+    camera_id: int | None,
+    recorder_id: int | None,
+    event_type: str,
+    source_channel: int | None,
+    provider_event_type: str | None = None,
+) -> str:
+    provider_suffix = ""
+    if event_type == "UNKNOWN_DEVICE_EVENT" and provider_event_type:
+        provider_suffix = "|provider_event:" + re.sub(r"[^a-z0-9_.:-]+", "_", provider_event_type.lower())[:80]
+    return (
+        f"school:{school_id}|camera:{camera_id or 0}|recorder:{recorder_id or 0}"
+        f"|channel:{source_channel or 0}|event:{event_type}{provider_suffix}"
+    )[:240]
+
+
+def _event_advisory_lock(db: Session, correlation_key: str) -> None:
+    if DATABASE_URL.startswith("postgresql"):
+        db.execute(
+            text("SELECT pg_advisory_xact_lock(hashtext(:event_key))"),
+            {"event_key": correlation_key},
+        )
+
+
+def _resolve_event_camera(
+    db: Session,
+    *,
+    school_id: int | None,
+    camera_id: int | None,
+    recorder_id: int | None,
+    source_channel: int | None,
+) -> tuple[School, Camera | None, Recorder | None]:
+    camera = db.get(Camera, camera_id) if camera_id else None
+    recorder = db.get(Recorder, recorder_id) if recorder_id else None
+
+    if camera and recorder and camera.recorder_id and camera.recorder_id != recorder.id:
+        raise HTTPException(422, "Câmera e gravador informados não correspondem")
+
+    if not camera and recorder and source_channel:
+        camera = (
+            db.query(Camera)
+            .filter(
+                Camera.recorder_id == recorder.id,
+                Camera.nvr_channel == int(source_channel),
+            )
+            .order_by(Camera.id.asc())
+            .first()
+        )
+
+    resolved_school_id = school_id
+    if camera:
+        resolved_school_id = camera.school_id
+        if recorder is None and camera.recorder_id:
+            recorder = db.get(Recorder, camera.recorder_id)
+    elif recorder:
+        resolved_school_id = recorder.school_id
+
+    if not resolved_school_id:
+        raise HTTPException(422, "Evento sem escola/câmera/gravador identificável")
+
+    school = db.get(School, int(resolved_school_id))
+    if not school:
+        raise HTTPException(404, "Escola do evento não encontrada")
+
+    if camera and camera.school_id != school.id:
+        raise HTTPException(422, "Câmera não pertence à escola informada")
+    if recorder and recorder.school_id != school.id:
+        raise HTTPException(422, "Gravador não pertence à escola informada")
+
+    return school, camera, recorder
+
+
+def _camera_health_row(db: Session, camera: Camera) -> CameraHealth:
+    row = db.query(CameraHealth).filter(CameraHealth.camera_id == camera.id).first()
+    if not row:
+        row = CameraHealth(
+            camera_id=camera.id,
+            school_id=camera.school_id,
+            state="UNKNOWN",
+            main_online=(camera.main_status == "ONLINE") if camera.main_status else None,
+            sub_online=(camera.sub_status == "ONLINE") if camera.sub_status else None,
+            rtsp_online=(camera.status == "ONLINE") if camera.status else None,
+            fps=camera.fps,
+            resolution=camera.resolution,
+            codec=camera.codec,
+            last_seen_at=camera.last_check_at,
+            last_video_at=camera.last_frame_at,
+            last_error=camera.last_error,
+        )
+        db.add(row)
+        db.flush()
+    return row
+
+
+def _recorder_health_row(db: Session, recorder: Recorder) -> RecorderHealth:
+    row = db.query(RecorderHealth).filter(RecorderHealth.recorder_id == recorder.id).first()
+    if not row:
+        row = RecorderHealth(
+            recorder_id=recorder.id,
+            school_id=recorder.school_id,
+            state=recorder.status if recorder.status in {"ONLINE", "OFFLINE", "DEGRADADO"} else "UNKNOWN",
+            last_seen_at=recorder.last_check_at,
+            last_error=recorder.last_error,
+        )
+        db.add(row)
+        db.flush()
+    return row
+
+
+def _recompute_camera_health_state(row: CameraHealth) -> None:
+    if row.rtsp_online is False:
+        row.state = "OFFLINE"
+    elif row.storage_status == "FAILURE" or row.recording_status == "FAILURE":
+        row.state = "DEGRADADO"
+    elif row.tamper_active:
+        row.state = "DEGRADADO"
+    elif row.main_online is False and row.sub_online is False:
+        row.state = "OFFLINE"
+    elif row.main_online is False or row.sub_online is False:
+        row.state = "DEGRADADO"
+    elif row.rtsp_online is True:
+        row.state = "ONLINE"
+    else:
+        row.state = "UNKNOWN"
+
+
+def _apply_event_to_health(
+    db: Session,
+    *,
+    camera: Camera | None,
+    recorder: Recorder | None,
+    event_type: str,
+    active: bool,
+    occurred_at: datetime,
+    metadata: dict,
+) -> None:
+    if camera:
+        health = _camera_health_row(db, camera)
+        health.last_event_at = occurred_at
+        health.last_seen_at = occurred_at
+        if event_type in {"CAMERA_ONLINE", "RTSP_RESTORED", "VIDEO_RESTORED"}:
+            health.rtsp_online = True
+            if event_type == "VIDEO_RESTORED":
+                health.last_video_at = occurred_at
+        elif event_type in {"CAMERA_OFFLINE", "RTSP_FAILURE"}:
+            health.rtsp_online = False if active else True
+        elif event_type == "VIDEO_LOSS":
+            health.rtsp_online = False if active else True
+        elif event_type == "TAMPER":
+            health.tamper_active = bool(active)
+        elif event_type == "MOTION":
+            health.motion_active = bool(active)
+        elif event_type == "RECORDING_FAILURE":
+            health.recording_status = "FAILURE" if active else "OK"
+        elif event_type == "RECORDING_RESTORED":
+            health.recording_status = "OK"
+        elif event_type == "STORAGE_FAILURE":
+            health.storage_status = "FAILURE" if active else "OK"
+        elif event_type == "STORAGE_WARNING":
+            health.storage_status = "WARNING" if active else "OK"
+
+        if "recording_status" in metadata:
+            health.recording_status = str(metadata["recording_status"]).upper()[:30]
+        if "storage_status" in metadata:
+            health.storage_status = str(metadata["storage_status"]).upper()[:30]
+        if metadata.get("ntp_offset_ms") is not None:
+            try:
+                health.ntp_offset_ms = int(metadata["ntp_offset_ms"])
+            except (TypeError, ValueError):
+                pass
+        if metadata.get("fps") is not None:
+            try:
+                health.fps = max(0, min(int(round(float(metadata["fps"]))), 240))
+            except (TypeError, ValueError):
+                pass
+        if metadata.get("bitrate_kbps") is not None:
+            try:
+                health.bitrate_kbps = max(0, int(float(metadata["bitrate_kbps"])))
+            except (TypeError, ValueError):
+                pass
+        if metadata.get("resolution"):
+            health.resolution = str(metadata["resolution"])[:40]
+        if metadata.get("codec"):
+            health.codec = str(metadata["codec"])[:30]
+        if metadata.get("error"):
+            health.last_error = str(metadata["error"])[:1000]
+        elif event_type in {"CAMERA_ONLINE", "RTSP_RESTORED", "VIDEO_RESTORED"}:
+            health.last_error = None
+
+        _recompute_camera_health_state(health)
+
+    if recorder:
+        health = _recorder_health_row(db, recorder)
+        health.last_event_at = occurred_at
+        health.last_seen_at = occurred_at
+        if event_type == "RECORDER_OFFLINE":
+            health.state = "OFFLINE" if active else "ONLINE"
+        elif event_type == "RECORDER_ONLINE":
+            health.state = "ONLINE"
+            health.last_error = None
+        elif event_type == "RECORDING_FAILURE":
+            health.recording_status = "FAILURE" if active else "OK"
+        elif event_type == "RECORDING_RESTORED":
+            health.recording_status = "OK"
+        elif event_type == "STORAGE_FAILURE":
+            health.storage_status = "FAILURE" if active else "OK"
+        elif event_type == "STORAGE_WARNING":
+            health.storage_status = "WARNING" if active else "OK"
+        if metadata.get("error"):
+            health.last_error = str(metadata["error"])[:1000]
+
+
+def _auto_close_device_alert(db: Session, alert: Alert, note: str) -> None:
+    if alert.status in ALERT_TERMINAL_STATUSES:
+        return
+    previous = alert.status
+    alert.status = "ENCERRADO"
+    alert.resolved_at = datetime.now(timezone.utc)
+    alert.updated_at = alert.resolved_at
+    add_alert_activity(
+        db,
+        alert,
+        "RECUPERACAO_AUTOMATICA",
+        from_status=previous,
+        to_status="ENCERRADO",
+        note=note,
+        user_name="Sistema",
+    )
+
+
+def ingest_camera_event(
+    db: Session,
+    payload: CameraEventIn,
+) -> CameraEventIngestOut:
+    school, camera, recorder = _resolve_event_camera(
+        db,
+        school_id=payload.school_id,
+        camera_id=payload.camera_id,
+        recorder_id=payload.recorder_id,
+        source_channel=payload.source_channel,
+    )
+    event_type = normalize_camera_event_type(payload.provider_event_type, payload.provider)
+    event_state, active = normalize_camera_event_state(payload.event_state)
+    if event_type in CAMERA_EVENT_RECOVERY_TO_FAULT and active:
+        event_type = CAMERA_EVENT_RECOVERY_TO_FAULT[event_type]
+        event_state = "INACTIVE"
+        active = False
+    occurred_at = _as_utc(payload.occurred_at or datetime.now(timezone.utc))
+    metadata = dict(payload.metadata or {})
+    resolved_channel = payload.source_channel
+    if resolved_channel is None and camera:
+        resolved_channel = int(camera.nvr_channel or camera.logical_channel or 1)
+    correlation_key = _event_correlation_key(
+        school_id=school.id,
+        camera_id=camera.id if camera else None,
+        recorder_id=recorder.id if recorder else None,
+        event_type=event_type,
+        source_channel=resolved_channel,
+        provider_event_type=payload.provider_event_type,
+    )
+
+    _event_advisory_lock(db, correlation_key)
+
+    if payload.event_uid:
+        existing_uid = (
+            db.query(CameraEvent)
+            .filter(CameraEvent.event_uid == payload.event_uid)
+            .first()
+        )
+        if existing_uid:
+            existing_uid.repeat_count = int(existing_uid.repeat_count or 1) + 1
+            existing_uid.last_seen_at = occurred_at
+            existing_uid.updated_at = datetime.now(timezone.utc)
+            db.flush()
+            return CameraEventIngestOut(
+                accepted=True,
+                deduplicated=True,
+                event_id=existing_uid.id,
+                alert_id=existing_uid.alert_id,
+                event_type=existing_uid.event_type,
+                state=existing_uid.event_state,
+                repeat_count=existing_uid.repeat_count,
+            )
+
+    active_row = (
+        db.query(CameraEvent)
+        .filter(
+            CameraEvent.correlation_key == correlation_key,
+            CameraEvent.active.is_(True),
+        )
+        .order_by(CameraEvent.id.desc())
+        .first()
+    )
+
+    # Hikvision alertStream usa videoloss/inactive como heartbeat em algumas famílias.
+    if (
+        not active
+        and active_row is None
+        and payload.provider == "HIKVISION_ISAPI"
+        and re.sub(r"[^a-z0-9]+", "", payload.provider_event_type.lower()) == "videoloss"
+    ):
+        _apply_event_to_health(
+            db,
+            camera=camera,
+            recorder=recorder,
+            event_type="CAMERA_ONLINE",
+            active=False,
+            occurred_at=occurred_at,
+            metadata=metadata,
+        )
+        db.flush()
+        return CameraEventIngestOut(
+            accepted=True,
+            heartbeat=True,
+            event_type="CAMERA_ONLINE",
+            state="INFO",
+            repeat_count=0,
+        )
+
+    if active:
+        if active_row:
+            active_row.repeat_count = int(active_row.repeat_count or 1) + 1
+            active_row.last_seen_at = occurred_at
+            active_row.occurred_at = occurred_at
+            active_row.event_state = "ACTIVE"
+            active_row.provider_event_type = payload.provider_event_type
+            active_row.metadata_json = _event_json(metadata)
+            if payload.raw_payload:
+                active_row.raw_payload_json = _event_json({"raw": payload.raw_payload})
+            active_row.updated_at = datetime.now(timezone.utc)
+            _apply_event_to_health(
+                db,
+                camera=camera,
+                recorder=recorder,
+                event_type=event_type,
+                active=True,
+                occurred_at=occurred_at,
+                metadata=metadata,
+            )
+            db.flush()
+            return CameraEventIngestOut(
+                accepted=True,
+                deduplicated=True,
+                event_id=active_row.id,
+                alert_id=active_row.alert_id,
+                event_type=event_type,
+                state="ACTIVE",
+                repeat_count=active_row.repeat_count,
+            )
+
+        severity = payload.severity or CAMERA_EVENT_DEFAULT_SEVERITY.get(event_type, "BAIXA")
+        row = CameraEvent(
+            school_id=school.id,
+            camera_id=camera.id if camera else None,
+            recorder_id=recorder.id if recorder else None,
+            provider=payload.provider,
+            provider_event_type=payload.provider_event_type,
+            event_type=event_type,
+            event_state="ACTIVE",
+            severity=severity,
+            correlation_key=correlation_key,
+            event_uid=payload.event_uid,
+            source_channel=resolved_channel,
+            first_seen_at=occurred_at,
+            last_seen_at=occurred_at,
+            occurred_at=occurred_at,
+            repeat_count=1,
+            active=True,
+            metadata_json=_event_json(metadata),
+            raw_payload_json=_event_json({"raw": payload.raw_payload}) if payload.raw_payload else None,
+        )
+        db.add(row)
+        db.flush()
+
+        if event_type in CAMERA_EVENT_ALERT_TYPES:
+            camera_name = camera.name if camera else (recorder.name if recorder else "Dispositivo")
+            alert = Alert(
+                school_id=school.id,
+                camera_id=camera.id if camera else None,
+                school_name=school.name,
+                camera_name=camera_name,
+                event_type=CAMERA_EVENT_LABELS.get(event_type, event_type),
+                priority=alert_priority_from_severity(severity),
+                status="NOVO",
+                source="DISPOSITIVO",
+                summary=(
+                    f"{CAMERA_EVENT_LABELS.get(event_type, event_type)}"
+                    + (f" — {camera.location}" if camera and camera.location else "")
+                ),
+                payload_json=_event_json(
+                    {
+                        "device_event_id": row.id,
+                        "provider": payload.provider,
+                        "provider_event_type": payload.provider_event_type,
+                        "source_channel": resolved_channel,
+                        "metadata": metadata,
+                    }
+                ),
+                event_occurred_at=occurred_at,
+            )
+            db.add(alert)
+            db.flush()
+            row.alert_id = alert.id
+            add_alert_activity(
+                db,
+                alert,
+                "CRIADO_POR_DISPOSITIVO",
+                to_status="NOVO",
+                note=f"Evento normalizado {event_type}; provider={payload.provider}",
+                user_name="Sistema",
+            )
+            notify(
+                db,
+                title=CAMERA_EVENT_LABELS.get(event_type, "Evento de câmera"),
+                message=f"{school.name} — {camera_name}",
+                severity="CRITICAL" if severity == "CRITICA" else "WARNING" if severity in {"ALTA", "MEDIA"} else "INFO",
+                module="Eventos de Câmera",
+                school_id=school.id,
+                entity_type="alert",
+                entity_id=alert.id,
+            )
+
+        _apply_event_to_health(
+            db,
+            camera=camera,
+            recorder=recorder,
+            event_type=event_type,
+            active=True,
+            occurred_at=occurred_at,
+            metadata=metadata,
+        )
+        db.flush()
+        return CameraEventIngestOut(
+            accepted=True,
+            event_id=row.id,
+            alert_id=row.alert_id,
+            event_type=event_type,
+            state="ACTIVE",
+            repeat_count=1,
+        )
+
+    if active_row:
+        active_row.active = False
+        active_row.event_state = "INACTIVE"
+        active_row.last_seen_at = occurred_at
+        active_row.occurred_at = occurred_at
+        active_row.repeat_count = int(active_row.repeat_count or 1) + 1
+        active_row.metadata_json = _event_json(metadata)
+        if payload.raw_payload:
+            active_row.raw_payload_json = _event_json({"raw": payload.raw_payload})
+        active_row.updated_at = datetime.now(timezone.utc)
+
+        if active_row.alert_id and event_type in CAMERA_EVENT_AUTO_RECOVERY_TYPES:
+            alert = db.get(Alert, active_row.alert_id)
+            if alert:
+                _auto_close_device_alert(
+                    db,
+                    alert,
+                    f"Recuperação automática recebida do dispositivo ({payload.provider}).",
+                )
+                notify(
+                    db,
+                    title=f"{CAMERA_EVENT_LABELS.get(event_type, event_type)} normalizado",
+                    message=f"{school.name} — {camera.name if camera else recorder.name if recorder else 'Dispositivo'}",
+                    severity="INFO",
+                    module="Eventos de Câmera",
+                    school_id=school.id,
+                    entity_type="alert",
+                    entity_id=alert.id,
+                )
+
+        _apply_event_to_health(
+            db,
+            camera=camera,
+            recorder=recorder,
+            event_type=event_type,
+            active=False,
+            occurred_at=occurred_at,
+            metadata=metadata,
+        )
+        db.flush()
+        return CameraEventIngestOut(
+            accepted=True,
+            deduplicated=True,
+            event_id=active_row.id,
+            alert_id=active_row.alert_id,
+            event_type=event_type,
+            state="INACTIVE",
+            repeat_count=active_row.repeat_count,
+        )
+
+    _apply_event_to_health(
+        db,
+        camera=camera,
+        recorder=recorder,
+        event_type=event_type,
+        active=False,
+        occurred_at=occurred_at,
+        metadata=metadata,
+    )
+    db.flush()
+    return CameraEventIngestOut(
+        accepted=True,
+        event_type=event_type,
+        state="INACTIVE",
+        repeat_count=0,
+    )
+
+
+def _parse_hikvision_datetime(value: str | None) -> datetime | None:
+    raw = (value or "").strip()
+    if not raw:
+        return None
+    try:
+        return datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def parse_hikvision_event_xml(raw_body: bytes) -> list[dict]:
+    text_body = raw_body.decode("utf-8", errors="ignore").strip()
+    if not text_body:
+        return []
+
+    fragments = re.findall(
+        r"<(?:[A-Za-z0-9_]+:)?EventNotificationAlert\b.*?</(?:[A-Za-z0-9_]+:)?EventNotificationAlert>",
+        text_body,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if not fragments and "<EventNotificationAlert" in text_body:
+        fragments = [text_body]
+
+    events: list[dict] = []
+    for fragment in fragments[:100]:
+        try:
+            root = ET.fromstring(fragment)
+        except ET.ParseError:
+            continue
+
+        values: dict[str, str] = {}
+        for element in root.iter():
+            local = element.tag.split("}")[-1]
+            value = (element.text or "").strip()
+            if value and local not in values:
+                values[local] = value
+
+        event_type = values.get("eventType") or values.get("EventType")
+        if not event_type:
+            continue
+
+        channel_value = (
+            values.get("channelID")
+            or values.get("dynChannelID")
+            or values.get("inputPort")
+            or values.get("videoInputChannelID")
+        )
+        channel = None
+        if channel_value:
+            try:
+                channel = normalize_hikvision_channel_number(channel_value, 1)
+            except Exception:
+                channel = None
+
+        events.append(
+            {
+                "provider_event_type": event_type,
+                "event_state": values.get("eventState") or "ACTIVE",
+                "source_channel": channel,
+                "occurred_at": _parse_hikvision_datetime(values.get("dateTime")),
+                "event_uid": values.get("UUID") or values.get("eventID"),
+                "metadata": {
+                    key: value
+                    for key, value in values.items()
+                    if key not in {
+                        "eventType",
+                        "EventType",
+                        "eventState",
+                        "channelID",
+                        "dynChannelID",
+                        "inputPort",
+                        "videoInputChannelID",
+                        "dateTime",
+                        "UUID",
+                        "eventID",
+                    }
+                },
+                "raw_payload": fragment[:20000],
+            }
+        )
+    return events
+
+
+
+
+def parse_hikvision_event_json(raw_body: bytes) -> list[dict]:
+    try:
+        payload = json.loads(raw_body.decode("utf-8", errors="ignore"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return []
+
+    candidates = payload if isinstance(payload, list) else [payload]
+    events: list[dict] = []
+    for candidate in candidates[:100]:
+        if not isinstance(candidate, dict):
+            continue
+        root = candidate.get("EventNotificationAlert") if isinstance(candidate.get("EventNotificationAlert"), dict) else candidate
+        event_type = root.get("eventType") or root.get("EventType") or root.get("type")
+        if not event_type:
+            continue
+        channel_value = root.get("channelID") or root.get("dynChannelID") or root.get("inputPort") or root.get("videoInputChannelID")
+        channel = None
+        if channel_value is not None:
+            try:
+                channel = normalize_hikvision_channel_number(str(channel_value), 1)
+            except Exception:
+                channel = None
+        occurred = _parse_hikvision_datetime(root.get("dateTime") or root.get("time"))
+        metadata = {
+            str(key): value
+            for key, value in root.items()
+            if key not in {
+                "eventType", "EventType", "type", "eventState", "channelID", "dynChannelID",
+                "inputPort", "videoInputChannelID", "dateTime", "time", "UUID", "eventID"
+            }
+            and isinstance(value, (str, int, float, bool, type(None)))
+        }
+        events.append(
+            {
+                "provider_event_type": str(event_type),
+                "event_state": str(root.get("eventState") or root.get("state") or "ACTIVE"),
+                "source_channel": channel,
+                "occurred_at": occurred,
+                "event_uid": root.get("UUID") or root.get("eventID"),
+                "metadata": metadata,
+                "raw_payload": json.dumps(candidate, ensure_ascii=False, default=str)[:20000],
+            }
+        )
+    return events
+
+
+def parse_hikvision_event_payload(raw_body: bytes) -> list[dict]:
+    stripped = raw_body.lstrip()
+    if stripped.startswith(b"{") or stripped.startswith(b"["):
+        parsed_json = parse_hikvision_event_json(raw_body)
+        if parsed_json:
+            return parsed_json
+    return parse_hikvision_event_xml(raw_body)
+
+
+def _extract_first_jpeg(raw_body: bytes) -> bytes | None:
+    start = raw_body.find(b"\xff\xd8\xff")
+    if start < 0:
+        return None
+    end = raw_body.find(b"\xff\xd9", start + 3)
+    if end < 0:
+        return None
+    image = raw_body[start : end + 2]
+    if len(image) < 4 or len(image) > 6_000_000:
+        return None
+    return image
+
+
+def attach_hikvision_event_evidence(db: Session, alert_id: int | None, raw_body: bytes) -> str | None:
+    if not alert_id:
+        return None
+    alert = db.get(Alert, alert_id)
+    if not alert:
+        return None
+    image = _extract_first_jpeg(raw_body)
+    if not image:
+        return None
+    EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
+    filename = f"alert-{alert.id}-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')}.jpg"
+    path = EVIDENCE_DIR / filename
+    path.write_bytes(image)
+    alert.evidence_path = f"evidence/{filename}"
+    alert.updated_at = datetime.now(timezone.utc)
+    add_alert_activity(
+        db,
+        alert,
+        "EVIDENCIA_RECEBIDA",
+        from_status=alert.status,
+        to_status=alert.status,
+        note="Snapshot JPEG recebido junto ao evento do dispositivo.",
+        user_name="Hikvision ISAPI",
+    )
+    return alert.evidence_path
+
+
+def require_event_ingest_key(
+    x_eduvigia_event_key: str | None = Header(default=None, alias="X-EduVigIA-Event-Key"),
+) -> None:
+    expected = os.getenv("EDUVIGIA_EVENT_INGEST_KEY", "").strip()
+    if not expected:
+        raise HTTPException(503, "EDUVIGIA_EVENT_INGEST_KEY não configurada")
+    provided = (x_eduvigia_event_key or "").strip()
+    if not provided or not hmac.compare_digest(provided, expected):
+        raise HTTPException(401, "Chave de ingestão de eventos inválida")
+
+
+def scope_camera_event_query(query, user: UserAccount):
+    restricted_school_id = scoped_school_id(user)
+    if restricted_school_id is not None:
+        query = query.filter(CameraEvent.school_id == restricted_school_id)
+    return query
+
+
+def scope_camera_health_query(query, user: UserAccount):
+    restricted_school_id = scoped_school_id(user)
+    if restricted_school_id is not None:
+        query = query.filter(CameraHealth.school_id == restricted_school_id)
+    return query
+
+
+def scope_recorder_health_query(query, user: UserAccount):
+    restricted_school_id = scoped_school_id(user)
+    if restricted_school_id is not None:
+        query = query.filter(RecorderHealth.school_id == restricted_school_id)
+    return query
+
+
 def require_roles(*roles: str):
     def dependency(user: UserAccount = Depends(require_user)) -> UserAccount:
         if not role_matches(user, roles):
@@ -2582,7 +3746,12 @@ async def authentication_middleware(request: Request, call_next):
             return await call_next(request)
 
         path = request.url.path
-        if path in PUBLIC_PATHS or path.startswith("/docs") or path.startswith("/redoc"):
+        if (
+            path in PUBLIC_PATHS
+            or path.startswith("/docs")
+            or path.startswith("/redoc")
+            or path.startswith("/integrations/camera-events/")
+        ):
             return await call_next(request)
 
         authorization = request.headers.get("Authorization", "")
@@ -2763,8 +3932,28 @@ async def observability_middleware(request: Request, call_next):
         )
 
 
+def enforce_runtime_schema_revision() -> None:
+    """Block an existing PostgreSQL runtime from starting against the wrong Alembic revision."""
+    if not DATABASE_URL.startswith("postgresql"):
+        return
+    with engine.connect() as connection:
+        has_revision = connection.execute(
+            text("SELECT to_regclass('public.alembic_version') IS NOT NULL")
+        ).scalar()
+        if not has_revision:
+            return
+        current = connection.execute(text("SELECT version_num FROM alembic_version")).scalar()
+        if current and str(current) != EXPECTED_ALEMBIC_REVISION:
+            raise RuntimeError(
+                f"Schema incompatível: runtime={APP_VERSION}; "
+                f"alembic={current}; esperado={EXPECTED_ALEMBIC_REVISION}. "
+                "Aplique a migration antes de iniciar a API."
+            )
+
+
 @app.on_event("startup")
 def startup() -> None:
+    enforce_runtime_schema_revision()
     Base.metadata.create_all(engine)
     ensure_schema()
     Base.metadata.create_all(engine)
@@ -4110,6 +5299,7 @@ def test_recorder(
     actor: UserAccount = Depends(require_roles("ADMIN_SECRETARIA", "GESTOR_SECRETARIA", "TECNICO")),
 ):
     row = ensure_recorder_access(actor, db.get(Recorder, recorder_id))
+    previous_status = row.status
     result = test_recorder_connectivity(row)
     device = result.get("device") or {}
 
@@ -4125,6 +5315,30 @@ def test_recorder(
         (item.get("error") for item in result["tests"].values() if item.get("error")),
         "Gravador com conectividade parcial",
     )
+    if previous_status != row.status:
+        ingest_camera_event(
+            db,
+            CameraEventIn(
+                provider="EDUVIGIA_HEALTH",
+                provider_event_type="RECORDER_OFFLINE",
+                event_state="ACTIVE" if row.status == "OFFLINE" else "INACTIVE",
+                recorder_id=row.id,
+                occurred_at=row.last_check_at,
+                metadata={
+                    "source": "recorder_test",
+                    "previous_status": previous_status,
+                    "new_status": row.status,
+                    "error": row.last_error,
+                    "rtsp_ok": bool(result["tests"].get("RTSP", {}).get("ok")),
+                    "isapi_ok": bool(result["tests"].get("ISAPI", {}).get("ok")),
+                },
+            ),
+        )
+    else:
+        health = _recorder_health_row(db, row)
+        health.state = row.status
+        health.last_seen_at = row.last_check_at
+        health.last_error = row.last_error
     audit(
         db,
         "Gravadores",
@@ -4873,8 +6087,21 @@ def update_camera_status(
     actor: UserAccount = Depends(require_roles("ADMIN_SECRETARIA", "GESTOR_SECRETARIA", "TECNICO")),
 ):
     row = ensure_camera_access(actor, db.get(Camera, camera_id))
+    previous_status = row.status
     row.status = payload.status
     row.last_check_at = datetime.now(timezone.utc)
+    if previous_status != row.status and row.status in {"ONLINE", "OFFLINE"}:
+        ingest_camera_event(
+            db,
+            CameraEventIn(
+                provider="EDUVIGIA_HEALTH",
+                provider_event_type="CAMERA_OFFLINE",
+                event_state="ACTIVE" if row.status == "OFFLINE" else "INACTIVE",
+                camera_id=row.id,
+                occurred_at=row.last_check_at,
+                metadata={"source": "manual_status", "previous_status": previous_status, "new_status": row.status},
+            ),
+        )
     audit(db, "Câmeras", "Status alterado", f"{row.name}: {row.status}", user=actor)
     db.commit()
     return {"ok": True, "status": row.status}
@@ -4887,7 +6114,28 @@ def test_camera(
     actor: UserAccount = Depends(require_roles("ADMIN_SECRETARIA", "GESTOR_SECRETARIA", "TECNICO")),
 ):
     row = ensure_camera_access(actor, db.get(Camera, camera_id))
+    previous_status = row.status
     result = test_camera_profiles(db, row, profiles=("MAIN", "SUB"), provision=True)
+    if previous_status != row.status:
+        ingest_camera_event(
+            db,
+            CameraEventIn(
+                provider="EDUVIGIA_HEALTH",
+                provider_event_type="RTSP_FAILURE",
+                event_state="ACTIVE" if row.status == "OFFLINE" else "INACTIVE",
+                camera_id=row.id,
+                occurred_at=row.last_check_at,
+                metadata={
+                    "source": "camera_test",
+                    "main_online": row.main_status == "ONLINE",
+                    "sub_online": row.sub_status == "ONLINE",
+                    "fps": row.fps,
+                    "resolution": row.resolution,
+                    "codec": row.codec,
+                    "error": row.last_error,
+                },
+            ),
+        )
     audit(
         db,
         "Câmeras",
@@ -4917,6 +6165,7 @@ def test_cameras_batch(
 
     results = []
     for camera in cameras:
+        previous_status = camera.status
         try:
             results.append(
                 test_camera_profiles(
@@ -4928,6 +6177,26 @@ def test_cameras_batch(
             camera.last_check_at = datetime.now(timezone.utc)
             camera.last_error = str(error)
             results.append({"camera_id": camera.id, "status": "OFFLINE", "error": str(error)})
+        if previous_status != camera.status:
+            ingest_camera_event(
+                db,
+                CameraEventIn(
+                    provider="EDUVIGIA_HEALTH",
+                    provider_event_type="RTSP_FAILURE",
+                    event_state="ACTIVE" if camera.status == "OFFLINE" else "INACTIVE",
+                    camera_id=camera.id,
+                    occurred_at=camera.last_check_at,
+                    metadata={
+                        "source": "camera_batch_test",
+                        "main_online": camera.main_status == "ONLINE",
+                        "sub_online": camera.sub_status == "ONLINE",
+                        "fps": camera.fps,
+                        "resolution": camera.resolution,
+                        "codec": camera.codec,
+                        "error": camera.last_error,
+                    },
+                ),
+            )
     online = sum(1 for item in results if item.get("status") == "ONLINE")
     audit(
         db,
@@ -5440,6 +6709,7 @@ def monitoring_status_refresh(
     response = []
     for camera in cameras:
         ok, error = results.get(camera.id, (False, "Falha de verificação"))
+        previous_status = camera.status
         camera.status = "ONLINE" if ok else "OFFLINE"
         camera.last_check_at = checked_at
         if ok:
@@ -5447,6 +6717,25 @@ def monitoring_status_refresh(
                 camera.last_error = None
         else:
             camera.last_error = f"Conectividade RTSP: {error or 'indisponível'}"
+
+        if previous_status != camera.status:
+            ingest_camera_event(
+                db,
+                CameraEventIn(
+                    provider="EDUVIGIA_HEALTH",
+                    provider_event_type="CAMERA_OFFLINE",
+                    event_state="ACTIVE" if camera.status == "OFFLINE" else "INACTIVE",
+                    camera_id=camera.id,
+                    occurred_at=checked_at,
+                    metadata={
+                        "source": "monitoring_status_refresh",
+                        "previous_status": previous_status,
+                        "new_status": camera.status,
+                        "error": None if ok else camera.last_error,
+                    },
+                ),
+            )
+
         response.append({
             "camera_id": camera.id,
             "status": camera.status,
@@ -6095,6 +7384,298 @@ def delete_camera(
     return {"ok": True}
 
 
+
+
+@app.get("/camera-events/catalog")
+def camera_event_catalog(
+    user: UserAccount = Depends(require_permission("events:view")),
+):
+    return {
+        "version": "F7-R3",
+        "event_types": [
+            {
+                "event_type": event_type,
+                "label": CAMERA_EVENT_LABELS[event_type],
+                "default_severity": CAMERA_EVENT_DEFAULT_SEVERITY.get(event_type, "BAIXA"),
+                "creates_alert": event_type in CAMERA_EVENT_ALERT_TYPES,
+                "auto_recovery": event_type in CAMERA_EVENT_AUTO_RECOVERY_TYPES,
+            }
+            for event_type in CAMERA_EVENT_LABELS
+        ],
+        "providers": ["GENERIC", "HIKVISION_ISAPI", "ONVIF", "EDUVIGIA_HEALTH"],
+    }
+
+
+@app.get("/camera-events", response_model=list[CameraEventOut])
+def list_camera_events(
+    school_id: int | None = Query(default=None),
+    camera_id: int | None = Query(default=None),
+    recorder_id: int | None = Query(default=None),
+    event_type: str | None = Query(default=None),
+    severity: str | None = Query(default=None),
+    active: bool | None = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=500),
+    db: Session = Depends(db_session),
+    user: UserAccount = Depends(require_permission("events:view")),
+):
+    query = scope_camera_event_query(db.query(CameraEvent), user)
+    if school_id is not None:
+        ensure_school_access(user, school_id)
+        query = query.filter(CameraEvent.school_id == school_id)
+    if camera_id is not None:
+        ensure_camera_access(user, db.get(Camera, camera_id))
+        query = query.filter(CameraEvent.camera_id == camera_id)
+    if recorder_id is not None:
+        ensure_recorder_access(user, db.get(Recorder, recorder_id))
+        query = query.filter(CameraEvent.recorder_id == recorder_id)
+    if event_type:
+        query = query.filter(CameraEvent.event_type == normalize_camera_event_type(event_type))
+    if severity:
+        query = query.filter(CameraEvent.severity == severity.strip().upper())
+    if active is not None:
+        query = query.filter(CameraEvent.active.is_(active))
+    rows = query.order_by(CameraEvent.last_seen_at.desc(), CameraEvent.id.desc()).limit(limit).all()
+    return [camera_event_out(row) for row in rows]
+
+
+@app.get("/camera-events/overview")
+def camera_events_overview(
+    db: Session = Depends(db_session),
+    user: UserAccount = Depends(require_permission("events:view")),
+):
+    query = scope_camera_event_query(db.query(CameraEvent), user)
+    active_rows = query.filter(CameraEvent.active.is_(True)).all()
+    recent_rows = (
+        scope_camera_event_query(db.query(CameraEvent), user)
+        .order_by(CameraEvent.last_seen_at.desc())
+        .limit(10)
+        .all()
+    )
+    health_query = scope_camera_health_query(db.query(CameraHealth), user)
+    health_rows = health_query.all()
+    recorder_rows = scope_recorder_health_query(db.query(RecorderHealth), user).all()
+    return {
+        "active_events": len(active_rows),
+        "critical_events": len([row for row in active_rows if row.severity == "CRITICA"]),
+        "high_events": len([row for row in active_rows if row.severity == "ALTA"]),
+        "offline_cameras": len([row for row in health_rows if row.state == "OFFLINE"]),
+        "degraded_cameras": len([row for row in health_rows if row.state == "DEGRADADO"]),
+        "offline_recorders": len([row for row in recorder_rows if row.state == "OFFLINE"]),
+        "recent": [camera_event_out(row).model_dump() for row in recent_rows],
+    }
+
+
+def _camera_health_payload(camera: Camera, health: CameraHealth | None) -> dict:
+    if health:
+        return CameraHealthOut.model_validate(health).model_dump()
+    state = (
+        "ONLINE"
+        if camera.status == "ONLINE"
+        else "OFFLINE"
+        if camera.status == "OFFLINE"
+        else "UNKNOWN"
+    )
+    return {
+        "camera_id": camera.id,
+        "school_id": camera.school_id,
+        "state": state,
+        "rtsp_online": True if camera.status == "ONLINE" else False if camera.status == "OFFLINE" else None,
+        "main_online": True if camera.main_status == "ONLINE" else False if camera.main_status == "OFFLINE" else None,
+        "sub_online": True if camera.sub_status == "ONLINE" else False if camera.sub_status == "OFFLINE" else None,
+        "recording_status": "UNKNOWN",
+        "storage_status": "UNKNOWN",
+        "tamper_active": False,
+        "motion_active": False,
+        "ntp_offset_ms": None,
+        "fps": camera.fps,
+        "bitrate_kbps": camera.main_bitrate_kbps or camera.sub_bitrate_kbps,
+        "resolution": camera.resolution,
+        "codec": camera.codec,
+        "last_event_at": None,
+        "last_seen_at": camera.last_check_at,
+        "last_video_at": camera.last_frame_at,
+        "last_error": camera.last_error,
+        "updated_at": camera.last_check_at or datetime.now(timezone.utc),
+    }
+
+
+@app.get("/camera-health")
+def list_camera_health(
+    school_id: int | None = Query(default=None),
+    state: str | None = Query(default=None),
+    db: Session = Depends(db_session),
+    user: UserAccount = Depends(require_permission("events:view")),
+):
+    camera_query = school_scope_query(db.query(Camera), Camera, user)
+    if school_id is not None:
+        ensure_school_access(user, school_id)
+        camera_query = camera_query.filter(Camera.school_id == school_id)
+    cameras = camera_query.order_by(Camera.school_id.asc(), Camera.name.asc()).all()
+    health_by_camera = {
+        row.camera_id: row
+        for row in scope_camera_health_query(db.query(CameraHealth), user)
+        .filter(CameraHealth.camera_id.in_([camera.id for camera in cameras] or [-1]))
+        .all()
+    }
+    rows = [_camera_health_payload(camera, health_by_camera.get(camera.id)) for camera in cameras]
+    if state:
+        normalized = state.strip().upper()
+        rows = [row for row in rows if row["state"] == normalized]
+    return rows
+
+
+@app.get("/recorder-health")
+def list_recorder_health(
+    school_id: int | None = Query(default=None),
+    db: Session = Depends(db_session),
+    user: UserAccount = Depends(require_permission("events:view")),
+):
+    recorder_query = school_scope_query(db.query(Recorder), Recorder, user)
+    if school_id is not None:
+        ensure_school_access(user, school_id)
+        recorder_query = recorder_query.filter(Recorder.school_id == school_id)
+    recorders = recorder_query.order_by(Recorder.school_id.asc(), Recorder.name.asc()).all()
+    health_by_recorder = {
+        row.recorder_id: row
+        for row in scope_recorder_health_query(db.query(RecorderHealth), user)
+        .filter(RecorderHealth.recorder_id.in_([recorder.id for recorder in recorders] or [-1]))
+        .all()
+    }
+    result = []
+    for recorder in recorders:
+        health = health_by_recorder.get(recorder.id)
+        if health:
+            result.append(RecorderHealthOut.model_validate(health).model_dump())
+        else:
+            result.append(
+                {
+                    "recorder_id": recorder.id,
+                    "school_id": recorder.school_id,
+                    "state": recorder.status if recorder.status in {"ONLINE", "OFFLINE", "DEGRADADO"} else "UNKNOWN",
+                    "recording_status": "UNKNOWN",
+                    "storage_status": "UNKNOWN",
+                    "last_event_at": None,
+                    "last_seen_at": recorder.last_check_at,
+                    "last_error": recorder.last_error,
+                    "updated_at": recorder.last_check_at or recorder.created_at,
+                }
+            )
+    return result
+
+
+@app.post("/camera-events/simulate", response_model=CameraEventIngestOut)
+def simulate_camera_event(
+    payload: CameraEventIn,
+    db: Session = Depends(db_session),
+    actor: UserAccount = Depends(require_permission("events:operate")),
+):
+    if payload.camera_id:
+        ensure_camera_access(actor, db.get(Camera, payload.camera_id))
+    if payload.recorder_id:
+        ensure_recorder_access(actor, db.get(Recorder, payload.recorder_id))
+    if payload.school_id:
+        ensure_school_access(actor, payload.school_id)
+    simulated = payload.model_copy(update={"provider": "GENERIC"})
+    result = ingest_camera_event(db, simulated)
+    audit(
+        db,
+        "Eventos de Câmera",
+        "Simulação",
+        f"type={result.event_type};event_id={result.event_id};alert_id={result.alert_id}",
+        user=actor,
+    )
+    db.commit()
+    return result
+
+
+@app.post("/integrations/camera-events/ingest", response_model=CameraEventIngestOut)
+def external_camera_event_ingest(
+    payload: CameraEventIn,
+    _: None = Depends(require_event_ingest_key),
+    db: Session = Depends(db_session),
+):
+    result = ingest_camera_event(db, payload)
+    audit(
+        db,
+        "Eventos de Câmera",
+        "Ingestão externa",
+        f"provider={payload.provider};type={result.event_type};event_id={result.event_id}",
+        user_name="Camera Event Adapter",
+    )
+    db.commit()
+    return result
+
+
+@app.post("/integrations/camera-events/hikvision")
+async def hikvision_camera_event_ingest(
+    request: Request,
+    recorder_id: int | None = Query(default=None),
+    camera_id: int | None = Query(default=None),
+    school_id: int | None = Query(default=None),
+    _: None = Depends(require_event_ingest_key),
+    db: Session = Depends(db_session),
+):
+    raw_body = await request.body()
+    if len(raw_body) > 8_000_000:
+        raise HTTPException(413, "Payload de eventos excede 8 MB")
+    parsed = parse_hikvision_event_payload(raw_body)
+    if not parsed:
+        raise HTTPException(422, "Nenhum EventNotificationAlert Hikvision válido encontrado")
+
+    results = []
+    for item in parsed:
+        payload = CameraEventIn(
+            provider="HIKVISION_ISAPI",
+            provider_event_type=item["provider_event_type"],
+            event_state=item["event_state"],
+            school_id=school_id,
+            camera_id=camera_id,
+            recorder_id=recorder_id,
+            source_channel=item.get("source_channel"),
+            occurred_at=item.get("occurred_at"),
+            event_uid=item.get("event_uid"),
+            metadata=item.get("metadata") or {},
+            raw_payload=item.get("raw_payload"),
+        )
+        result = ingest_camera_event(db, payload)
+        evidence_path = attach_hikvision_event_evidence(db, result.alert_id, raw_body)
+        result_payload = result.model_dump()
+        if evidence_path:
+            result_payload["evidence_path"] = evidence_path
+        results.append(result_payload)
+
+    audit(
+        db,
+        "Eventos de Câmera",
+        "Ingestão Hikvision",
+        f"recorder_id={recorder_id};camera_id={camera_id};eventos={len(results)}",
+        user_name="Hikvision ISAPI",
+    )
+    db.commit()
+    return {"accepted": len(results), "events": results}
+
+
+@app.get("/recorders/{recorder_id}/event-integration")
+def recorder_event_integration(
+    recorder_id: int,
+    request: Request,
+    db: Session = Depends(db_session),
+    user: UserAccount = Depends(require_permission("events:operate")),
+):
+    recorder = ensure_recorder_access(user, db.get(Recorder, recorder_id))
+    base = str(request.base_url).rstrip("/")
+    return {
+        "recorder_id": recorder.id,
+        "provider": "HIKVISION_ISAPI" if (recorder.manufacturer or "").lower().startswith("hik") else "GENERIC",
+        "software_receiver": {
+            "method": "POST",
+            "url": f"{base}/integrations/camera-events/hikvision?recorder_id={recorder.id}",
+            "authentication": "X-EduVigIA-Event-Key",
+            "max_payload_bytes": 8_000_000,
+        },
+        "pull_reference": "/ISAPI/Event/notification/alertStream",
+        "status": "SOFTWARE_CORE_READY_HARDWARE_BINDING_PENDING",
+    }
 
 
 @app.post("/alerts", response_model=AlertOut)

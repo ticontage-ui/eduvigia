@@ -6,7 +6,7 @@ import os
 @dataclass(frozen=True)
 class Settings:
     app_name: str = os.getenv("APP_NAME", "EduVigIA")
-    app_version: str = os.getenv("APP_VERSION", "2.0.0-F7-R2")
+    app_version: str = os.getenv("APP_VERSION", "2.0.0-F7-R3")
     environment: str = os.getenv("APP_ENV", "development")
     database_url: str = os.getenv(
         "DATABASE_URL",

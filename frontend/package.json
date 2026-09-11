@@ -1,7 +1,7 @@
 {
   "name": "eduvigia-web",
   "private": true,
-  "version": "2.0.0-F7-R2",
+  "version": "2.0.0-F7-R3",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",

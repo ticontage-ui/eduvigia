@@ -1,6 +1,24 @@
 # EduVigIA 2.0 — Baseline F7
 
-Versão atual: **2.0.0-F7-R2**
+Versão atual: **2.0.0-F7-R3**
+
+## F7-R3 — Camera Events & Health
+
+A revisão `2.0.0-F7-R3` completa o núcleo de eventos e telemetria de câmeras/gravadores antes da F8 SOS Digital:
+
+- catálogo canônico e vendor-agnostic de eventos de vídeo, saúde e I/O;
+- ingestão normalizada para adapters `GENERIC`, `HIKVISION_ISAPI`, `ONVIF` e `EDUVIGIA_HEALTH`;
+- parser de `EventNotificationAlert` Hikvision para o endpoint de integração;
+- deduplicação de eventos ativos com `repeat_count`, correlação por escola/câmera/gravador/canal/tipo e lock transacional em PostgreSQL;
+- geração automática de Alertas e Notificações para eventos operacionais relevantes, sem campos de IA/confiança;
+- fechamento automático apenas de alertas técnicos recuperáveis (offline, vídeo/RTSP, gravação, storage, gravador);
+- saúde consolidada por câmera e gravador, incluindo RTSP, MAIN/SUB, gravação, armazenamento, tamper, motion, NTP, FPS, bitrate, resolução e codec quando disponíveis;
+- transições online/offline oriundas dos testes internos passam pelo mesmo motor de eventos;
+- nova tela `Eventos & Saúde` para operação e diagnóstico;
+- proteção de startup: uma API F7-R3 não inicia sobre banco com Alembic anterior, impedindo repetição do schema drift observado na tentativa F8;
+- migration F7-R3: `20260911_209_f7r3`.
+
+O núcleo é independente de fabricante. Hikvision entra como adapter ISAPI; ONVIF usa a mesma normalização. A ativação de streams/eventos reais em equipamentos permanece sujeita ao teste de campo do modelo/firmware instalado.
 
 ## F7-R2 — Estabilização operacional
 

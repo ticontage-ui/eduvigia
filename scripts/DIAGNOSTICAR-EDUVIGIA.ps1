@@ -2,7 +2,7 @@ $ErrorActionPreference = "Continue"
 $Project = Join-Path $env:USERPROFILE "Documents\eduvigia"
 $Output = Join-Path $env:USERPROFILE ("Downloads\DIAGNOSTICO-EDUVIGIA-" + (Get-Date -Format "yyyyMMdd-HHmmss") + ".txt")
 Set-Location $Project
-"EDUVIGIA 2.0.0-F7-R2 - DIAGNOSTICO" | Set-Content $Output
+"EDUVIGIA 2.0.0-F7-R3 - DIAGNOSTICO" | Set-Content $Output
 "Data: $(Get-Date)" | Add-Content $Output
 "" | Add-Content $Output
 "=== COMPOSE PS ===" | Add-Content $Output
