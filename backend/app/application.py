@@ -3051,6 +3051,8 @@ def _camera_health_row(db: Session, camera: Camera) -> CameraHealth:
         )
         db.add(row)
         db.flush()
+    elif row.school_id != camera.school_id:
+        row.school_id = camera.school_id
     return row
 
 
@@ -3066,7 +3068,47 @@ def _recorder_health_row(db: Session, recorder: Recorder) -> RecorderHealth:
         )
         db.add(row)
         db.flush()
+    elif row.school_id != recorder.school_id:
+        row.school_id = recorder.school_id
     return row
+
+
+def reconcile_health_inventory(db: Session) -> dict[str, int]:
+    """Ensure every registered camera/recorder has a persistent health row.
+
+    This is idempotent and only creates missing rows, preserving event-derived
+    health state for devices that already have telemetry.
+    """
+    camera_created = 0
+    recorder_created = 0
+
+    existing_camera_ids = {row[0] for row in db.query(CameraHealth.camera_id).all()}
+    for camera in db.query(Camera).order_by(Camera.id.asc()).all():
+        if camera.id not in existing_camera_ids:
+            _camera_health_row(db, camera)
+            camera_created += 1
+        else:
+            health = db.query(CameraHealth).filter(CameraHealth.camera_id == camera.id).first()
+            if health and health.school_id != camera.school_id:
+                health.school_id = camera.school_id
+
+    existing_recorder_ids = {row[0] for row in db.query(RecorderHealth.recorder_id).all()}
+    for recorder in db.query(Recorder).order_by(Recorder.id.asc()).all():
+        if recorder.id not in existing_recorder_ids:
+            _recorder_health_row(db, recorder)
+            recorder_created += 1
+        else:
+            health = db.query(RecorderHealth).filter(RecorderHealth.recorder_id == recorder.id).first()
+            if health and health.school_id != recorder.school_id:
+                health.school_id = recorder.school_id
+
+    db.flush()
+    return {
+        "camera_created": camera_created,
+        "recorder_created": recorder_created,
+        "camera_total": db.query(CameraHealth).count(),
+        "recorder_total": db.query(RecorderHealth).count(),
+    }
 
 
 def _recompute_camera_health_state(row: CameraHealth) -> None:
@@ -3959,6 +4001,16 @@ def startup() -> None:
     Base.metadata.create_all(engine)
 
     with SessionLocal() as db:
+        health_inventory = reconcile_health_inventory(db)
+        if health_inventory["camera_created"] or health_inventory["recorder_created"]:
+            db.commit()
+            LOGGER.info(
+                json.dumps(
+                    {"event": "health_inventory_reconciled", **health_inventory},
+                    ensure_ascii=False,
+                )
+            )
+
         if db.query(UserAccount).count() == 0:
             bootstrap_password = os.getenv(
                 "EDUVIGIA_BOOTSTRAP_ADMIN_PASSWORD",
@@ -5261,6 +5313,7 @@ def create_recorder(
     row = Recorder(**values)
     db.add(row)
     db.flush()
+    _recorder_health_row(db, row)
     audit(db, "Gravadores", "Cadastro", f"{row.name} — {row.ip_address}", user=actor)
     db.commit()
     db.refresh(row)
@@ -5286,6 +5339,7 @@ def update_recorder(
         values["password"] = row.password
     for key, value in values.items():
         setattr(row, key, value)
+    _recorder_health_row(db, row)
     audit(db, "Gravadores", "Edição", f"{row.id} — {row.name}", user=actor)
     db.commit()
     db.refresh(row)
@@ -5587,6 +5641,7 @@ def import_recorder_channels(
             status_label = "CREATED"
 
         ensure_secure_camera_streams(db, camera)
+        _camera_health_row(db, camera)
         try:
             ok, provision_detail = provision_camera_path(camera, db)
             camera.last_error = None if ok else provision_detail
@@ -5925,7 +5980,7 @@ def create_video_device_channels(
             codec=item.sub_codec, resolution=item.sub_resolution, fps=item.sub_fps, ptz_enabled=item.ptz_enabled,
             ptz_protocol="HIKVISION_ISAPI", ptz_channel=item.logical_channel,
         )
-        db.add(row); db.flush(); ensure_camera_code(db, row); ensure_secure_camera_streams(db, row)
+        db.add(row); db.flush(); ensure_camera_code(db, row); ensure_secure_camera_streams(db, row); _camera_health_row(db, row)
         try:
             ok, detail = provision_camera_path(row, db); row.last_error = None if ok else detail
         except Exception as error:
@@ -6000,6 +6055,7 @@ def create_camera(
     ensure_camera_code(db, row)
 
     ensure_secure_camera_streams(db, row, payload.stream_name)
+    _camera_health_row(db, row)
 
     provision_ok = False
     provision_detail = ""
@@ -6054,6 +6110,7 @@ def update_camera(
     for key, value in values.items():
         setattr(row, key, value)
 
+    _camera_health_row(db, row)
     _, obsolete_streams = ensure_secure_camera_streams(db, row, payload.stream_name)
     for previous_stream in dict.fromkeys(previous_streams + obsolete_streams):
         if previous_stream not in {row.stream_name_main, row.stream_name_sub}:

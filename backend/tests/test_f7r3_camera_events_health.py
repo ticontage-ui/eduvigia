@@ -13,6 +13,7 @@ from app.application import (
     CameraHealth,
     Notification,
     Recorder,
+    RecorderHealth,
     School,
     SessionLocal,
     UserAccount,
@@ -285,3 +286,31 @@ def test_monitoring_offline_transition_generates_single_deduplicated_event(clien
         assert len(rows) == 1
         # Second refresh does not create another transition/event because status is already OFFLINE.
         assert rows[0].repeat_count == 1
+
+
+def test_health_inventory_reconciles_devices_registered_after_f7r3_migration(client):
+    school_id, recorder_id, camera_id = _seed_camera()
+
+    with SessionLocal() as db:
+        assert db.query(CameraHealth).count() == 0
+        assert db.query(RecorderHealth).count() == 0
+
+        result = application.reconcile_health_inventory(db)
+        db.commit()
+
+        assert result["camera_created"] == 1
+        assert result["recorder_created"] == 1
+        assert result["camera_total"] == 1
+        assert result["recorder_total"] == 1
+
+        camera_health = db.query(CameraHealth).filter(CameraHealth.camera_id == camera_id).one()
+        recorder_health = db.query(RecorderHealth).filter(RecorderHealth.recorder_id == recorder_id).one()
+        assert camera_health.school_id == school_id
+        assert recorder_health.school_id == school_id
+
+        second = application.reconcile_health_inventory(db)
+        db.commit()
+        assert second["camera_created"] == 0
+        assert second["recorder_created"] == 0
+        assert db.query(CameraHealth).count() == 1
+        assert db.query(RecorderHealth).count() == 1
