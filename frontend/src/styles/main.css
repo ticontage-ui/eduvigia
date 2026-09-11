@@ -562,17 +562,28 @@ button { cursor: pointer; }
   min-height: 620px;
 }
 .monitorGrid.grid-4 {
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.monitorGrid.grid-6 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .monitorGrid.grid-9 {
   grid-template-columns: repeat(3, 1fr);
 }
 .monitorGrid.grid-9 .monitorTile,
-.monitorGrid.grid-16 .monitorTile {
+.monitorGrid.grid-16 .monitorTile,
+.monitorGrid.grid-25 .monitorTile,
+.monitorGrid.grid-36 .monitorTile {
   min-height: 210px;
 }
 .monitorGrid.grid-16 {
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.monitorGrid.grid-25 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.monitorGrid.grid-36 {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 @media (max-width: 1350px) {
   .wideForm {
@@ -1305,10 +1316,23 @@ button { cursor: pointer; }
 .monitorEmpty b {
   color: #173a5d;
 }
+@media (max-width: 1200px) {
+  .monitorGrid.grid-6,
+  .monitorGrid.grid-9,
+  .monitorGrid.grid-16,
+  .monitorGrid.grid-25,
+  .monitorGrid.grid-36 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 900px) {
   .monitorGrid.grid-4,
+  .monitorGrid.grid-6,
   .monitorGrid.grid-9,
-  .monitorGrid.grid-16 {
+  .monitorGrid.grid-16,
+  .monitorGrid.grid-25,
+  .monitorGrid.grid-36 {
     grid-template-columns: 1fr;
   }
   .monitorToolbar .statusPill {
@@ -3973,4 +3997,31 @@ body {
 }
 .alertManualForm > .primaryButton {
   margin-top: 12px;
+}
+
+/* F7-R2 Monitor Layout HF3 — layout automático e grades ampliadas */
+.cameraResultMeta {
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 2px;
+  text-align: right;
+}
+.cameraResultMeta span:first-child {
+  font-weight: 700;
+  color: #173a5d;
+}
+.cameraResultMeta span:last-child {
+  font-size: 12px;
+  color: #667085;
+}
+.monitorGrid.grid-25 .monitorTile.advancedTile,
+.monitorGrid.grid-36 .monitorTile.advancedTile {
+  min-height: 250px;
+}
+@media (max-width: 1200px) {
+  .cameraResultMeta {
+    align-items: flex-start;
+    text-align: left;
+  }
 }
