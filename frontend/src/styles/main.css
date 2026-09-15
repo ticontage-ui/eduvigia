@@ -4094,3 +4094,82 @@ body {
 @media (max-width: 760px) {
   .cameraHealthActions { align-items: stretch; flex-direction: column; }
 }
+
+/* F7-R3 HF7 — feedback global de ações */
+.actionFeedbackBanner {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 18px;
+  border-bottom: 1px solid transparent;
+  box-shadow: 0 4px 12px rgba(15, 35, 55, .08);
+  animation: actionFeedbackIn .18s ease-out;
+}
+.actionFeedbackBanner.success {
+  background: #ecfdf3;
+  border-color: #86d7a7;
+  color: #116b35;
+}
+.actionFeedbackBanner.error {
+  background: #fff1f0;
+  border-color: #f2aaa3;
+  color: #a52a22;
+}
+.actionFeedbackBanner::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: currentColor;
+}
+.actionFeedbackContent {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.actionFeedbackContent > svg { flex: 0 0 auto; }
+.actionFeedbackContent > div {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.actionFeedbackContent strong { font-size: 13px; }
+.actionFeedbackContent span {
+  font-size: 12px;
+  color: inherit;
+  opacity: .88;
+  overflow-wrap: anywhere;
+}
+.actionFeedbackClose {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+}
+.actionFeedbackClose:hover { background: rgba(0,0,0,.06); }
+button:disabled {
+  cursor: not-allowed;
+  opacity: .62;
+}
+@keyframes actionFeedbackIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 720px) {
+  .actionFeedbackBanner { padding: 7px 11px; }
+  .actionFeedbackContent > div { display: grid; gap: 1px; }
+}

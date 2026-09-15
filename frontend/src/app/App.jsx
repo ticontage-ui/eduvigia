@@ -178,6 +178,31 @@ function routeFromHash() {
   return MENU.some(([, , key]) => key === value) ? value : "dashboard";
 }
 
+
+function ActionFeedbackBanner({ feedback, onClose }) {
+  if (!feedback) return null;
+  const isError = feedback.type === "error";
+  const Icon = isError ? XCircle : CheckCircle2;
+  return (
+    <div
+      className={`actionFeedbackBanner ${isError ? "error" : "success"}`}
+      role={isError ? "alert" : "status"}
+      aria-live={isError ? "assertive" : "polite"}
+    >
+      <div className="actionFeedbackContent">
+        <Icon size={18} />
+        <div>
+          <strong>{feedback.title}</strong>
+          {feedback.detail && <span>{feedback.detail}</span>}
+        </div>
+      </div>
+      <button type="button" className="actionFeedbackClose" onClick={onClose} aria-label="Fechar mensagem">
+        <XCircle size={17} />
+      </button>
+    </div>
+  );
+}
+
 export default function App() {
   const [section, setSection] = useState(routeFromHash);
   const [dashboard, setDashboard] = useState({});
@@ -243,6 +268,9 @@ export default function App() {
   const [selectedOccurrence, setSelectedOccurrence] = useState(null);
   const [selectedSchool, setSelectedSchool] = useState(null);
   const [message, setMessage] = useState("");
+  const [actionFeedback, setActionFeedback] = useState(null);
+  const [actionBusy, setActionBusy] = useState({});
+  const actionFeedbackTimer = useRef(null);
   const [globalSearch, setGlobalSearch] = useState("");
   const [schoolForm, setSchoolForm] = useState({
     code: "",
@@ -364,6 +392,41 @@ export default function App() {
     notes: "",
   });
 
+  const clearActionFeedback = () => {
+    if (actionFeedbackTimer.current) {
+      window.clearTimeout(actionFeedbackTimer.current);
+      actionFeedbackTimer.current = null;
+    }
+    setActionFeedback(null);
+  };
+
+  const showActionFeedback = (type, title, detail = "") => {
+    if (actionFeedbackTimer.current) window.clearTimeout(actionFeedbackTimer.current);
+    setActionFeedback({ type, title, detail, id: Date.now() });
+    const timeoutMs = type === "error" ? 8000 : 5000;
+    actionFeedbackTimer.current = window.setTimeout(() => {
+      setActionFeedback(null);
+      actionFeedbackTimer.current = null;
+    }, timeoutMs);
+  };
+
+  const runBusyAction = async (key, callback) => {
+    setActionBusy((current) => ({ ...current, [key]: true }));
+    try {
+      return await callback();
+    } finally {
+      setActionBusy((current) => {
+        const next = { ...current };
+        delete next[key];
+        return next;
+      });
+    }
+  };
+
+  useEffect(() => () => {
+    if (actionFeedbackTimer.current) window.clearTimeout(actionFeedbackTimer.current);
+  }, []);
+
   const refreshNotifications = async () => {
     try {
       const [notificationRows, unread] = await Promise.all([
@@ -430,8 +493,10 @@ export default function App() {
         setUsers(userRows);
       }
       setMessage("");
+      return true;
     } catch (error) {
       setMessage(error.message);
+      return false;
     }
   };
 
@@ -528,19 +593,22 @@ export default function App() {
 
   const saveSchool = async (event) => {
     event.preventDefault();
-    try {
-      await api(editingSchoolId ? `/schools/${editingSchoolId}` : "/schools", {
-        method: editingSchoolId ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(schoolForm),
-      });
-      setSchoolForm(emptySchoolForm());
-      setEditingSchoolId(null);
-      await load();
-      setMessage(editingSchoolId ? "Escola atualizada com sucesso." : "Escola cadastrada com sucesso.");
-    } catch (error) {
-      setMessage(error.message);
-    }
+    const wasEditing = Boolean(editingSchoolId);
+    return runBusyAction("school-save", async () => {
+      try {
+        await api(editingSchoolId ? `/schools/${editingSchoolId}` : "/schools", {
+          method: editingSchoolId ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(schoolForm),
+        });
+        setSchoolForm(emptySchoolForm());
+        setEditingSchoolId(null);
+        await load();
+        showActionFeedback("success", wasEditing ? "Escola atualizada" : "Escola cadastrada", "Operação concluída com sucesso.");
+      } catch (error) {
+        showActionFeedback("error", "Falha ao salvar escola", error.message || "Não foi possível concluir a operação.");
+      }
+    });
   };
 
   const editSchool = (school) => {
@@ -719,42 +787,42 @@ export default function App() {
     });
   };
 
-  const testRecorder = async (id) => {
+  const testRecorder = async (id) => runBusyAction(`recorder-test-${id}`, async () => {
     try {
       const result = await api(`/recorders/${id}/test`, { method: "POST" });
       const rtsp = result.tests?.RTSP?.ok ? "RTSP OK" : "RTSP falhou";
       const isapi = result.tests?.ISAPI?.ok ? "ISAPI autenticado" : "ISAPI indisponível";
-      setMessage(`Gravador ${result.status}: ${rtsp}; ${isapi}.`);
+      showActionFeedback("success", "Teste do gravador concluído", `Status ${result.status}: ${rtsp}; ${isapi}.`);
       await load();
     } catch (error) {
-      setMessage(error.message);
+      showActionFeedback("error", "Falha no teste do gravador", error.message || "Não foi possível testar o equipamento.");
     }
-  };
+  });
 
-  const testRecorderChannels = async (id) => {
+  const testRecorderChannels = async (id) => runBusyAction(`recorder-channels-${id}`, async () => {
     try {
-      setMessage("Testando perfis MAIN e SUB dos canais cadastrados...");
       const result = await api(`/recorders/${id}/test-channels`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ profile: "BOTH", provision: true }),
       });
-      setMessage(`${result.online} de ${result.tested} canal(is) online; ${result.offline} offline.`);
+      showActionFeedback("success", "Teste dos canais concluído", `${result.online} de ${result.tested} canal(is) online; ${result.offline} offline.`);
       await load();
     } catch (error) {
-      setMessage(error.message);
+      showActionFeedback("error", "Falha no teste dos canais", error.message || "Não foi possível testar MAIN/SUB.");
     }
-  };
+  });
 
-  const reprovisionRecorder = async (id) => {
+  const reprovisionRecorder = async (id) => runBusyAction(`recorder-reprovision-${id}`, async () => {
     try {
       const result = await api(`/recorders/${id}/reprovision`, { method: "POST" });
-      setMessage(`${result.provisioned} de ${result.total} canal(is) reprovisionado(s); ${result.failed} falha(s).`);
+      const detail = `${result.provisioned} de ${result.total} canal(is) reprovisionado(s); ${result.failed} falha(s).`;
+      showActionFeedback(result.failed ? "error" : "success", result.failed ? "Reprovisionamento concluído com falhas" : "Reprovisionamento concluído", detail);
       await load();
     } catch (error) {
-      setMessage(error.message);
+      showActionFeedback("error", "Falha ao reprovisionar gravador", error.message || "Não foi possível publicar os streams.");
     }
-  };
+  });
 
   const deleteRecorder = async (id) => {
     if (!window.confirm("Excluir este gravador?")) return;
@@ -996,32 +1064,33 @@ export default function App() {
     }
   };
 
-  const testCamera = async (id) => {
+  const testCamera = async (id) => runBusyAction(`camera-test-${id}`, async () => {
     try {
       const result = await api(`/cameras/${id}/test`, { method: "POST" });
       const main = result.profiles?.MAIN?.ok ? "MAIN OK" : "MAIN falhou";
       const sub = result.profiles?.SUB?.ok ? "SUB OK" : "SUB falhou";
-      setMessage(`Câmera ${result.status}: ${main}; ${sub}; MediaMTX ${result.provisioned ? "OK" : "com falha"}.`);
+      const ok = result.profiles?.MAIN?.ok && result.profiles?.SUB?.ok && result.provisioned;
+      showActionFeedback(ok ? "success" : "error", ok ? "Teste da câmera concluído" : "Teste da câmera encontrou falhas", `Status ${result.status}: ${main}; ${sub}; MediaMTX ${result.provisioned ? "OK" : "com falha"}.`);
       await load();
     } catch (error) {
-      setMessage(error.message);
+      showActionFeedback("error", "Falha no teste da câmera", error.message || "Não foi possível testar MAIN/SUB.");
     }
-  };
+  });
 
-  const testAllCameras = async () => {
+  const testAllCameras = async () => runBusyAction("camera-test-all", async () => {
     try {
-      setMessage("Executando teste em lote de até 64 câmeras...");
       const result = await api("/cameras/test-batch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ camera_ids: null, provision: true }),
       });
-      setMessage(`${result.online} de ${result.tested} câmera(s) online; ${result.offline} offline.`);
+      const ok = Number(result.offline || 0) === 0;
+      showActionFeedback(ok ? "success" : "error", ok ? "Teste em lote concluído" : "Teste em lote encontrou câmeras offline", `${result.online} de ${result.tested} câmera(s) online; ${result.offline} offline.`);
       await load();
     } catch (error) {
-      setMessage(error.message);
+      showActionFeedback("error", "Falha no teste em lote", error.message || "Não foi possível testar as câmeras.");
     }
-  };
+  });
 
   const deleteCamera = async (id) => {
     if (!window.confirm("Excluir esta câmera?")) return;
@@ -1130,7 +1199,7 @@ export default function App() {
     }
   };
 
-  const saveSetting = async (key, value, description) => {
+  const saveSetting = async (key, value, description) => runBusyAction(`setting-${key}`, async () => {
     try {
       await api(`/settings/${key}`, {
         method: "PUT",
@@ -1138,11 +1207,11 @@ export default function App() {
         body: JSON.stringify({ value, description }),
       });
       await load();
-      setMessage("Configuração salva.");
+      showActionFeedback("success", "Configuração salva", description || key);
     } catch (error) {
-      setMessage(error.message);
+      showActionFeedback("error", "Falha ao salvar configuração", error.message || "Não foi possível salvar a configuração.");
     }
-  };
+  });
 
   const openSupport = (preset = {}) => {
     setSupportMessage("");
@@ -1363,19 +1432,19 @@ export default function App() {
     }
   };
 
-  const provisionCamera = async (id) => {
+  const provisionCamera = async (id) => runBusyAction(`camera-provision-${id}`, async () => {
     try {
       const result = await api(`/cameras/${id}/provision`, { method: "POST" });
-      setMessage(
-        result.ok
-          ? `Stream ${result.stream_name} configurado no MediaMTX.`
-          : `Falha ao configurar stream: ${result.detail}`
-      );
+      if (result.ok) {
+        showActionFeedback("success", "Streams publicados", `Stream ${result.stream_name} configurado no MediaMTX.`);
+      } else {
+        showActionFeedback("error", "Falha ao publicar streams", result.detail || "O MediaMTX não confirmou a publicação.");
+      }
       await load();
     } catch (error) {
-      setMessage(error.message);
+      showActionFeedback("error", "Falha ao publicar streams", error.message || "Não foi possível configurar o MediaMTX.");
     }
-  };
+  });
 
   const snapshotOccurrence = async (occurrenceId, cameraId) => {
     try {
@@ -1647,6 +1716,8 @@ export default function App() {
           </div>
         </header>
 
+        <ActionFeedbackBanner feedback={actionFeedback} onClose={clearActionFeedback} />
+
         {notificationOpen && (
           <div className="notificationDrawer">
             <div className="notificationHeader">
@@ -1696,6 +1767,7 @@ export default function App() {
               onAlertOccurrence={alertToOccurrence}
               onOccurrenceDetails={openOccurrenceDetails}
               canOperate={can("alerts:operate")}
+              onFeedback={showActionFeedback}
             />
           )}
 
@@ -1760,6 +1832,7 @@ export default function App() {
               onDelete={deleteCamera}
               canWrite={can("cameras:write")}
               onProvision={provisionCamera}
+              actionBusy={actionBusy}
             />
           )}
 
@@ -1774,6 +1847,7 @@ export default function App() {
               recorders={recorders}
               canOperate={can("events:operate")}
               onRefresh={load}
+              onFeedback={showActionFeedback}
             />
           )}
 
@@ -1785,11 +1859,16 @@ export default function App() {
               occurrences={occurrences}
               onOpenOccurrence={openOccurrenceDetails}
               onSnapshot={snapshotOccurrence}
-              onProvisionAll={async () => {
-                const result = await api("/cameras/provision-all", { method: "POST" });
-                setMessage(`${result.provisioned} stream(s) provisionado(s); ${result.failed} falha(s).`);
-                await load();
-              }}
+              onProvisionAll={async () => runBusyAction("monitor-provision-all", async () => {
+                try {
+                  const result = await api("/cameras/provision-all", { method: "POST" });
+                  const detail = `${result.provisioned} stream(s) provisionado(s); ${result.failed} falha(s).`;
+                  showActionFeedback(result.failed ? "error" : "success", result.failed ? "Publicação concluída com falhas" : "Streams publicados", detail);
+                  await load();
+                } catch (error) {
+                  showActionFeedback("error", "Falha ao publicar streams", error.message || "Não foi possível provisionar os streams.");
+                }
+              })}
               canPtz={can("ptz:control")}
               userId={authUser?.id}
               onRefreshStatus={(cameraIds) => api("/monitoring/status-refresh", {
@@ -1801,7 +1880,7 @@ export default function App() {
           )}
 
           {section === "maps" && can("maps:view") && (
-            <OperationalMapPage onNavigate={navigate} />
+            <OperationalMapPage onNavigate={navigate} onFeedback={showActionFeedback} />
           )}
 
           {section === "floorplans" && can("floorplans:view") && (
@@ -1838,6 +1917,7 @@ export default function App() {
               onAlertAction={alertAction}
               onAlertOccurrence={alertToOccurrence}
               canOperate={can("alerts:operate")}
+              onFeedback={showActionFeedback}
             />
           )}
 
@@ -1889,7 +1969,7 @@ export default function App() {
           )}
 
           {section === "infrastructure" && (
-            <InfrastructurePage />
+            <InfrastructurePage onFeedback={showActionFeedback} />
           )}
 
           {section === "homologation" && (
@@ -1897,6 +1977,7 @@ export default function App() {
               data={homologationData}
               checklist={homologationChecklist}
               onRefresh={load}
+              onFeedback={showActionFeedback}
             />
           )}
 
@@ -2261,6 +2342,7 @@ function CamerasPage({
   onDelete,
   canWrite,
   onProvision,
+  actionBusy = {},
 }) {
   const [tab, setTab] = useState("cameras");
   const activeRecorders = recorders.filter(
@@ -2422,10 +2504,10 @@ function CamerasPage({
                   <div className="recordActions">
                     <span className={`statusPill ${recorder.status === "ONLINE" ? "success" : recorder.status === "OFFLINE" ? "danger" : recorder.status === "DEGRADADO" ? "warning" : "neutral"}`}>{recorder.status}</span>
                     {canWrite && <button type="button" onClick={() => onRecorderEdit(recorder)}>Editar</button>}
-                    {canWrite && <button type="button" onClick={() => onRecorderTest(recorder.id)}>Testar equipamento</button>}
+                    {canWrite && <button type="button" disabled={Boolean(actionBusy[`recorder-test-${recorder.id}`])} onClick={() => onRecorderTest(recorder.id)}>{actionBusy[`recorder-test-${recorder.id}`] ? "Testando..." : "Testar equipamento"}</button>}
                     {canWrite && <button type="button" onClick={() => onRecorderDiscover(recorder.id)}><Search size={14} />Descobrir canais</button>}
-                    {canWrite && <button type="button" onClick={() => onRecorderTestChannels(recorder.id)}>Testar canais</button>}
-                    {canWrite && <button type="button" onClick={() => onRecorderReprovision(recorder.id)}>Reprovisionar</button>}
+                    {canWrite && <button type="button" disabled={Boolean(actionBusy[`recorder-channels-${recorder.id}`])} onClick={() => onRecorderTestChannels(recorder.id)}>{actionBusy[`recorder-channels-${recorder.id}`] ? "Testando canais..." : "Testar canais"}</button>}
+                    {canWrite && <button type="button" disabled={Boolean(actionBusy[`recorder-reprovision-${recorder.id}`])} onClick={() => onRecorderReprovision(recorder.id)}>{actionBusy[`recorder-reprovision-${recorder.id}`] ? "Publicando..." : "Reprovisionar"}</button>}
                     {canWrite && <button type="button" className="dangerOutline" onClick={() => onRecorderDelete(recorder.id)}><Trash2 size={14} />Excluir</button>}
                   </div>
                 </article>
@@ -2653,7 +2735,7 @@ function CamerasPage({
               <h2>Câmeras e canais cadastrados</h2>
               <div className="headerActions">
                 <span>{cameras.length}</span>
-                {canWrite && cameras.length > 0 && <button type="button" onClick={onTestAll}>Testar até 64 câmeras</button>}
+                {canWrite && cameras.length > 0 && <button type="button" disabled={Boolean(actionBusy["camera-test-all"])} onClick={onTestAll}>{actionBusy["camera-test-all"] ? "Testando câmeras..." : "Testar até 64 câmeras"}</button>}
               </div>
             </div>
             <div className="records">
@@ -2680,8 +2762,8 @@ function CamerasPage({
                     <div className="recordActions">
                       <span className={`statusPill ${camera.status === "ONLINE" ? "success" : camera.status === "OFFLINE" ? "danger" : "neutral"}`}>{camera.status}</span>
                       {canWrite && <button type="button" onClick={() => onEdit(camera)}>Editar</button>}
-                      {canWrite && <button type="button" onClick={() => onTest(camera.id)}>Testar MAIN/SUB</button>}
-                      {canWrite && <button type="button" onClick={() => onProvision(camera.id)}>Publicar streams</button>}
+                      {canWrite && <button type="button" disabled={Boolean(actionBusy[`camera-test-${camera.id}`])} onClick={() => onTest(camera.id)}>{actionBusy[`camera-test-${camera.id}`] ? "Testando..." : "Testar MAIN/SUB"}</button>}
+                      {canWrite && <button type="button" disabled={Boolean(actionBusy[`camera-provision-${camera.id}`])} onClick={() => onProvision(camera.id)}>{actionBusy[`camera-provision-${camera.id}`] ? "Publicando..." : "Publicar streams"}</button>}
                       {canWrite && <button type="button" className="dangerOutline" onClick={() => onDelete(camera.id)}><Trash2 size={14} />Excluir</button>}
                     </div>
                   </article>
@@ -3450,6 +3532,7 @@ function OperationalCenterPage({
   onAlertOccurrence,
   onOccurrenceDetails,
   canOperate,
+  onFeedback,
 }) {
   const [data, setData] = useState({
     summary: {},
@@ -3463,14 +3546,19 @@ function OperationalCenterPage({
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [error, setError] = useState("");
 
-  const loadOperations = async () => {
+  const loadOperations = async ({ userInitiated = false } = {}) => {
+    setLoading(true);
     try {
       const result = await api("/operations/overview");
       setData(result);
       setLastUpdated(new Date());
       setError("");
+      if (userInitiated) onFeedback?.("success", "Central operacional atualizada", "Dados operacionais sincronizados com sucesso.");
+      return true;
     } catch (loadError) {
       setError(loadError.message);
+      if (userInitiated) onFeedback?.("error", "Falha ao atualizar a Central Operacional", loadError.message || "Não foi possível atualizar os dados.");
+      return false;
     } finally {
       setLoading(false);
     }
@@ -3527,8 +3615,8 @@ function OperationalCenterPage({
             />
             Atualização automática
           </label>
-          <button type="button" onClick={loadOperations}>
-            <RefreshCw size={15} /> Atualizar agora
+          <button type="button" onClick={() => loadOperations({ userInitiated: true })} disabled={loading}>
+            <RefreshCw size={15} className={loading ? "spinIcon" : ""} /> {loading ? "Atualizando..." : "Atualizar agora"}
           </button>
         </div>
       </div>
@@ -3687,6 +3775,7 @@ function CameraEventsHealthPage({
   recorders = [],
   canOperate = false,
   onRefresh,
+  onFeedback,
 }) {
   const [filters, setFilters] = useState({
     school: "",
@@ -3786,7 +3875,9 @@ function CameraEventsHealthPage({
       .filter(Boolean)
       .slice(0, 16);
     if (cameraIds.length === 0) {
-      setLocalMessage("Nenhuma câmera disponível para atualizar a saúde.");
+      const detail = "Nenhuma câmera disponível para atualizar a saúde.";
+      setLocalMessage(detail);
+      onFeedback?.("error", "Saúde não atualizada", detail);
       return;
     }
     setHealthBusy(true);
@@ -3796,12 +3887,14 @@ function CameraEventsHealthPage({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ camera_ids: cameraIds }),
       });
-      setLocalMessage(
-        `Saúde atualizada: ${result.online || 0} online, ${result.degraded || 0} degradada(s), ${result.offline || 0} offline. Nenhum evento automático foi gerado.`
-      );
+      const detail = `${result.online || 0} online, ${result.degraded || 0} degradada(s), ${result.offline || 0} offline. Nenhum evento automático foi gerado.`;
+      setLocalMessage(`Saúde atualizada: ${detail}`);
+      onFeedback?.("success", "Saúde das câmeras atualizada", detail);
       await onRefresh?.();
     } catch (error) {
-      setLocalMessage(error.message || "Falha ao atualizar a saúde das câmeras.");
+      const detail = error.message || "Falha ao atualizar a saúde das câmeras.";
+      setLocalMessage(detail);
+      onFeedback?.("error", "Falha ao atualizar saúde", detail);
     } finally {
       setHealthBusy(false);
     }
@@ -3810,7 +3903,9 @@ function CameraEventsHealthPage({
   const simulate = async (event) => {
     event.preventDefault();
     if (!testForm.camera_id) {
-      setLocalMessage("Selecione uma câmera para o teste controlado.");
+      const detail = "Selecione uma câmera para o teste controlado.";
+      setLocalMessage(detail);
+      onFeedback?.("error", "Teste não iniciado", detail);
       return;
     }
     setBusy(true);
@@ -3827,10 +3922,14 @@ function CameraEventsHealthPage({
           metadata: { source: "browser_qa" },
         }),
       });
-      setLocalMessage("Evento de teste processado pelo motor de eventos.");
+      const detail = "Evento de teste processado pelo motor de eventos.";
+      setLocalMessage(detail);
+      onFeedback?.("success", "Teste de evento concluído", detail);
       await onRefresh?.();
     } catch (error) {
-      setLocalMessage(error.message || "Falha ao processar evento de teste.");
+      const detail = error.message || "Falha ao processar evento de teste.";
+      setLocalMessage(detail);
+      onFeedback?.("error", "Falha no teste de evento", detail);
     } finally {
       setBusy(false);
     }
@@ -3855,7 +3954,10 @@ function CameraEventsHealthPage({
             <h2>Eventos recebidos</h2>
             <small>Deduplicação por dispositivo/canal/tipo com contador de repetição</small>
           </div>
-          <button type="button" onClick={() => onRefresh?.()}><RefreshCw size={15}/> Atualizar</button>
+          <button type="button" onClick={async () => {
+            const ok = await onRefresh?.();
+            onFeedback?.(ok === false ? "error" : "success", ok === false ? "Falha ao atualizar eventos" : "Eventos atualizados", ok === false ? "Não foi possível sincronizar os dados." : "Lista de eventos e saúde sincronizada.");
+          }}><RefreshCw size={15}/> Atualizar</button>
         </div>
 
         <div className="cameraEventFilters">
@@ -4001,7 +4103,7 @@ function CameraEventsHealthPage({
   );
 }
 
-function AlertsPage({ alerts: initialAlerts, schools = [], cameras = [], onAlertAction, onAlertOccurrence, canOperate }) {
+function AlertsPage({ alerts: initialAlerts, schools = [], cameras = [], onAlertAction, onAlertOccurrence, canOperate, onFeedback }) {
   const [items, setItems] = useState(initialAlerts || []);
   const [overview, setOverview] = useState({ summary: {}, by_priority: {} });
   const [filters, setFilters] = useState({ search: "", status: "", priority: "" });
@@ -4039,7 +4141,7 @@ function AlertsPage({ alerts: initialAlerts, schools = [], cameras = [], onAlert
     }
   };
 
-  const loadAlerts = async ({ notifyNew = false } = {}) => {
+  const loadAlerts = async ({ notifyNew = false, userInitiated = false } = {}) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -4059,8 +4161,12 @@ function AlertsPage({ alerts: initialAlerts, schools = [], cameras = [], onAlert
       setItems(rows);
       setOverview(summary);
       setMessage("");
+      if (userInitiated) onFeedback?.("success", "Central de Alertas atualizada", `${rows.length} alerta(s) carregado(s).`);
+      return true;
     } catch (error) {
       setMessage(error.message);
+      if (userInitiated) onFeedback?.("error", "Falha ao atualizar alertas", error.message || "Não foi possível carregar a fila operacional.");
+      return false;
     } finally {
       setLoading(false);
     }
@@ -4170,8 +4276,8 @@ function AlertsPage({ alerts: initialAlerts, schools = [], cameras = [], onAlert
           <button type="button" className={soundEnabled ? "primaryButton" : "secondaryButton"} onClick={() => { setSoundEnabled((value) => !value); if (!soundEnabled) playAlertSound(); }}>
             <Bell size={16} /> {soundEnabled ? "Som ativado" : "Ativar som"}
           </button>
-          <button type="button" onClick={() => loadAlerts()} disabled={loading}>
-            <RefreshCw size={16} className={loading ? "spinIcon" : ""} /> Atualizar
+          <button type="button" onClick={() => loadAlerts({ userInitiated: true })} disabled={loading}>
+            <RefreshCw size={16} className={loading ? "spinIcon" : ""} /> {loading ? "Atualizando..." : "Atualizar"}
           </button>
         </div>
       </div>
@@ -5372,13 +5478,13 @@ function AuditPage({ logs }) {
 }
 
 
-function InfrastructurePage() {
+function InfrastructurePage({ onFeedback }) {
   const [data, setData] = useState(null);
   const [capacity, setCapacity] = useState(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const loadInfrastructure = async () => {
+  const loadInfrastructure = async ({ userInitiated = false } = {}) => {
     setLoading(true);
     try {
       const [overview, capacityData] = await Promise.all([
@@ -5388,8 +5494,12 @@ function InfrastructurePage() {
       setData(overview);
       setCapacity(capacityData);
       setMessage("");
+      if (userInitiated) onFeedback?.("success", "Diagnóstico de infraestrutura atualizado", `Estado geral: ${overview.overall || "verificado"}.`);
+      return true;
     } catch (error) {
       setMessage(error.message);
+      if (userInitiated) onFeedback?.("error", "Falha no diagnóstico de infraestrutura", error.message || "Não foi possível atualizar o diagnóstico.");
+      return false;
     } finally {
       setLoading(false);
     }
@@ -5419,9 +5529,9 @@ function InfrastructurePage() {
               : "Aguardando diagnóstico"}
           </span>
         </div>
-        <button type="button" onClick={loadInfrastructure} disabled={loading}>
+        <button type="button" onClick={() => loadInfrastructure({ userInitiated: true })} disabled={loading}>
           <RefreshCw size={16} className={loading ? "spinIcon" : ""} />
-          Atualizar diagnóstico
+          {loading ? "Atualizando..." : "Atualizar diagnóstico"}
         </button>
       </div>
 
@@ -5676,7 +5786,7 @@ function OperationalMapCanvas({ points = [], selectedId = null, onSelect = () =>
   );
 }
 
-function OperationalMapPage({ onNavigate = () => {} }) {
+function OperationalMapPage({ onNavigate = () => {}, onFeedback }) {
   const [data, setData] = useState({ points: [], unlocated: [], summary: {} });
   const [selected, setSelected] = useState(null);
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -5685,7 +5795,7 @@ function OperationalMapPage({ onNavigate = () => {} }) {
   const [error, setError] = useState("");
   const [fitKey, setFitKey] = useState(0);
 
-  const loadMap = async () => {
+  const loadMap = async ({ userInitiated = false } = {}) => {
     setLoading(true);
     try {
       const result = await api("/maps/overview");
@@ -5693,8 +5803,13 @@ function OperationalMapPage({ onNavigate = () => {} }) {
       setError("");
       setSelected((current) => result.points.find((item) => Number(item.school_id) === Number(current?.school_id)) || result.points[0] || null);
       setFitKey((value) => value + 1);
+      if (userInitiated) onFeedback?.("success", "Mapa operacional atualizado", `${result.points?.length || 0} escola(s) georreferenciada(s) carregada(s).`);
+      return true;
     } catch (loadError) {
-      setError(loadError.message || "Não foi possível carregar o mapa operacional.");
+      const detail = loadError.message || "Não foi possível carregar o mapa operacional.";
+      setError(detail);
+      if (userInitiated) onFeedback?.("error", "Falha ao atualizar mapa", detail);
+      return false;
     } finally {
       setLoading(false);
     }
@@ -5722,7 +5837,7 @@ function OperationalMapPage({ onNavigate = () => {} }) {
           <option value="ATTENTION">Atenção</option>
           <option value="NORMAL">Normais</option>
         </select>
-        <button type="button" onClick={loadMap} disabled={loading}><RefreshCw size={16} className={loading ? "spinIcon" : ""} /> Atualizar mapa</button>
+        <button type="button" onClick={() => loadMap({ userInitiated: true })} disabled={loading}><RefreshCw size={16} className={loading ? "spinIcon" : ""} /> {loading ? "Atualizando..." : "Atualizar mapa"}</button>
       </div>
 
       {error && <div className="operationsError">{error}</div>}
@@ -6180,7 +6295,7 @@ function PlaybackPage({ cameras = [], schools = [], occurrences = [], canExport 
   );
 }
 
-function HomologationPage({ data, checklist, onRefresh }) {
+function HomologationPage({ data, checklist, onRefresh, onFeedback }) {
   const statusClass = (status) => {
     if (status === "APROVADO") return "success";
     if (status === "FALHOU") return "danger";
@@ -6204,7 +6319,10 @@ function HomologationPage({ data, checklist, onRefresh }) {
         <div><span>Versão</span><b>{data.version}</b></div>
         <div><span>Resultado geral</span><b>{checklist?.overall || "PENDENTE"}</b></div>
         <div><span>Última verificação</span><b>{new Date(data.checked_at).toLocaleString("pt-BR")}</b></div>
-        <button type="button" onClick={onRefresh}><RefreshCw size={16} />Atualizar diagnóstico</button>
+        <button type="button" onClick={async () => {
+          const ok = await onRefresh?.();
+          onFeedback?.(ok === false ? "error" : "success", ok === false ? "Falha ao atualizar homologação" : "Diagnóstico de homologação atualizado", ok === false ? "Não foi possível sincronizar o checklist." : "Checklist e estado técnico sincronizados.");
+        }}><RefreshCw size={16} />Atualizar diagnóstico</button>
       </div>
 
       {checklist && (
