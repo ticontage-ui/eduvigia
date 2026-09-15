@@ -646,14 +646,43 @@ async def list_channel_messages(
             limit,
         )
 
+        message_ids = [row["id"] for row in rows]
+        attachments_by_message = {}
+
+        if message_ids:
+            attachment_rows = await conn.fetch(
+                """
+                SELECT
+                    message_id,
+                    id,
+                    original_name,
+                    mime_type,
+                    extension,
+                    size_bytes,
+                    sha256,
+                    validation_status,
+                    created_at
+                FROM chat_attachments
+                WHERE message_id = ANY($1::bigint[])
+                ORDER BY message_id, created_at, id
+                """,
+                message_ids,
+            )
+
+            for attachment_row in attachment_rows:
+                message_id = attachment_row["message_id"]
+                attachments_by_message.setdefault(message_id, []).append(
+                    attachment_public_dict(attachment_row)
+                )
+
     result = []
+
     for row in reversed(rows):
         message = message_dict(row)
-        message["attachments"] = await fetch_message_attachments(conn, row["id"])
+        message["attachments"] = attachments_by_message.get(row["id"], [])
         result.append(message)
 
     return result
-
 
 @app.post("/api/emergency/channels/{channel_id}/messages", status_code=201)
 async def create_channel_message(

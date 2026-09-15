@@ -36,12 +36,44 @@ const ALLOWED_EXTENSIONS = new Set([
   ".doc", ".docx", ".xls", ".xlsx", ".txt", ".csv"
 ]);
 
+function friendlyHttpError(status, detail = "") {
+  if (status >= 500) {
+    return "Não foi possível concluir a operação. Tente novamente.";
+  }
+
+  if (status === 403) {
+    return "Você não possui permissão para acessar este conteúdo.";
+  }
+
+  if (status === 413) {
+    return detail || "O arquivo excede o limite permitido.";
+  }
+
+  if (status === 415) {
+    return detail || "Este tipo de arquivo não é permitido.";
+  }
+
+  if (status === 422) {
+    return detail || "Os dados enviados não são válidos.";
+  }
+
+  if (status === 404) {
+    return "O conteúdo solicitado não foi encontrado.";
+  }
+
+  return detail || "Não foi possível concluir a operação.";
+}
+
 async function jsonFetch(url, options = {}) {
   const response = await fetch(url, options);
 
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
-    throw new Error(payload.detail || `HTTP ${response.status}`);
+    const error = new Error(
+      friendlyHttpError(response.status, payload.detail || "")
+    );
+    error.status = response.status;
+    throw error;
   }
 
   return response.json();
@@ -468,9 +500,18 @@ async function selectChannel(channelId) {
   }
   catch (error) {
     if (token !== loadToken) return;
-    console.error(error);
-    resetChat();
-    alert(error.message);
+
+    console.error("Falha ao carregar canal:", error);
+
+    messagesEl.innerHTML =
+      '<div class="empty-chat">Não foi possível carregar o histórico deste canal.</div>';
+
+    bodyEl.disabled = true;
+    sendEl.disabled = true;
+    if (fileInputEl) fileInputEl.disabled = true;
+
+    setStatus("erro");
+    alert(error.message || "Não foi possível carregar o canal.");
   }
 }
 
@@ -655,7 +696,11 @@ composerEl.addEventListener("submit", async event => {
 
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.detail || `HTTP ${response.status}`);
+        const error = new Error(
+          friendlyHttpError(response.status, payload.detail || "")
+        );
+        error.status = response.status;
+        throw error;
       }
 
       message = await response.json();
