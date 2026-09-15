@@ -4202,3 +4202,198 @@ button:disabled {
 .onlineStatus.neutral b { color: #5f6f7d !important; }
 
 /* F7-R3 HF8-HF1 — feedback de saúde segue o estado agregado da frota */
+
+
+/* F8-R1 — SOS Digital / Emergência */
+.sosQuickButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid #b91c1c;
+  border-radius: 999px;
+  background: #b91c1c;
+  color: #fff;
+  font-weight: 800;
+  letter-spacing: .03em;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(185, 28, 28, .18);
+}
+.sosQuickButton:hover { background: #991b1b; }
+.sosQuickButton:disabled { opacity: .65; cursor: wait; }
+
+.sosKpis {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.sosKpis article {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+}
+.sosKpis span { display: block; color: #64748b; font-size: .82rem; }
+.sosKpis b { display: block; margin-top: 5px; color: #0f172a; font-size: 1.65rem; }
+
+.sosActivationPanel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px 20px;
+  margin-bottom: 14px;
+  border: 1px solid #fecaca;
+  border-radius: 16px;
+  background: #fff7f7;
+}
+.sosActivationCopy { display: flex; align-items: center; gap: 14px; min-width: 0; color: #991b1b; }
+.sosActivationCopy div { min-width: 0; }
+.sosActivationCopy b { display: block; font-size: 1rem; }
+.sosActivationCopy span { display: block; margin-top: 3px; color: #7f1d1d; font-size: .86rem; }
+.sosPrimaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 12px;
+  background: #b91c1c;
+  color: #fff;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sosPrimaryButton:disabled { opacity: .65; cursor: wait; }
+
+.sosSituation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 16px;
+  margin-bottom: 16px;
+  border: 1px solid #dbe4ef;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+.sosSituation.active { border-color: #fecaca; background: #fff7f7; }
+.sosSituation span { display: block; color: #64748b; font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; }
+.sosSituation b { display: block; margin-top: 2px; color: #0f172a; }
+.sosSituation.active b { color: #b91c1c; }
+.sosSituation button,
+.sosPanelTitle button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: #fff;
+  color: #334155;
+  padding: 8px 11px;
+  cursor: pointer;
+}
+
+.sosWorkspace {
+  display: grid;
+  grid-template-columns: minmax(280px, .75fr) minmax(0, 1.6fr);
+  gap: 16px;
+  align-items: start;
+}
+.sosListPanel,
+.sosDetailPanel {
+  min-width: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #fff;
+  overflow: hidden;
+}
+.sosListPanel { padding: 14px; }
+.sosDetailPanel { padding: 18px; min-height: 420px; }
+.sosPanelTitle { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.sosPanelTitle b { display: block; color: #0f172a; }
+.sosPanelTitle span { display: block; margin-top: 2px; color: #64748b; font-size: .78rem; }
+.sosEmpty { padding: 34px 16px; text-align: center; color: #64748b; }
+
+.sosEventCard {
+  width: 100%;
+  display: block;
+  margin-top: 8px;
+  padding: 13px;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #94a3b8;
+  border-radius: 12px;
+  background: #fff;
+  color: #334155;
+  text-align: left;
+  cursor: pointer;
+}
+.sosEventCard:first-of-type { margin-top: 0; }
+.sosEventCard:hover,
+.sosEventCard.selected { background: #f8fafc; border-color: #cbd5e1; }
+.sosEventCard.active { border-left-color: #dc2626; }
+.sosEventCard.acknowledged { border-left-color: #f59e0b; }
+.sosEventCard.cancel_requested { border-left-color: #ea580c; }
+.sosEventCard.resolved { border-left-color: #16a34a; }
+.sosEventCard.false_alarm { border-left-color: #64748b; }
+.sosEventTop { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.sosEventTop b { color: #0f172a; overflow-wrap: anywhere; }
+.sosEventTop span { font-size: .72rem; font-weight: 800; text-transform: uppercase; color: #475569; }
+.sosEventCard > div:not(.sosEventTop) { margin-top: 8px; font-size: .82rem; }
+.sosEventCard small { display: block; margin-top: 5px; color: #64748b; }
+
+.sosDetailHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding-bottom: 14px; border-bottom: 1px solid #e2e8f0; }
+.sosDetailHeader span { color: #64748b; font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; }
+.sosDetailHeader h2 { margin: 3px 0 0; color: #0f172a; font-size: 1.25rem; overflow-wrap: anywhere; }
+.sosStatusBadge { display: inline-flex; align-items: center; padding: 7px 10px; border-radius: 999px; font-size: .74rem; font-weight: 900; white-space: nowrap; }
+.sosStatusBadge.active { background: #fee2e2; color: #991b1b; }
+.sosStatusBadge.acknowledged { background: #fef3c7; color: #92400e; }
+.sosStatusBadge.cancel_requested { background: #ffedd5; color: #9a3412; }
+.sosStatusBadge.resolved { background: #dcfce7; color: #166534; }
+.sosStatusBadge.false_alarm { background: #e2e8f0; color: #334155; }
+
+.sosMetaGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 15px 0; }
+.sosMetaGrid div { min-width: 0; padding: 12px; border-radius: 11px; background: #f8fafc; }
+.sosMetaGrid span { display: block; color: #64748b; font-size: .74rem; }
+.sosMetaGrid b { display: block; margin-top: 4px; color: #0f172a; overflow-wrap: anywhere; }
+.sosNote { margin-top: 12px; padding: 13px 14px; border: 1px solid #e2e8f0; border-radius: 11px; background: #fafcff; }
+.sosNote b { color: #334155; }
+.sosNote p { margin: 6px 0 0; color: #475569; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.sosActions { display: flex; flex-wrap: wrap; gap: 9px; margin: 15px 0; }
+.sosActions button { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 12px; border: 1px solid #cbd5e1; border-radius: 9px; background: #fff; color: #334155; font-weight: 700; cursor: pointer; }
+.sosActions button.resolve { border-color: #bbf7d0; background: #f0fdf4; color: #166534; }
+.sosActions button.falseAlarm { border-color: #e2e8f0; background: #f8fafc; color: #475569; }
+.sosActions button:disabled { opacity: .55; cursor: wait; }
+
+.sosTimeline { margin-top: 20px; }
+.sosTimeline h3 { margin: 0 0 12px; color: #0f172a; font-size: 1rem; }
+.sosTimelineItem { display: grid; grid-template-columns: 12px minmax(0, 1fr); gap: 10px; position: relative; padding: 0 0 15px; }
+.sosTimelineItem i { width: 10px; height: 10px; margin-top: 4px; border-radius: 50%; background: #0f5aa6; box-shadow: 0 0 0 3px #dbeafe; }
+.sosTimelineItem:not(:last-child)::before { content: ""; position: absolute; left: 4px; top: 15px; bottom: 0; width: 1px; background: #dbe4ef; }
+.sosTimelineItem b { display: block; color: #1e293b; font-size: .83rem; }
+.sosTimelineItem span { display: block; margin-top: 2px; color: #64748b; font-size: .76rem; }
+.sosTimelineItem p { margin: 5px 0 0; color: #475569; font-size: .83rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+@media (max-width: 1180px) {
+  .sosKpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .sosMetaGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 820px) {
+  .sosKpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sosWorkspace { grid-template-columns: 1fr; }
+  .sosActivationPanel { align-items: stretch; flex-direction: column; }
+  .sosPrimaryButton { width: 100%; }
+}
+@media (max-width: 560px) {
+  .sosKpis { grid-template-columns: 1fr; }
+  .sosMetaGrid { grid-template-columns: 1fr; }
+  .sosSituation { align-items: stretch; flex-direction: column; }
+  .sosSituation button { justify-content: center; }
+  .sosDetailHeader { flex-direction: column; }
+}

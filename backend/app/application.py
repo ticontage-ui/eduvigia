@@ -428,6 +428,79 @@ class OccurrenceEvent(Base):
     )
 
 
+class SosEvent(Base):
+    __tablename__ = "sos_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    school_id: Mapped[int] = mapped_column(
+        ForeignKey("schools.id", ondelete="CASCADE"), index=True
+    )
+    school_name: Mapped[str] = mapped_column(String(200))
+    status: Mapped[str] = mapped_column(String(30), default="ACTIVE", index=True)
+    repeat_count: Mapped[int] = mapped_column(Integer, default=1)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    alert_id: Mapped[int | None] = mapped_column(
+        ForeignKey("alerts.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    occurrence_id: Mapped[int | None] = mapped_column(
+        ForeignKey("occurrences.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    activated_by_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("user_accounts.id", ondelete="SET NULL"), nullable=True
+    )
+    activated_by_name: Mapped[str] = mapped_column(String(160), default="Sistema")
+    activated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    last_triggered_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+    acknowledged_by_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("user_accounts.id", ondelete="SET NULL"), nullable=True
+    )
+    acknowledged_by_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancel_requested_by_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("user_accounts.id", ondelete="SET NULL"), nullable=True
+    )
+    cancel_requested_by_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    cancel_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolved_by_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("user_accounts.id", ondelete="SET NULL"), nullable=True
+    )
+    resolved_by_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolution_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class SosActivity(Base):
+    __tablename__ = "sos_activities"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    sos_event_id: Mapped[int] = mapped_column(
+        ForeignKey("sos_events.id", ondelete="CASCADE"), index=True
+    )
+    action: Mapped[str] = mapped_column(String(60))
+    from_status: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    to_status: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("user_accounts.id", ondelete="SET NULL"), nullable=True
+    )
+    user_name: Mapped[str] = mapped_column(String(160), default="Sistema")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+
+
 
 class Equipment(Base):
     __tablename__ = "equipment"
@@ -1220,6 +1293,61 @@ class OccurrenceEventOut(BaseModel):
     created_at: datetime
 
 
+class SosActivateIn(BaseModel):
+    school_id: int | None = None
+    note: str | None = Field(default=None, max_length=1000)
+
+
+class SosActionIn(BaseModel):
+    note: str | None = Field(default=None, max_length=1000)
+
+
+class SosResolveIn(BaseModel):
+    status: Literal["RESOLVED", "FALSE_ALARM"] = "RESOLVED"
+    note: str | None = Field(default=None, max_length=1000)
+
+
+class SosActivityOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    sos_event_id: int
+    action: str
+    from_status: str | None = None
+    to_status: str | None = None
+    note: str | None = None
+    user_id: int | None = None
+    user_name: str
+    created_at: datetime
+
+
+class SosOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    school_id: int
+    school_name: str
+    status: str
+    repeat_count: int
+    note: str | None = None
+    alert_id: int | None = None
+    occurrence_id: int | None = None
+    activated_by_user_id: int | None = None
+    activated_by_name: str
+    activated_at: datetime
+    last_triggered_at: datetime
+    acknowledged_by_user_id: int | None = None
+    acknowledged_by_name: str | None = None
+    acknowledged_at: datetime | None = None
+    cancel_requested_by_user_id: int | None = None
+    cancel_requested_by_name: str | None = None
+    cancel_requested_at: datetime | None = None
+    resolved_by_user_id: int | None = None
+    resolved_by_name: str | None = None
+    resolved_at: datetime | None = None
+    resolution_note: str | None = None
+    created_at: datetime
+    updated_at: datetime | None = None
+
+
 
 class EquipmentIn(BaseModel):
     school_id: int | None = None
@@ -1751,8 +1879,8 @@ def ensure_schema() -> None:
 
 
 
-APP_VERSION = "2.0.0-F7-R3"
-EXPECTED_ALEMBIC_REVISION = "20260911_209_f7r3"
+APP_VERSION = "2.0.0-F8-R1"
+EXPECTED_ALEMBIC_REVISION = "20260915_210_f8_sos"
 DATA_DIR = Path(os.getenv("EDUVIGIA_DATA_DIR", "/app/data"))
 EVIDENCE_DIR = DATA_DIR / "evidence"
 PLAYBACK_DIR = DATA_DIR / "playback"
@@ -2352,7 +2480,7 @@ ROLE_PROFILES = {
             "dashboard:view", "schools:view", "schools:write", "cameras:view",
             "cameras:write", "monitor:view", "maps:view", "floorplans:view", "floorplans:write", "alerts:view", "events:view", "events:operate", "occurrences:view",
             "equipment:view", "equipment:write", "reports:view", "audit:view",
-            "settings:view", "users:view",
+            "settings:view", "users:view", "sos:view", "sos:operate",
             "ptz:control", "playback:view", "evidence:export", "evidence:verify",
             "wall:view", "wall:write",
         ],
@@ -2364,7 +2492,7 @@ ROLE_PROFILES = {
         "permissions": [
             "dashboard:view", "command:view", "schools:view", "cameras:view",
             "monitor:view", "maps:view", "floorplans:view", "alerts:view", "alerts:operate", "events:view", "events:operate", "occurrences:view",
-            "occurrences:operate", "dispatch:view", "dispatch:operate",
+            "occurrences:operate", "dispatch:view", "dispatch:operate", "sos:view", "sos:operate",
             "ptz:control", "playback:view", "evidence:export", "evidence:verify",
             "wall:view", "wall:write",
         ],
@@ -2376,7 +2504,7 @@ ROLE_PROFILES = {
         "permissions": [
             "dashboard:view", "command:view", "schools:view", "cameras:view",
             "monitor:view", "maps:view", "floorplans:view", "alerts:view", "alerts:operate", "events:view", "events:operate", "occurrences:view",
-            "occurrences:operate", "dispatch:view",
+            "occurrences:operate", "dispatch:view", "sos:view", "sos:operate",
             "ptz:control", "playback:view", "evidence:export", "evidence:verify",
             "wall:view", "wall:write",
         ],
@@ -2388,7 +2516,7 @@ ROLE_PROFILES = {
         "permissions": [
             "dashboard:view", "command:view", "schools:view", "cameras:view",
             "monitor:view", "maps:view", "floorplans:view", "alerts:view", "alerts:operate", "events:view", "events:operate", "occurrences:view",
-            "occurrences:operate", "dispatch:view", "dispatch:operate",
+            "occurrences:operate", "dispatch:view", "dispatch:operate", "sos:view", "sos:operate",
             "ptz:control", "playback:view", "evidence:export", "evidence:verify",
             "wall:view", "wall:write",
         ],
@@ -2399,7 +2527,7 @@ ROLE_PROFILES = {
         "label": "Gestor da Escola",
         "permissions": [
             "dashboard:view", "schools:view", "cameras:view", "monitor:view", "maps:view", "floorplans:view", "floorplans:write",
-            "alerts:view", "events:view", "occurrences:view", "sos:use", "chat:use", "ptt:use",
+            "alerts:view", "events:view", "occurrences:view", "sos:view", "sos:use", "chat:use", "ptt:use",
             "ptz:control", "playback:view", "evidence:verify",
         ],
         "school_required": True,
@@ -2409,7 +2537,7 @@ ROLE_PROFILES = {
         "label": "Operador da Escola",
         "permissions": [
             "dashboard:view", "schools:view", "cameras:view", "monitor:view", "maps:view", "floorplans:view",
-            "alerts:view", "events:view", "occurrences:view", "sos:use", "chat:use", "ptt:use",
+            "alerts:view", "events:view", "occurrences:view", "sos:view", "sos:use", "chat:use", "ptt:use",
             "ptz:control", "playback:view", "evidence:verify",
         ],
         "school_required": True,
@@ -2607,6 +2735,74 @@ def ensure_alert_access(
         raise HTTPException(404, "Alerta não encontrado")
     ensure_school_name_access(db, user, alert.school_name, alert.school_id)
     return alert
+
+
+SOS_ACTIVE_STATUSES = {"ACTIVE", "ACKNOWLEDGED", "CANCEL_REQUESTED"}
+SOS_TERMINAL_STATUSES = {"RESOLVED", "FALSE_ALARM"}
+
+
+def scope_sos_query(query, user: UserAccount):
+    restricted_school_id = scoped_school_id(user)
+    if restricted_school_id is not None:
+        query = query.filter(SosEvent.school_id == restricted_school_id)
+    return query
+
+
+def ensure_sos_access(user: UserAccount, row: SosEvent | None) -> SosEvent:
+    if not row:
+        raise HTTPException(404, "SOS não encontrado")
+    ensure_school_access(user, row.school_id)
+    return row
+
+
+def _sos_school_lock(db: Session, school_id: int) -> None:
+    if DATABASE_URL.startswith("postgresql"):
+        db.execute(
+            text("SELECT pg_advisory_xact_lock(hashtext(:sos_key))"),
+            {"sos_key": f"sos-school:{school_id}"},
+        )
+
+
+def add_sos_activity(
+    db: Session,
+    row: SosEvent,
+    action: str,
+    *,
+    from_status: str | None = None,
+    to_status: str | None = None,
+    note: str | None = None,
+    user: UserAccount | None = None,
+    user_name: str | None = None,
+) -> SosActivity:
+    activity = SosActivity(
+        sos_event_id=row.id,
+        action=action,
+        from_status=from_status,
+        to_status=to_status,
+        note=(note or "").strip() or None,
+        user_id=user.id if user else None,
+        user_name=user.name if user else (user_name or "Sistema"),
+    )
+    db.add(activity)
+    return activity
+
+
+def sos_detail_out(db: Session, row: SosEvent) -> dict:
+    activities = (
+        db.query(SosActivity)
+        .filter(SosActivity.sos_event_id == row.id)
+        .order_by(SosActivity.created_at.asc())
+        .all()
+    )
+    result = SosOut.model_validate(row).model_dump()
+    result["activities"] = [
+        SosActivityOut.model_validate(item).model_dump() for item in activities
+    ]
+    alert = db.get(Alert, row.alert_id) if row.alert_id else None
+    occurrence = db.get(Occurrence, row.occurrence_id) if row.occurrence_id else None
+    result["alert"] = AlertOut.model_validate(alert).model_dump() if alert else None
+    result["occurrence"] = OccurrenceOut.model_validate(occurrence).model_dump() if occurrence else None
+    return result
 
 
 ALERT_ACTIVE_STATUSES = {"NOVO", "EM_ATENDIMENTO", "CONFIRMADO"}
@@ -7909,6 +8105,456 @@ def create_alert(
     db.commit()
     db.refresh(row)
     return row
+
+
+@app.get("/sos", response_model=list[SosOut])
+def list_sos_events(
+    status: str | None = Query(default=None),
+    school_id: int | None = Query(default=None),
+    limit: int = Query(default=200, ge=1, le=500),
+    db: Session = Depends(db_session),
+    user: UserAccount = Depends(require_permission("sos:view")),
+):
+    query = scope_sos_query(db.query(SosEvent), user)
+    if school_id is not None:
+        ensure_school_access(user, school_id)
+        query = query.filter(SosEvent.school_id == school_id)
+    if status:
+        normalized = status.strip().upper()
+        if normalized == "ACTIVE":
+            query = query.filter(SosEvent.status.in_(SOS_ACTIVE_STATUSES))
+        else:
+            query = query.filter(SosEvent.status == normalized)
+    return query.order_by(SosEvent.last_triggered_at.desc()).limit(limit).all()
+
+
+@app.get("/sos/overview")
+def sos_overview(
+    db: Session = Depends(db_session),
+    user: UserAccount = Depends(require_permission("sos:view")),
+):
+    rows = (
+        scope_sos_query(db.query(SosEvent), user)
+        .order_by(SosEvent.last_triggered_at.desc())
+        .limit(500)
+        .all()
+    )
+    return {
+        "version": APP_VERSION,
+        "summary": {
+            "total": len(rows),
+            "active": len([row for row in rows if row.status in SOS_ACTIVE_STATUSES]),
+            "acknowledged": len([row for row in rows if row.status == "ACKNOWLEDGED"]),
+            "cancel_requested": len([row for row in rows if row.status == "CANCEL_REQUESTED"]),
+            "resolved": len([row for row in rows if row.status == "RESOLVED"]),
+            "false_alarm": len([row for row in rows if row.status == "FALSE_ALARM"]),
+        },
+    }
+
+
+@app.get("/sos/{sos_id}/details")
+def sos_details(
+    sos_id: int,
+    db: Session = Depends(db_session),
+    user: UserAccount = Depends(require_permission("sos:view")),
+):
+    row = ensure_sos_access(user, db.get(SosEvent, sos_id))
+    return sos_detail_out(db, row)
+
+
+@app.post("/sos/activate")
+def activate_sos(
+    payload: SosActivateIn,
+    request: Request,
+    db: Session = Depends(db_session),
+    actor: UserAccount = Depends(require_permission("sos:use")),
+):
+    restricted_school_id = scoped_school_id(actor)
+    school_id = restricted_school_id or payload.school_id
+    if not school_id:
+        raise HTTPException(422, "Informe a escola para o acionamento SOS")
+    ensure_school_access(actor, school_id)
+
+    _sos_school_lock(db, int(school_id))
+    school = db.get(School, int(school_id))
+    if not school or not school.active:
+        raise HTTPException(404, "Escola não encontrada ou inativa")
+
+    now = datetime.now(timezone.utc)
+    row = (
+        db.query(SosEvent)
+        .filter(
+            SosEvent.school_id == school.id,
+            SosEvent.status.in_(SOS_ACTIVE_STATUSES),
+        )
+        .order_by(SosEvent.id.desc())
+        .first()
+    )
+    note = (payload.note or "").strip() or None
+
+    if row:
+        previous = row.status
+        row.repeat_count += 1
+        row.last_triggered_at = now
+        row.updated_at = now
+        if note:
+            row.note = note
+        if row.status == "CANCEL_REQUESTED":
+            row.status = "ACTIVE"
+            row.cancel_requested_by_user_id = None
+            row.cancel_requested_by_name = None
+            row.cancel_requested_at = None
+
+        add_sos_activity(
+            db,
+            row,
+            "REFORCO",
+            from_status=previous,
+            to_status=row.status,
+            note=note or f"Novo acionamento do SOS. Repetição #{row.repeat_count}.",
+            user=actor,
+        )
+
+        occurrence = db.get(Occurrence, row.occurrence_id) if row.occurrence_id else None
+        if occurrence:
+            db.add(
+                OccurrenceEvent(
+                    occurrence_id=occurrence.id,
+                    event_type="SOS_REFORCO",
+                    description=f"SOS reforçado pela escola. Acionamento #{row.repeat_count}.",
+                    user_name=actor.name,
+                )
+            )
+
+        alert = db.get(Alert, row.alert_id) if row.alert_id else None
+        if alert:
+            if alert.status in ALERT_TERMINAL_STATUSES:
+                alert.status = "NOVO"
+                alert.resolved_at = None
+            alert.summary = f"SOS digital acionado {row.repeat_count} vezes pela escola {school.name}."
+            alert.updated_at = now
+            add_alert_activity(
+                db,
+                alert,
+                "SOS_REFORCO",
+                from_status=alert.status,
+                to_status=alert.status,
+                note=f"Repetição #{row.repeat_count}",
+                user=actor,
+            )
+
+        notify(
+            db,
+            title="SOS reforçado",
+            message=f"{school.name} acionou novamente o SOS (#{row.repeat_count}).",
+            severity="CRITICAL",
+            module="SOS / Emergência",
+            school_id=school.id,
+            entity_type="sos",
+            entity_id=row.id,
+        )
+        audit(
+            db,
+            "SOS / Emergência",
+            "SOS reforçado",
+            f"Escola={school.name}; SOS={row.id}; repetição={row.repeat_count}",
+            request=request,
+            user=actor,
+        )
+        db.commit()
+        db.refresh(row)
+        return sos_detail_out(db, row)
+
+    alert = Alert(
+        school_id=school.id,
+        school_name=school.name,
+        camera_name="SOS Digital",
+        event_type="SOS / Pânico",
+        priority="CRITICA",
+        status="NOVO",
+        source="SOS",
+        summary=note or f"SOS digital acionado pela escola {school.name}.",
+        event_occurred_at=now,
+    )
+    db.add(alert)
+    db.flush()
+
+    occurrence = Occurrence(
+        protocol=occurrence_protocol(db),
+        school_id=school.id,
+        school_name=school.name,
+        category="EMERGENCIA",
+        priority="CRITICA",
+        status="ABERTA",
+        description=note or f"Emergência aberta automaticamente pelo SOS digital da escola {school.name}.",
+        alert_id=alert.id,
+    )
+    db.add(occurrence)
+    db.flush()
+
+    row = SosEvent(
+        school_id=school.id,
+        school_name=school.name,
+        status="ACTIVE",
+        repeat_count=1,
+        note=note,
+        alert_id=alert.id,
+        occurrence_id=occurrence.id,
+        activated_by_user_id=actor.id,
+        activated_by_name=actor.name,
+        activated_at=now,
+        last_triggered_at=now,
+    )
+    db.add(row)
+    db.flush()
+
+    add_sos_activity(db, row, "ACIONADO", to_status="ACTIVE", note=note, user=actor)
+    add_alert_activity(db, alert, "SOS_ACIONADO", to_status="NOVO", note=note, user=actor)
+    db.add(
+        OccurrenceEvent(
+            occurrence_id=occurrence.id,
+            event_type="SOS_ACIONADO",
+            description=f"Emergência criada automaticamente pelo SOS digital da escola {school.name}.",
+            user_name=actor.name,
+        )
+    )
+    notify(
+        db,
+        title="SOS CRÍTICO",
+        message=f"{school.name} acionou o SOS digital.",
+        severity="CRITICAL",
+        module="SOS / Emergência",
+        school_id=school.id,
+        entity_type="sos",
+        entity_id=row.id,
+    )
+    audit(
+        db,
+        "SOS / Emergência",
+        "SOS acionado",
+        f"Escola={school.name}; SOS={row.id}; ocorrência={occurrence.protocol}",
+        request=request,
+        user=actor,
+    )
+    db.commit()
+    db.refresh(row)
+    return sos_detail_out(db, row)
+
+
+@app.post("/sos/{sos_id}/acknowledge")
+def acknowledge_sos(
+    sos_id: int,
+    payload: SosActionIn,
+    request: Request,
+    db: Session = Depends(db_session),
+    actor: UserAccount = Depends(require_permission("sos:operate")),
+):
+    row = ensure_sos_access(actor, db.get(SosEvent, sos_id))
+    if row.status in SOS_TERMINAL_STATUSES:
+        raise HTTPException(409, "SOS já encerrado")
+
+    previous = row.status
+    now = datetime.now(timezone.utc)
+    row.status = "ACKNOWLEDGED"
+    row.acknowledged_by_user_id = actor.id
+    row.acknowledged_by_name = actor.name
+    row.acknowledged_at = now
+    row.updated_at = now
+    add_sos_activity(
+        db,
+        row,
+        "RECONHECIDO",
+        from_status=previous,
+        to_status=row.status,
+        note=payload.note,
+        user=actor,
+    )
+
+    alert = db.get(Alert, row.alert_id) if row.alert_id else None
+    if alert and alert.status not in ALERT_TERMINAL_STATUSES:
+        set_alert_status(db, alert, "EM_ATENDIMENTO", user=actor, note="SOS reconhecido pela Central")
+
+    occurrence = db.get(Occurrence, row.occurrence_id) if row.occurrence_id else None
+    if occurrence and occurrence.status == "ABERTA":
+        occurrence.status = "EM_ANALISE"
+        db.add(
+            OccurrenceEvent(
+                occurrence_id=occurrence.id,
+                event_type="SOS_RECONHECIDO",
+                description=f"SOS reconhecido por {actor.name}.",
+                user_name=actor.name,
+            )
+        )
+
+    notify(
+        db,
+        title="SOS reconhecido",
+        message=f"{row.school_name}: atendimento reconhecido por {actor.name}.",
+        severity="WARNING",
+        module="SOS / Emergência",
+        school_id=row.school_id,
+        entity_type="sos",
+        entity_id=row.id,
+    )
+    audit(
+        db,
+        "SOS / Emergência",
+        "SOS reconhecido",
+        f"SOS={row.id}; escola={row.school_name}",
+        request=request,
+        user=actor,
+    )
+    db.commit()
+    db.refresh(row)
+    return sos_detail_out(db, row)
+
+
+@app.post("/sos/{sos_id}/request-cancel")
+def request_sos_cancel(
+    sos_id: int,
+    payload: SosActionIn,
+    request: Request,
+    db: Session = Depends(db_session),
+    actor: UserAccount = Depends(require_permission("sos:use")),
+):
+    row = ensure_sos_access(actor, db.get(SosEvent, sos_id))
+    if row.status in SOS_TERMINAL_STATUSES:
+        raise HTTPException(409, "SOS já encerrado")
+    if row.status == "CANCEL_REQUESTED":
+        raise HTTPException(409, "Cancelamento já solicitado; aguarde validação da Central")
+
+    previous = row.status
+    now = datetime.now(timezone.utc)
+    row.status = "CANCEL_REQUESTED"
+    row.cancel_requested_by_user_id = actor.id
+    row.cancel_requested_by_name = actor.name
+    row.cancel_requested_at = now
+    row.updated_at = now
+    add_sos_activity(
+        db,
+        row,
+        "CANCELAMENTO_SOLICITADO",
+        from_status=previous,
+        to_status=row.status,
+        note=payload.note,
+        user=actor,
+    )
+
+    occurrence = db.get(Occurrence, row.occurrence_id) if row.occurrence_id else None
+    if occurrence:
+        db.add(
+            OccurrenceEvent(
+                occurrence_id=occurrence.id,
+                event_type="SOS_CANCELAMENTO_SOLICITADO",
+                description=f"Cancelamento solicitado por {actor.name}. A Central deve validar o encerramento.",
+                user_name=actor.name,
+            )
+        )
+
+    notify(
+        db,
+        title="Cancelamento de SOS solicitado",
+        message=f"{row.school_name} solicitou cancelamento. Validação da Central pendente.",
+        severity="WARNING",
+        module="SOS / Emergência",
+        school_id=row.school_id,
+        entity_type="sos",
+        entity_id=row.id,
+    )
+    audit(
+        db,
+        "SOS / Emergência",
+        "Cancelamento solicitado",
+        f"SOS={row.id}; escola={row.school_name}",
+        request=request,
+        user=actor,
+    )
+    db.commit()
+    db.refresh(row)
+    return sos_detail_out(db, row)
+
+
+@app.post("/sos/{sos_id}/resolve")
+def resolve_sos(
+    sos_id: int,
+    payload: SosResolveIn,
+    request: Request,
+    db: Session = Depends(db_session),
+    actor: UserAccount = Depends(require_permission("sos:operate")),
+):
+    row = ensure_sos_access(actor, db.get(SosEvent, sos_id))
+    if row.status in SOS_TERMINAL_STATUSES:
+        raise HTTPException(409, "SOS já encerrado")
+
+    previous = row.status
+    now = datetime.now(timezone.utc)
+    row.status = payload.status
+    row.resolved_by_user_id = actor.id
+    row.resolved_by_name = actor.name
+    row.resolved_at = now
+    row.resolution_note = (payload.note or "").strip() or None
+    row.updated_at = now
+    add_sos_activity(
+        db,
+        row,
+        "ENCERRADO" if payload.status == "RESOLVED" else "FALSO_ALARME",
+        from_status=previous,
+        to_status=row.status,
+        note=payload.note,
+        user=actor,
+    )
+
+    alert = db.get(Alert, row.alert_id) if row.alert_id else None
+    if alert:
+        set_alert_status(
+            db,
+            alert,
+            "ENCERRADO" if payload.status == "RESOLVED" else "DESCARTADO",
+            user=actor,
+            note=payload.note or "Encerramento do SOS",
+        )
+
+    occurrence = db.get(Occurrence, row.occurrence_id) if row.occurrence_id else None
+    if occurrence:
+        occurrence.status = "ENCERRADA"
+        occurrence.closed_at = now
+        db.add(
+            OccurrenceEvent(
+                occurrence_id=occurrence.id,
+                event_type="SOS_ENCERRADO" if payload.status == "RESOLVED" else "SOS_FALSO_ALARME",
+                description=(
+                    payload.note
+                    or (
+                        "SOS encerrado pela Central."
+                        if payload.status == "RESOLVED"
+                        else "SOS classificado como falso alarme pela Central."
+                    )
+                ),
+                user_name=actor.name,
+            )
+        )
+
+    notify(
+        db,
+        title="SOS encerrado" if payload.status == "RESOLVED" else "SOS classificado como falso alarme",
+        message=f"{row.school_name} — operação concluída por {actor.name}.",
+        severity="INFO",
+        module="SOS / Emergência",
+        school_id=row.school_id,
+        entity_type="sos",
+        entity_id=row.id,
+    )
+    audit(
+        db,
+        "SOS / Emergência",
+        "SOS encerrado" if payload.status == "RESOLVED" else "SOS falso alarme",
+        f"SOS={row.id}; escola={row.school_name}",
+        request=request,
+        user=actor,
+    )
+    db.commit()
+    db.refresh(row)
+    return sos_detail_out(db, row)
 
 
 @app.get("/alerts", response_model=list[AlertOut])

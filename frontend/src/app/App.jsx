@@ -180,6 +180,7 @@ function SecureStreamFrame({ cameraId = null, profile = "SUB", testStream = fals
 const MENU = [
   ["Painel Geral", LayoutDashboard, "dashboard"],
   ["Central Operacional", Siren, "operations"],
+  ["SOS / Emergência", Siren, "sos"],
   ["Escolas", Building2, "schools"],
   ["Câmeras", Camera, "cameras"],
   ["Eventos & Saúde", Activity, "camera-events"],
@@ -1454,6 +1455,7 @@ export default function App() {
     const map = {
       dashboard: "dashboard:view",
       operations: "command:view",
+      sos: "sos:view",
       schools: "schools:view",
       cameras: "cameras:view",
       "camera-events": "events:view",
@@ -1553,7 +1555,7 @@ export default function App() {
         );
         setUnreadCount((current) => Math.max(0, current - 1));
       }
-      const targetByEntity = { alert: "alerts", occurrence: "occurrences", school: "schools", equipment: "equipment" };
+      const targetByEntity = { alert: "alerts", occurrence: "occurrences", school: "schools", equipment: "equipment", sos: "sos" };
       const target = targetByEntity[item.entity_type];
       if (target) {
         setNotificationOpen(false);
@@ -1731,7 +1733,7 @@ export default function App() {
           ))}
         </nav>
         <div className="sidebarFooter">
-          <strong>EduVigIA v2.0.0-F7-R3</strong>
+          <strong>EduVigIA v2.0.0-F8-R1</strong>
           <span>Central operacional ativa</span>
           <span>Integração de vídeo preparada</span>
         </div>
@@ -1756,6 +1758,12 @@ export default function App() {
             />
           </div>
           <div className="topActions">
+            {Boolean(authUser?.school_id && can("sos:use")) && (
+              <SOSQuickButton
+                onActivated={() => navigate("sos")}
+                onFeedback={showActionFeedback}
+              />
+            )}
             <button
               className="iconButton"
               type="button"
@@ -1828,6 +1836,14 @@ export default function App() {
               onAlertOccurrence={alertToOccurrence}
               onOccurrenceDetails={openOccurrenceDetails}
               canOperate={can("alerts:operate")}
+              onFeedback={showActionFeedback}
+            />
+          )}
+
+          {section === "sos" && can("sos:view") && (
+            <SOSPage
+              canUse={Boolean(authUser?.school_id && can("sos:use"))}
+              canOperate={can("sos:operate")}
               onFeedback={showActionFeedback}
             />
           )}
@@ -2121,6 +2137,293 @@ export default function App() {
         )}
       </main>
     </div>
+  );
+}
+
+function sosStatusLabel(status) {
+  const labels = {
+    ACTIVE: "Ativo",
+    ACKNOWLEDGED: "Reconhecido",
+    CANCEL_REQUESTED: "Cancelamento solicitado",
+    RESOLVED: "Resolvido",
+    FALSE_ALARM: "Falso alarme",
+  };
+  return labels[status] || status;
+}
+
+function SOSQuickButton({ onActivated = () => {}, onFeedback = () => {} }) {
+  const [busy, setBusy] = useState(false);
+
+  const activate = async () => {
+    if (!window.confirm("ACIONAR SOS DE EMERGÊNCIA agora? A Central será notificada imediatamente.")) return;
+    setBusy(true);
+    try {
+      const result = await api("/sos/activate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      onFeedback(
+        "success",
+        result.repeat_count > 1 ? "SOS reforçado" : "SOS acionado",
+        result.repeat_count > 1
+          ? `O acionamento existente foi reforçado. Repetição #${result.repeat_count}.`
+          : "A Central recebeu o acionamento crítico."
+      );
+      onActivated(result);
+    } catch (error) {
+      onFeedback("error", "Falha ao acionar SOS", error.message || "Não foi possível enviar o acionamento de emergência.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      className="sosQuickButton"
+      onClick={activate}
+      disabled={busy}
+      aria-label="Acionar SOS de emergência"
+    >
+      <Siren size={18} />
+      <span>{busy ? "Enviando..." : "SOS"}</span>
+    </button>
+  );
+}
+
+function SOSPage({ canUse = false, canOperate = false, onFeedback = () => {} }) {
+  const [rows, setRows] = useState([]);
+  const [overview, setOverview] = useState({ summary: {} });
+  const [selected, setSelected] = useState(null);
+  const [selectedId, setSelectedId] = useState(null);
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const load = async (userInitiated = false) => {
+    try {
+      const [list, summary] = await Promise.all([
+        api("/sos"),
+        api("/sos/overview"),
+      ]);
+      setRows(list || []);
+      setOverview(summary || { summary: {} });
+      if (selectedId) {
+        const refreshed = await api(`/sos/${selectedId}/details`).catch(() => null);
+        if (refreshed) setSelected(refreshed);
+      }
+      setMessage("");
+      if (userInitiated) {
+        onFeedback("success", "SOS atualizado", `${(list || []).length} evento(s) carregado(s).`);
+      }
+    } catch (error) {
+      const detail = error.message || "Falha ao carregar os eventos SOS.";
+      setMessage(detail);
+      if (userInitiated) onFeedback("error", "Falha ao atualizar SOS", detail);
+    }
+  };
+
+  useEffect(() => {
+    load(false);
+    const timer = window.setInterval(() => load(false), 5000);
+    return () => window.clearInterval(timer);
+  }, [selectedId]);
+
+  const activate = async () => {
+    if (!window.confirm("Confirmar acionamento do SOS? Este evento será tratado como emergência crítica.")) return;
+    const note = window.prompt("Observação opcional sobre a emergência:") || "";
+    setBusy(true);
+    try {
+      const result = await api("/sos/activate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note }),
+      });
+      setSelected(result);
+      setSelectedId(result.id);
+      onFeedback(
+        "success",
+        result.repeat_count > 1 ? "SOS reforçado" : "SOS acionado",
+        result.repeat_count > 1
+          ? `O mesmo evento foi reforçado. Repetição #${result.repeat_count}.`
+          : "Alerta crítico e ocorrência de emergência foram abertos."
+      );
+      await load(false);
+    } catch (error) {
+      onFeedback("error", "Falha ao acionar SOS", error.message || "Não foi possível concluir o acionamento.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const action = async (row, kind) => {
+    let path = "";
+    let payload = {};
+    let successTitle = "SOS atualizado";
+
+    if (kind === "ack") {
+      path = `/sos/${row.id}/acknowledge`;
+      payload = { note: window.prompt("Observação do reconhecimento:") || "" };
+      successTitle = "SOS reconhecido";
+    }
+    if (kind === "cancel") {
+      path = `/sos/${row.id}/request-cancel`;
+      payload = { note: window.prompt("Motivo da solicitação de cancelamento:") || "" };
+      successTitle = "Cancelamento solicitado";
+    }
+    if (kind === "resolve") {
+      path = `/sos/${row.id}/resolve`;
+      payload = { status: "RESOLVED", note: window.prompt("Registro de encerramento:") || "" };
+      successTitle = "SOS encerrado";
+    }
+    if (kind === "false") {
+      path = `/sos/${row.id}/resolve`;
+      payload = { status: "FALSE_ALARM", note: window.prompt("Motivo da classificação como falso alarme:") || "" };
+      successTitle = "SOS classificado como falso alarme";
+    }
+    if (!path) return;
+
+    setBusy(true);
+    try {
+      const result = await api(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      setSelected(result);
+      setSelectedId(result.id);
+      onFeedback("success", successTitle, `${result.school_name} · ${sosStatusLabel(result.status)}.`);
+      await load(false);
+    } catch (error) {
+      onFeedback("error", "Falha na operação SOS", error.message || "Não foi possível atualizar o evento.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const openDetails = async (id) => {
+    try {
+      setSelectedId(id);
+      setSelected(await api(`/sos/${id}/details`));
+    } catch (error) {
+      onFeedback("error", "Falha ao abrir SOS", error.message || "Não foi possível carregar os detalhes.");
+    }
+  };
+
+  const summary = overview.summary || {};
+  const activeRows = rows.filter((row) => ["ACTIVE", "ACKNOWLEDGED", "CANCEL_REQUESTED"].includes(row.status));
+
+  return (
+    <Page title="SOS / Emergência" subtitle="Acionamento digital, reconhecimento e resposta operacional auditável.">
+      {message && <div className="notice">{message}</div>}
+
+      <section className="sosKpis">
+        <article><span>Ativos</span><b>{summary.active || 0}</b></article>
+        <article><span>Reconhecidos</span><b>{summary.acknowledged || 0}</b></article>
+        <article><span>Cancelamento solicitado</span><b>{summary.cancel_requested || 0}</b></article>
+        <article><span>Resolvidos</span><b>{summary.resolved || 0}</b></article>
+        <article><span>Falsos alarmes</span><b>{summary.false_alarm || 0}</b></article>
+      </section>
+
+      {canUse && (
+        <section className="sosActivationPanel">
+          <div className="sosActivationCopy">
+            <Siren size={30} />
+            <div>
+              <b>Acionamento de emergência</b>
+              <span>Use somente diante de situação real que exija resposta imediata da Central.</span>
+            </div>
+          </div>
+          <button type="button" className="sosPrimaryButton" onClick={activate} disabled={busy}>
+            <Siren size={20} /> {busy ? "ACIONANDO..." : "ACIONAR SOS"}
+          </button>
+        </section>
+      )}
+
+      <section className={`sosSituation ${activeRows.length ? "active" : "normal"}`}>
+        <div>
+          <span>Situação operacional</span>
+          <b>{activeRows.length ? `${activeRows.length} SOS em aberto` : "Nenhum SOS em aberto"}</b>
+        </div>
+        <button type="button" onClick={() => load(true)} disabled={busy}>
+          <RefreshCw size={15} /> Atualizar
+        </button>
+      </section>
+
+      <div className="sosWorkspace">
+        <section className="sosListPanel">
+          <div className="sosPanelTitle">
+            <div><b>Eventos SOS</b><span>{rows.length} registro(s)</span></div>
+          </div>
+          {rows.length === 0 && <div className="sosEmpty">Nenhum evento SOS registrado.</div>}
+          {rows.map((row) => (
+            <button
+              type="button"
+              key={row.id}
+              className={`sosEventCard ${row.status.toLowerCase()} ${selectedId === row.id ? "selected" : ""}`}
+              onClick={() => openDetails(row.id)}
+            >
+              <div className="sosEventTop"><b>{row.school_name}</b><span>{sosStatusLabel(row.status)}</span></div>
+              <div>Acionamentos: <strong>{row.repeat_count}</strong></div>
+              <small>{new Date(row.last_triggered_at).toLocaleString("pt-BR")}</small>
+            </button>
+          ))}
+        </section>
+
+        <section className="sosDetailPanel">
+          {!selected && <div className="sosEmpty">Selecione um evento para visualizar o atendimento.</div>}
+          {selected && (
+            <>
+              <div className="sosDetailHeader">
+                <div><span>SOS #{selected.id}</span><h2>{selected.school_name}</h2></div>
+                <strong className={`sosStatusBadge ${selected.status.toLowerCase()}`}>{sosStatusLabel(selected.status)}</strong>
+              </div>
+
+              <div className="sosMetaGrid">
+                <div><span>Acionado por</span><b>{selected.activated_by_name}</b></div>
+                <div><span>Repetições</span><b>{selected.repeat_count}</b></div>
+                <div><span>Alerta</span><b>#{selected.alert_id || "—"}</b></div>
+                <div><span>Ocorrência</span><b>{selected.occurrence?.protocol || (selected.occurrence_id ? `#${selected.occurrence_id}` : "—")}</b></div>
+              </div>
+
+              {selected.note && <div className="sosNote"><b>Observação</b><p>{selected.note}</p></div>}
+              {selected.resolution_note && <div className="sosNote"><b>Encerramento</b><p>{selected.resolution_note}</p></div>}
+
+              {!['RESOLVED', 'FALSE_ALARM'].includes(selected.status) && (
+                <div className="sosActions">
+                  {canOperate && selected.status !== "ACKNOWLEDGED" && (
+                    <button type="button" onClick={() => action(selected, "ack")} disabled={busy}><CheckCircle2 size={16} /> Reconhecer</button>
+                  )}
+                  {canUse && selected.status !== "CANCEL_REQUESTED" && (
+                    <button type="button" onClick={() => action(selected, "cancel")} disabled={busy}>Solicitar cancelamento</button>
+                  )}
+                  {canOperate && (
+                    <button type="button" className="resolve" onClick={() => action(selected, "resolve")} disabled={busy}>Encerrar</button>
+                  )}
+                  {canOperate && (
+                    <button type="button" className="falseAlarm" onClick={() => action(selected, "false")} disabled={busy}>Falso alarme</button>
+                  )}
+                </div>
+              )}
+
+              <div className="sosTimeline">
+                <h3>Linha do tempo</h3>
+                {(selected.activities || []).map((item) => (
+                  <div className="sosTimelineItem" key={item.id}>
+                    <i />
+                    <div>
+                      <b>{item.action.replaceAll("_", " ")}</b>
+                      <span>{item.user_name} · {new Date(item.created_at).toLocaleString("pt-BR")}</span>
+                      {item.note && <p>{item.note}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </section>
+      </div>
+    </Page>
   );
 }
 

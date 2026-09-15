@@ -60,7 +60,7 @@ def _session(role="ADMIN_SECRETARIA"):
 def test_liveness_is_public_and_returns_request_id(client):
     response = client.get("/live", headers={"X-Request-ID": "req-phase4"})
     assert response.status_code == 200
-    assert response.json()["version"] == "2.0.0-F7-R3"
+    assert response.json()["version"] == "2.0.0-F8-R1"
     assert response.headers["X-Request-ID"] == "req-phase4"
 
 
@@ -68,7 +68,7 @@ def test_metrics_are_public_prometheus_text(client):
     response = client.get("/metrics")
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/plain")
-    assert 'eduvigia_info{version="2.0.0-F7-R3"' in response.text
+    assert 'eduvigia_info{version="2.0.0-F8-R1"' in response.text
     assert "eduvigia_http_requests_total" in response.text
     assert "eduvigia_database_up 1" in response.text
 
@@ -80,7 +80,7 @@ def test_readiness_returns_200_when_dependencies_are_ready(client, monkeypatch):
         lambda db=None: {
             "ready": True,
             "status": "READY",
-            "version": "2.0.0-F7-R3",
+            "version": "2.0.0-F8-R1",
             "checked_at": "2026-07-08T00:00:00Z",
             "startup_complete": True,
             "services": {},
@@ -98,7 +98,7 @@ def test_readiness_returns_503_when_dependency_fails(client, monkeypatch):
         lambda db=None: {
             "ready": False,
             "status": "NOT_READY",
-            "version": "2.0.0-F7-R3",
+            "version": "2.0.0-F8-R1",
             "checked_at": "2026-07-08T00:00:00Z",
             "startup_complete": True,
             "services": {"database": {"status": "OFFLINE"}},
@@ -119,7 +119,7 @@ def test_capacity_exposes_pool_retention_and_scaling(client):
     response = client.get("/infrastructure/capacity", headers=admin_headers)
     assert response.status_code == 200
     body = response.json()
-    assert body["version"] == "2.0.0-F7-R3"
+    assert body["version"] == "2.0.0-F8-R1"
     assert "database_pool" in body
     assert body["retention"]["backup_days"] >= 1
     assert body["scaling"]["recommended_api_workers"] >= 1
@@ -139,11 +139,11 @@ def test_infrastructure_preflight_validates_running_api_readiness(monkeypatch, t
     (cert_dir / "eduvigia.crt").write_text("cert", encoding="utf-8")
     (cert_dir / "eduvigia.key").write_text("key", encoding="utf-8")
 
-    live = {"status": "alive", "version": "2.0.0-F7-R3"}
+    live = {"status": "alive", "version": "2.0.0-F8-R1"}
     ready = {
         "ready": True,
         "status": "READY",
-        "version": "2.0.0-F7-R3",
+        "version": "2.0.0-F8-R1",
         "startup_complete": True,
         "services": {
             "database": {"status": "ONLINE"},
