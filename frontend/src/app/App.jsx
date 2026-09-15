@@ -3702,6 +3702,7 @@ function CameraEventsHealthPage({
     severity: "",
   });
   const [busy, setBusy] = useState(false);
+  const [healthBusy, setHealthBusy] = useState(false);
   const [localMessage, setLocalMessage] = useState("");
 
   const schoolMap = useMemo(
@@ -3777,6 +3778,34 @@ function CameraEventsHealthPage({
       DEVICE_REBOOT: "Reinicialização",
       UNKNOWN_DEVICE_EVENT: "Evento não catalogado",
     }[type] || type || "Evento");
+
+  const refreshHealth = async () => {
+    const cameraIds = cameras
+      .filter((camera) => !filters.school || Number(camera.school_id) === Number(filters.school))
+      .map((camera) => Number(camera.id))
+      .filter(Boolean)
+      .slice(0, 16);
+    if (cameraIds.length === 0) {
+      setLocalMessage("Nenhuma câmera disponível para atualizar a saúde.");
+      return;
+    }
+    setHealthBusy(true);
+    try {
+      const result = await api("/camera-health/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ camera_ids: cameraIds }),
+      });
+      setLocalMessage(
+        `Saúde atualizada: ${result.online || 0} online, ${result.degraded || 0} degradada(s), ${result.offline || 0} offline. Nenhum evento automático foi gerado.`
+      );
+      await onRefresh?.();
+    } catch (error) {
+      setLocalMessage(error.message || "Falha ao atualizar a saúde das câmeras.");
+    } finally {
+      setHealthBusy(false);
+    }
+  };
 
   const simulate = async (event) => {
     event.preventDefault();
@@ -3880,7 +3909,15 @@ function CameraEventsHealthPage({
       <div className="dataCard full">
         <div className="cardHeader">
           <div><h2>Saúde das câmeras</h2><small>RTSP, perfis de vídeo, gravação, armazenamento e telemetria disponível</small></div>
-          <span>{filteredHealth.length}</span>
+          <div className="cameraHealthActions">
+            <span>{filteredHealth.length}</span>
+            {canOperate && (
+              <button type="button" onClick={refreshHealth} disabled={healthBusy}>
+                <RefreshCw size={15} className={healthBusy ? "spinIcon" : ""}/>
+                {healthBusy ? "Testando perfis..." : "Atualizar saúde"}
+              </button>
+            )}
+          </div>
         </div>
         <div className="largeTable cameraHealthTable">
           <div className="largeTableHeader">

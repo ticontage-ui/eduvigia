@@ -3112,20 +3112,68 @@ def reconcile_health_inventory(db: Session) -> dict[str, int]:
 
 
 def _recompute_camera_health_state(row: CameraHealth) -> None:
+    # Connectivity loss is the only direct OFFLINE signal here. If the RTSP
+    # endpoint is reachable but one or both video profiles fail, the camera is
+    # reachable and therefore DEGRADADO rather than OFFLINE.
     if row.rtsp_online is False:
         row.state = "OFFLINE"
     elif row.storage_status == "FAILURE" or row.recording_status == "FAILURE":
         row.state = "DEGRADADO"
     elif row.tamper_active:
         row.state = "DEGRADADO"
-    elif row.main_online is False and row.sub_online is False:
-        row.state = "OFFLINE"
-    elif row.main_online is False or row.sub_online is False:
+    elif row.rtsp_online is True and (row.main_online is False or row.sub_online is False):
         row.state = "DEGRADADO"
     elif row.rtsp_online is True:
         row.state = "ONLINE"
+    elif row.main_online is True or row.sub_online is True:
+        row.state = "ONLINE"
+    elif row.main_online is False and row.sub_online is False:
+        row.state = "DEGRADADO"
     else:
         row.state = "UNKNOWN"
+
+
+def _camera_status_bool(value: str | None) -> bool | None:
+    normalized = (value or "").strip().upper()
+    if normalized == "ONLINE":
+        return True
+    if normalized == "OFFLINE":
+        return False
+    return None
+
+
+def sync_camera_health_from_camera(
+    db: Session,
+    camera: Camera,
+    *,
+    include_profiles: bool = True,
+    rtsp_online: bool | None = None,
+    checked_at: datetime | None = None,
+) -> CameraHealth:
+    """Synchronize persistent health with the latest camera probe result.
+
+    This helper never creates CameraEvent/Alert/Notification records. Event
+    generation remains the responsibility of the event engine and transition
+    routes, which avoids alert floods during operator refreshes.
+    """
+    health = _camera_health_row(db, camera)
+    health.school_id = camera.school_id
+    health.rtsp_online = _camera_status_bool(camera.status) if rtsp_online is None else bool(rtsp_online)
+
+    if include_profiles:
+        health.main_online = _camera_status_bool(camera.main_status)
+        health.sub_online = _camera_status_bool(camera.sub_status)
+
+    health.fps = camera.fps
+    health.bitrate_kbps = camera.main_bitrate_kbps or camera.sub_bitrate_kbps
+    health.resolution = camera.resolution
+    health.codec = camera.codec
+    health.last_seen_at = checked_at or camera.last_check_at or health.last_seen_at
+    health.last_video_at = camera.last_frame_at or health.last_video_at
+    health.last_error = camera.last_error
+    _recompute_camera_health_state(health)
+    db.flush()
+    return health
 
 
 def _apply_event_to_health(
@@ -5244,6 +5292,8 @@ def test_camera_profiles(
             tcp_error or "Nenhum perfil RTSP respondeu",
         )
 
+    sync_camera_health_from_camera(db, camera, include_profiles=True)
+
     return {
         "camera_id": camera.id,
         "status": camera.status,
@@ -6147,6 +6197,9 @@ def update_camera_status(
     previous_status = row.status
     row.status = payload.status
     row.last_check_at = datetime.now(timezone.utc)
+    sync_camera_health_from_camera(
+        db, row, include_profiles=False, rtsp_online=_camera_status_bool(row.status), checked_at=row.last_check_at
+    )
     if previous_status != row.status and row.status in {"ONLINE", "OFFLINE"}:
         ingest_camera_event(
             db,
@@ -6233,6 +6286,9 @@ def test_cameras_batch(
             camera.status = "OFFLINE"
             camera.last_check_at = datetime.now(timezone.utc)
             camera.last_error = str(error)
+            sync_camera_health_from_camera(
+                db, camera, include_profiles=True, rtsp_online=False, checked_at=camera.last_check_at
+            )
             results.append({"camera_id": camera.id, "status": "OFFLINE", "error": str(error)})
         if previous_status != camera.status:
             ingest_camera_event(
@@ -6774,6 +6830,10 @@ def monitoring_status_refresh(
                 camera.last_error = None
         else:
             camera.last_error = f"Conectividade RTSP: {error or 'indisponível'}"
+
+        sync_camera_health_from_camera(
+            db, camera, include_profiles=False, rtsp_online=ok, checked_at=checked_at
+        )
 
         if previous_status != camera.status:
             ingest_camera_event(
@@ -7553,6 +7613,74 @@ def _camera_health_payload(camera: Camera, health: CameraHealth | None) -> dict:
         "last_video_at": camera.last_frame_at,
         "last_error": camera.last_error,
         "updated_at": camera.last_check_at or datetime.now(timezone.utc),
+    }
+
+
+@app.post("/camera-health/refresh")
+def refresh_camera_health(
+    payload: MonitoringStatusRefreshIn,
+    db: Session = Depends(db_session),
+    user: UserAccount = Depends(require_permission("events:operate")),
+):
+    unique_ids = list(dict.fromkeys(int(value) for value in payload.camera_ids))[:16]
+    cameras = [ensure_camera_access(user, db.get(Camera, camera_id)) for camera_id in unique_ids]
+    results = []
+    for camera in cameras:
+        try:
+            probe = test_camera_profiles(db, camera, profiles=("MAIN", "SUB"), provision=False)
+            health = sync_camera_health_from_camera(db, camera, include_profiles=True)
+            results.append(
+                {
+                    "camera_id": camera.id,
+                    "state": health.state,
+                    "rtsp_online": health.rtsp_online,
+                    "main_online": health.main_online,
+                    "sub_online": health.sub_online,
+                    "status": camera.status,
+                    "checked_at": probe.get("checked_at"),
+                    "error": camera.last_error,
+                }
+            )
+        except Exception as error:
+            camera.status = "OFFLINE"
+            camera.main_status = "OFFLINE"
+            camera.sub_status = "OFFLINE"
+            camera.last_check_at = datetime.now(timezone.utc)
+            camera.last_error = str(error)
+            health = sync_camera_health_from_camera(
+                db, camera, include_profiles=True, rtsp_online=False, checked_at=camera.last_check_at
+            )
+            results.append(
+                {
+                    "camera_id": camera.id,
+                    "state": health.state,
+                    "rtsp_online": health.rtsp_online,
+                    "main_online": health.main_online,
+                    "sub_online": health.sub_online,
+                    "status": camera.status,
+                    "checked_at": camera.last_check_at,
+                    "error": camera.last_error,
+                }
+            )
+
+    audit(
+        db,
+        "Eventos & Saúde",
+        "Atualização de saúde",
+        f"cameras={len(results)}; sem geração automática de eventos",
+        user=user,
+    )
+    db.commit()
+    online = len([item for item in results if item["state"] == "ONLINE"])
+    degraded = len([item for item in results if item["state"] == "DEGRADADO"])
+    offline = len([item for item in results if item["state"] == "OFFLINE"])
+    return {
+        "checked": len(results),
+        "online": online,
+        "degraded": degraded,
+        "offline": offline,
+        "events_generated": 0,
+        "cameras": results,
     }
 
 

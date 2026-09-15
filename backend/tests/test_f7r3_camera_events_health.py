@@ -286,6 +286,60 @@ def test_monitoring_offline_transition_generates_single_deduplicated_event(clien
         assert len(rows) == 1
         # Second refresh does not create another transition/event because status is already OFFLINE.
         assert rows[0].repeat_count == 1
+        health = db.query(CameraHealth).filter(CameraHealth.camera_id == camera_id).one()
+        assert health.rtsp_online is False
+        assert health.state == "OFFLINE"
+
+
+def test_camera_health_refresh_syncs_profiles_without_generating_events(client, monkeypatch):
+    _, _, camera_id = _seed_camera()
+    headers, _ = _auth(role="ADMIN_SECRETARIA", suffix="health-refresh")
+
+    class DummySocket:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(application.socket, "create_connection", lambda *args, **kwargs: DummySocket())
+    monkeypatch.setattr(
+        application,
+        "probe_rtsp_source",
+        lambda source, timeout=15: {
+            "ok": True,
+            "codec": "H264",
+            "width": 1280,
+            "height": 720,
+            "resolution": "1280x720",
+            "fps": 15.0,
+        },
+    )
+
+    response = client.post(
+        "/camera-health/refresh",
+        headers=headers,
+        json={"camera_ids": [camera_id]},
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["checked"] == 1
+    assert body["online"] == 1
+    assert body["events_generated"] == 0
+
+    with SessionLocal() as db:
+        camera = db.get(Camera, camera_id)
+        health = db.query(CameraHealth).filter(CameraHealth.camera_id == camera_id).one()
+        assert camera.status == "ONLINE"
+        assert camera.main_status == "ONLINE"
+        assert camera.sub_status == "ONLINE"
+        assert health.state == "ONLINE"
+        assert health.rtsp_online is True
+        assert health.main_online is True
+        assert health.sub_online is True
+        assert health.resolution == "1280x720"
+        assert health.codec == "H264"
+        assert db.query(CameraEvent).filter(CameraEvent.camera_id == camera_id).count() == 0
 
 
 def test_health_inventory_reconciles_devices_registered_after_f7r3_migration(client):
