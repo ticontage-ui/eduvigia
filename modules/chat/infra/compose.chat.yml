@@ -1,4 +1,4 @@
-﻿name: eduvigia-chat
+name: eduvigia-chat
 
 services:
   postgres:
@@ -12,7 +12,6 @@ services:
       - "127.0.0.1:15447:5432"
     volumes:
       - chat_pgdata:/var/lib/postgresql/data
-      - ../backend/schema.sql:/docker-entrypoint-initdb.d/001_chat_schema.sql:ro
     networks:
       - chat_net
     healthcheck:
@@ -48,20 +47,33 @@ services:
       retries: 20
       start_period: 5s
 
+  migrate:
+    build:
+      context: ../backend
+    restart: "no"
+    command: ["python", "-m", "app.migrate"]
+    environment:
+      CHAT_DATABASE_DSN: postgresql://${CHAT_POSTGRES_USER}:${CHAT_POSTGRES_PASSWORD}@postgres:5432/${CHAT_POSTGRES_DB}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - chat_net
+
   api:
     build:
       context: ../backend
     restart: unless-stopped
     environment:
-      CHAT_VERSION: "0.1.0-R1"
+      CHAT_VERSION: "0.2.0-R1"
       CHAT_DATABASE_DSN: postgresql://${CHAT_POSTGRES_USER}:${CHAT_POSTGRES_PASSWORD}@postgres:5432/${CHAT_POSTGRES_DB}
       CHAT_REDIS_URL: redis://:${CHAT_REDIS_PASSWORD}@redis:6379/0
       CHAT_REDIS_CHANNEL: eduvigia:chat:events
     ports:
       - "127.0.0.1:18012:8000"
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
     networks:

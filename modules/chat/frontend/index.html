@@ -1,41 +1,82 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>EduVigIA Chat â€” Standalone</title>
+    <title>EduVigIA Chat â€” V0.2</title>
     <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-    <main class="shell">
-        <header>
-            <div>
-                <h1>EduVigIA Chat</h1>
-                <p>Standalone v0.1.0-R1 Â· sem integraÃ§Ã£o com o Core</p>
+    <main class="app">
+        <aside class="sidebar">
+            <div class="brand">
+                <div>
+                    <strong>EduVigIA Chat</strong>
+                    <small>Standalone 0.2.0-R1</small>
+                </div>
+                <span id="status" class="status">offline</span>
             </div>
-            <span id="status" class="status">conectandoâ€¦</span>
-        </header>
 
-        <section class="identity">
-            <label>
-                Operador de teste
-                <input id="displayName" maxlength="80" value="DEV B" />
+            <label class="identity-picker">
+                Identidade de teste
+                <select id="identity"></select>
             </label>
-            <div class="room">Sala: <strong>general</strong></div>
+
+            <button id="newConversation" class="new-button" type="button">
+                + Nova conversa
+            </button>
+
+            <div id="conversations" class="conversations"></div>
+        </aside>
+
+        <section class="chat">
+            <header class="chat-header">
+                <div>
+                    <h1 id="conversationTitle">Selecione uma conversa</h1>
+                    <p id="conversationMeta">Identity Provider: mock Â· Core: desconectado</p>
+                </div>
+            </header>
+
+            <section id="messages" class="messages"></section>
+
+            <form id="composer" class="composer">
+                <input id="body" maxlength="2000" autocomplete="off"
+                       placeholder="Digite uma mensagem..." disabled />
+                <button id="send" type="submit" disabled>Enviar</button>
+            </form>
         </section>
-
-        <section id="messages" class="messages" aria-live="polite"></section>
-
-        <form id="form" class="composer">
-            <input
-                id="body"
-                maxlength="2000"
-                autocomplete="off"
-                placeholder="Digite uma mensagem de teste..."
-            />
-            <button type="submit">Enviar</button>
-        </form>
     </main>
+
+    <dialog id="conversationDialog">
+        <form id="conversationForm" method="dialog" class="dialog-form">
+            <h2>Nova conversa</h2>
+
+            <label>
+                Tipo
+                <select id="conversationType">
+                    <option value="DIRECT">Direta</option>
+                    <option value="GROUP">Grupo</option>
+                    <option value="INSTITUTIONAL">Institucional</option>
+                </select>
+            </label>
+
+            <label>
+                TÃ­tulo
+                <input id="conversationName" maxlength="160"
+                       placeholder="ObrigatÃ³rio para grupo/institucional" />
+            </label>
+
+            <fieldset>
+                <legend>Membros</legend>
+                <div id="memberChoices" class="member-choices"></div>
+            </fieldset>
+
+            <div class="dialog-actions">
+                <button id="cancelDialog" type="button">Cancelar</button>
+                <button type="submit">Criar</button>
+            </div>
+        </form>
+    </dialog>
 
     <script src="/app.js"></script>
 </body>
