@@ -71,14 +71,14 @@ function renderIdentityInfo() {
 
   if (identity.organization_kind === "ESCOLA") {
     identityInfoEl.textContent =
-      `${identity.role} Â· ${identity.school_code} Â· acesso somente Ã  prÃ³pria escola`;
+      `${identity.role} · ${identity.school_code} · acesso somente à própria escola`;
     operatorToolsEl.hidden = true;
-    sectionTitleEl.textContent = "Meu Canal de EmergÃªncia";
+    sectionTitleEl.textContent = "Meu Canal de Emergência";
     return;
   }
 
   identityInfoEl.textContent =
-    `${identity.role} Â· visÃ£o operacional das escolas autorizadas`;
+    `${identity.role} · visão operacional das escolas autorizadas`;
   operatorToolsEl.hidden = false;
   sectionTitleEl.textContent = "Canais das Escolas";
 }
@@ -92,11 +92,11 @@ async function loadIdentities() {
     option.value = identity.id;
 
     const suffix = identity.school_code
-      ? ` Â· ${identity.school_code}`
+      ? ` · ${identity.school_code}`
       : "";
 
     option.textContent =
-      `${identity.display_name} Â· ${identity.organization_kind}${suffix}`;
+      `${identity.display_name} · ${identity.organization_kind}${suffix}`;
 
     identityEl.appendChild(option);
   }
@@ -114,11 +114,11 @@ function resetChat() {
   seen.clear();
 
   messagesEl.innerHTML =
-    '<div class="empty-chat">Selecione um canal de emergÃªncia.</div>';
+    '<div class="empty-chat">Selecione um canal de emergência.</div>';
 
   channelTitleEl.textContent = "Selecione um canal";
   channelMetaEl.textContent =
-    "Escola â†” Guarda Municipal â†” Secretaria de EducaÃ§Ã£o";
+    "Escola ↔ Guarda Municipal ↔ Secretaria de Educação";
 
   bodyEl.disabled = true;
   sendEl.disabled = true;
@@ -301,7 +301,7 @@ async function selectChannel(channelId) {
     channel.school_code !== identity.school_code
   ) {
     resetChat();
-    alert("A escola nÃ£o possui acesso a este canal.");
+    alert("A escola não possui acesso a este canal.");
     return;
   }
 
@@ -313,7 +313,7 @@ async function selectChannel(channelId) {
 
   channelTitleEl.textContent = channelLabel(channel);
   channelMetaEl.textContent =
-    `${channel.school_code} Â· Escola â†” Guarda Municipal â†” Secretaria de EducaÃ§Ã£o`;
+    `${channel.school_code} · Escola ↔ Guarda Municipal ↔ Secretaria de Educação`;
 
   bodyEl.disabled = true;
   sendEl.disabled = true;
@@ -328,7 +328,7 @@ async function selectChannel(channelId) {
 
     if (!messages.length) {
       messagesEl.innerHTML =
-        '<div class="empty-chat">Canal disponÃ­vel. Nenhuma mensagem registrada.</div>';
+        '<div class="empty-chat">Canal disponível. Nenhuma mensagem registrada.</div>';
     } else {
       messages.forEach(appendMessage);
       await markRead(channelId, messages[messages.length - 1].id);
@@ -418,7 +418,7 @@ function connectSocket() {
     if (heartbeatTimer) clearInterval(heartbeatTimer);
     heartbeatTimer = null;
 
-    setStatus("reconectandoâ€¦");
+    setStatus("reconectando…");
 
     reconnectTimer = setTimeout(() => {
       if (socketGeneration === generation) connectSocket();
@@ -471,7 +471,7 @@ composerEl.addEventListener("submit", async event => {
     identity?.organization_kind === "ESCOLA" &&
     channel.school_code !== identity.school_code
   ) {
-    alert("A escola nÃ£o possui acesso a este canal.");
+    alert("A escola não possui acesso a este canal.");
     return;
   }
 

@@ -1,4 +1,4 @@
-# EduVigIA Chat â€” Emergency Channels Contract
+# EduVigIA Chat — Emergency Channels Contract
 
 Version: 0.3.0-R1
 
