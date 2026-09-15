@@ -369,3 +369,94 @@ button, input, select { font: inherit; }
     .message { width: 92%; }
     .header-tags { display: none; }
 }
+.attachment-tray {
+    padding: 8px 20px 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    background: #fff;
+    border-top: 1px solid #e3e9ef;
+}
+
+.attachment-tray[hidden] {
+    display: none;
+}
+
+.pending-attachment {
+    max-width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 9px;
+    border: 1px solid #d5dee7;
+    border-radius: 9px;
+    background: #f8fafc;
+    font-size: 11px;
+}
+
+.pending-attachment span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pending-attachment button {
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    font-size: 10px;
+}
+
+.attach-button {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 12px;
+    border: 1px solid #cbd5df;
+    border-radius: 10px;
+    background: #f8fafc;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.attach-button:has(input:disabled) {
+    opacity: .55;
+    cursor: not-allowed;
+}
+
+.message-attachments {
+    margin-top: 10px;
+    display: grid;
+    gap: 6px;
+}
+
+.message-attachment {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 10px;
+    border: 1px solid #d8e0e8;
+    border-radius: 9px;
+    background: #f8fafc;
+    color: inherit;
+    text-decoration: none;
+}
+
+.message-attachment:hover {
+    background: #eef3f7;
+}
+
+.message-attachment strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+}
+
+.message-attachment span {
+    flex: 0 0 auto;
+    color: #758396;
+    font-size: 10px;
+}

@@ -12,6 +12,8 @@ const statusEl = document.getElementById("status");
 const composerEl = document.getElementById("composer");
 const bodyEl = document.getElementById("body");
 const sendEl = document.getElementById("send");
+const fileInputEl = document.getElementById("fileInput");
+const attachmentTrayEl = document.getElementById("attachmentTray");
 
 let identities = [];
 let channels = [];
@@ -24,6 +26,15 @@ let heartbeatTimer = null;
 let generation = 0;
 let loadToken = 0;
 const seen = new Set();
+let selectedFiles = [];
+
+const MAX_FILE_BYTES = 25 * 1024 * 1024;
+const MAX_FILES = 5;
+const MAX_TOTAL_BYTES = 50 * 1024 * 1024;
+const ALLOWED_EXTENSIONS = new Set([
+  ".jpg", ".jpeg", ".png", ".webp", ".pdf",
+  ".doc", ".docx", ".xls", ".xlsx", ".txt", ".csv"
+]);
 
 async function jsonFetch(url, options = {}) {
   const response = await fetch(url, options);
@@ -109,6 +120,112 @@ async function loadIdentities() {
   renderIdentityInfo();
 }
 
+function fileExtension(name) {
+  const index = String(name || "").lastIndexOf(".");
+  return index >= 0 ? String(name).slice(index).toLowerCase() : "";
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function clearSelectedFiles() {
+  selectedFiles = [];
+  if (fileInputEl) fileInputEl.value = "";
+  renderSelectedFiles();
+}
+
+function renderSelectedFiles() {
+  if (!attachmentTrayEl) return;
+
+  attachmentTrayEl.innerHTML = "";
+  attachmentTrayEl.hidden = selectedFiles.length === 0;
+
+  selectedFiles.forEach((file, index) => {
+    const item = document.createElement("div");
+    item.className = "pending-attachment";
+
+    const label = document.createElement("span");
+    label.textContent = `${file.name} · ${formatBytes(file.size)}`;
+
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = "Remover";
+    remove.addEventListener("click", () => {
+      selectedFiles.splice(index, 1);
+      renderSelectedFiles();
+    });
+
+    item.append(label, remove);
+    attachmentTrayEl.appendChild(item);
+  });
+}
+
+function validateSelectedFiles(files) {
+  if (files.length > MAX_FILES) {
+    throw new Error("Máximo de 5 anexos por mensagem.");
+  }
+
+  let total = 0;
+
+  for (const file of files) {
+    const extension = fileExtension(file.name);
+
+    if (!ALLOWED_EXTENSIONS.has(extension)) {
+      throw new Error(`Tipo não permitido: ${file.name}`);
+    }
+
+    if (file.size <= 0) {
+      throw new Error(`Arquivo vazio: ${file.name}`);
+    }
+
+    if (file.size > MAX_FILE_BYTES) {
+      throw new Error(`Arquivo excede 25 MB: ${file.name}`);
+    }
+
+    total += file.size;
+  }
+
+  if (total > MAX_TOTAL_BYTES) {
+    throw new Error("Os anexos excedem 50 MB por mensagem.");
+  }
+}
+
+function renderAttachments(message, article) {
+  const attachments = Array.isArray(message.attachments)
+    ? message.attachments
+    : [];
+
+  if (!attachments.length) return;
+
+  const list = document.createElement("div");
+  list.className = "message-attachments";
+
+  for (const attachment of attachments) {
+    const link = document.createElement("a");
+    link.className = "message-attachment";
+    link.href =
+      `/api/emergency/attachments/${encodeURIComponent(attachment.id)}` +
+      `?identity_id=${encodeURIComponent(currentIdentity)}`;
+    link.target = "_blank";
+    link.rel = "noopener";
+
+    const name = document.createElement("strong");
+    name.textContent = attachment.original_name;
+
+    const meta = document.createElement("span");
+    meta.textContent =
+      `${attachment.extension.toUpperCase()} · ${formatBytes(attachment.size_bytes)}`;
+
+    link.append(name, meta);
+    list.appendChild(link);
+  }
+
+  article.appendChild(list);
+}
+
 function resetChat() {
   currentChannelId = null;
   seen.clear();
@@ -122,6 +239,8 @@ function resetChat() {
 
   bodyEl.disabled = true;
   sendEl.disabled = true;
+  if (fileInputEl) fileInputEl.disabled = true;
+  clearSelectedFiles();
 }
 
 function filteredChannels() {
@@ -266,6 +385,7 @@ function appendMessage(message) {
 
   header.append(sender, time);
   article.append(header, text);
+  renderAttachments(message, article);
   messagesEl.appendChild(article);
   messagesEl.scrollTop = messagesEl.scrollHeight;
 }
@@ -317,6 +437,8 @@ async function selectChannel(channelId) {
 
   bodyEl.disabled = true;
   sendEl.disabled = true;
+  if (fileInputEl) fileInputEl.disabled = true;
+  clearSelectedFiles();
 
   try {
     const messages = await jsonFetch(
@@ -341,6 +463,7 @@ async function selectChannel(channelId) {
 
     bodyEl.disabled = false;
     sendEl.disabled = false;
+    if (fileInputEl) fileInputEl.disabled = false;
     bodyEl.focus();
   }
   catch (error) {
@@ -459,6 +582,21 @@ identityEl.addEventListener("change", async () => {
 
 searchEl?.addEventListener("input", renderChannels);
 
+fileInputEl?.addEventListener("change", () => {
+  const incoming = [...(fileInputEl.files || [])];
+
+  try {
+    const merged = [...selectedFiles, ...incoming];
+    validateSelectedFiles(merged);
+    selectedFiles = merged;
+    renderSelectedFiles();
+  }
+  catch (error) {
+    fileInputEl.value = "";
+    alert(error.message);
+  }
+});
+
 composerEl.addEventListener("submit", async event => {
   event.preventDefault();
 
@@ -476,24 +614,67 @@ composerEl.addEventListener("submit", async event => {
   }
 
   const body = bodyEl.value.trim();
-  if (!body) return;
+
+  if (!body && selectedFiles.length === 0) return;
+
+  try {
+    validateSelectedFiles(selectedFiles);
+  }
+  catch (error) {
+    alert(error.message);
+    return;
+  }
+
+  const sentBody = body;
+  const sentFiles = [...selectedFiles];
 
   bodyEl.value = "";
   bodyEl.disabled = true;
   sendEl.disabled = true;
+  if (fileInputEl) fileInputEl.disabled = true;
 
   try {
-    const message = await jsonFetch(
-      `/api/emergency/channels/${encodeURIComponent(channel.id)}/messages`,
-      {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-          sender_identity_id: currentIdentity,
-          body
-        })
+    let message;
+
+    if (sentFiles.length > 0) {
+      const form = new FormData();
+      form.append("sender_identity_id", currentIdentity);
+      form.append("body", sentBody);
+
+      for (const file of sentFiles) {
+        form.append("files", file, file.name);
       }
-    );
+
+      const response = await fetch(
+        `/api/emergency/channels/${encodeURIComponent(channel.id)}/messages-with-attachments`,
+        {
+          method: "POST",
+          body: form
+        }
+      );
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.detail || `HTTP ${response.status}`);
+      }
+
+      message = await response.json();
+    }
+    else {
+      message = await jsonFetch(
+        `/api/emergency/channels/${encodeURIComponent(channel.id)}/messages`,
+        {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({
+            sender_identity_id: currentIdentity,
+            body: sentBody
+          })
+        }
+      );
+    }
+
+    clearSelectedFiles();
 
     if (currentChannelId === channel.id) {
       const empty = messagesEl.querySelector(".empty-chat");
@@ -506,7 +687,9 @@ composerEl.addEventListener("submit", async event => {
     await refreshChannels({preserveSelection: true});
   }
   catch (error) {
-    bodyEl.value = body;
+    bodyEl.value = sentBody;
+    selectedFiles = sentFiles;
+    renderSelectedFiles();
     console.error(error);
     alert(error.message);
   }
@@ -514,6 +697,7 @@ composerEl.addEventListener("submit", async event => {
     if (currentChannelId) {
       bodyEl.disabled = false;
       sendEl.disabled = false;
+      if (fileInputEl) fileInputEl.disabled = false;
       bodyEl.focus();
     }
   }

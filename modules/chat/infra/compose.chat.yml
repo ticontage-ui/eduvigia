@@ -65,10 +65,11 @@ services:
       context: ../backend
     restart: unless-stopped
     environment:
-      CHAT_VERSION: "0.3.1-R1"
+      CHAT_VERSION: "0.4.0-R1"
       CHAT_DATABASE_DSN: postgresql://${CHAT_POSTGRES_USER}:${CHAT_POSTGRES_PASSWORD}@postgres:5432/${CHAT_POSTGRES_DB}
       CHAT_REDIS_URL: redis://:${CHAT_REDIS_PASSWORD}@redis:6379/0
       CHAT_REDIS_CHANNEL: eduvigia:chat:events
+      CHAT_ATTACHMENTS_DIR: /data/attachments
     ports:
       - "127.0.0.1:18012:8000"
     depends_on:
@@ -76,6 +77,8 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+    volumes:
+      - chat_attachments:/data/attachments
     networks:
       - chat_net
     healthcheck:
@@ -110,3 +113,4 @@ networks:
 volumes:
   chat_pgdata:
   chat_redisdata:
+  chat_attachments:

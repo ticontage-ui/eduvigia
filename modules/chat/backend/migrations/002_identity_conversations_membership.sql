@@ -53,7 +53,7 @@ INSERT INTO chat_conversations(id, type, title, created_by)
 VALUES
     ('general', 'GROUP', 'Sala Geral de Desenvolvimento', 'mock:diego'),
     ('direct-diego-alex', 'DIRECT', NULL, 'mock:diego'),
-    ('operacao-teste', 'INSTITUTIONAL', 'Operação Teste', 'mock:secretaria')
+    ('operacao-teste', 'INSTITUTIONAL', 'OperaÃ§Ã£o Teste', 'mock:secretaria')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO chat_conversation_members(conversation_id, identity_id, member_role)

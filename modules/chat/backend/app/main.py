@@ -1,12 +1,19 @@
+from contextlib import suppress
 import asyncio
+import hashlib
 import json
 import logging
 import os
+import re
+import uuid
+import zipfile
+from pathlib import Path
 from contextlib import asynccontextmanager, suppress
 from typing import Dict, Set
 
 import asyncpg
-from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field
 from redis.asyncio import Redis
 
@@ -19,6 +26,38 @@ REDIS_CHANNEL = os.getenv("CHAT_REDIS_CHANNEL", "eduvigia:chat:events")
 APP_VERSION = os.getenv("CHAT_VERSION", "0.3.0-R1")
 
 ALLOWED_ORGANIZATIONS = {"ESCOLA", "GUARDA", "SECRETARIA"}
+
+ATTACHMENTS_DIR = Path(os.getenv("CHAT_ATTACHMENTS_DIR", "/data/attachments"))
+ATTACHMENT_MAX_BYTES = 25 * 1024 * 1024
+ATTACHMENT_MAX_FILES = 5
+ATTACHMENT_MAX_TOTAL_BYTES = 50 * 1024 * 1024
+
+ALLOWED_ATTACHMENT_TYPES = {
+    ".jpg": {"image/jpeg"},
+    ".jpeg": {"image/jpeg"},
+    ".png": {"image/png"},
+    ".webp": {"image/webp"},
+    ".pdf": {"application/pdf"},
+    ".doc": {"application/msword", "application/octet-stream"},
+    ".docx": {
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/zip",
+        "application/octet-stream",
+    },
+    ".xls": {"application/vnd.ms-excel", "application/octet-stream"},
+    ".xlsx": {
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/zip",
+        "application/octet-stream",
+    },
+    ".txt": {"text/plain", "application/octet-stream"},
+    ".csv": {
+        "text/csv",
+        "text/plain",
+        "application/vnd.ms-excel",
+        "application/octet-stream",
+    },
+}
 
 
 class TextMessageIn(BaseModel):
@@ -34,6 +73,119 @@ class ReadIn(BaseModel):
     identity_id: str = Field(min_length=1, max_length=120)
     message_id: int = Field(ge=0)
 
+
+def sanitize_filename(filename: str) -> str:
+    name = os.path.basename(filename or "arquivo")
+    name = re.sub(r"[\x00-\x1f\x7f]+", "", name)
+    name = re.sub(r"[<>:\"/\\|?*]+", "_", name)
+    name = name.strip().strip(".")
+    if not name:
+        name = "arquivo"
+    return name[:180]
+
+
+def attachment_public_dict(row) -> dict:
+    return {
+        "id": row["id"],
+        "original_name": row["original_name"],
+        "mime_type": row["mime_type"],
+        "extension": row["extension"],
+        "size_bytes": row["size_bytes"],
+        "sha256": row["sha256"],
+        "validation_status": row["validation_status"],
+        "created_at": row["created_at"].isoformat(),
+    }
+
+
+async def fetch_message_attachments(conn, message_id: int) -> list[dict]:
+    rows = await conn.fetch(
+        """
+        SELECT
+            id,
+            original_name,
+            mime_type,
+            extension,
+            size_bytes,
+            sha256,
+            validation_status,
+            created_at
+        FROM chat_attachments
+        WHERE message_id = $1
+        ORDER BY created_at, id
+        """,
+        message_id,
+    )
+    return [attachment_public_dict(row) for row in rows]
+
+
+def validate_binary_signature(extension: str, content: bytes) -> None:
+    if extension in {".jpg", ".jpeg"}:
+        if not content.startswith(b"\xff\xd8\xff"):
+            raise HTTPException(status_code=415, detail="Assinatura JPEG invalida")
+
+    elif extension == ".png":
+        if not content.startswith(b"\x89PNG\r\n\x1a\n"):
+            raise HTTPException(status_code=415, detail="Assinatura PNG invalida")
+
+    elif extension == ".webp":
+        if len(content) < 12 or content[:4] != b"RIFF" or content[8:12] != b"WEBP":
+            raise HTTPException(status_code=415, detail="Assinatura WEBP invalida")
+
+    elif extension == ".pdf":
+        if not content.startswith(b"%PDF-"):
+            raise HTTPException(status_code=415, detail="Assinatura PDF invalida")
+
+    elif extension in {".doc", ".xls"}:
+        if not content.startswith(b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"):
+            raise HTTPException(status_code=415, detail="Assinatura Office legacy invalida")
+
+    elif extension in {".docx", ".xlsx"}:
+        import io
+        try:
+            with zipfile.ZipFile(io.BytesIO(content), "r") as archive:
+                names = set(archive.namelist())
+
+                if "[Content_Types].xml" not in names:
+                    raise HTTPException(status_code=415, detail="Pacote Office invalido")
+
+                if extension == ".docx" and not any(name.startswith("word/") for name in names):
+                    raise HTTPException(status_code=415, detail="DOCX invalido")
+
+                if extension == ".xlsx" and not any(name.startswith("xl/") for name in names):
+                    raise HTTPException(status_code=415, detail="XLSX invalido")
+        except zipfile.BadZipFile:
+            raise HTTPException(status_code=415, detail="Pacote Office invalido")
+
+    elif extension in {".txt", ".csv"}:
+        if b"\x00" in content[:4096]:
+            raise HTTPException(status_code=415, detail="Arquivo textual invalido")
+
+
+async def validate_upload(upload: UploadFile) -> tuple[str, str, bytes, str]:
+    original_name = sanitize_filename(upload.filename or "arquivo")
+    extension = Path(original_name).suffix.lower()
+
+    if extension not in ALLOWED_ATTACHMENT_TYPES:
+        raise HTTPException(status_code=415, detail="Tipo de arquivo nao permitido")
+
+    content_type = (upload.content_type or "application/octet-stream").lower()
+
+    if content_type not in ALLOWED_ATTACHMENT_TYPES[extension]:
+        raise HTTPException(status_code=415, detail="MIME type nao permitido")
+
+    content = await upload.read(ATTACHMENT_MAX_BYTES + 1)
+
+    if not content:
+        raise HTTPException(status_code=422, detail="Arquivo vazio")
+
+    if len(content) > ATTACHMENT_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="Arquivo excede 25 MB")
+
+    validate_binary_signature(extension, content)
+
+    sha256 = hashlib.sha256(content).hexdigest()
+
+    return original_name, extension, content, sha256
 
 class Hub:
     def __init__(self) -> None:
@@ -182,6 +334,7 @@ def message_dict(row: asyncpg.Record) -> dict:
         "sender_role": row["sender_role"],
         "body": row["body"],
         "created_at": row["created_at"].isoformat(),
+        "attachments": [],
     }
 
 
@@ -264,6 +417,7 @@ async def outbox_worker(app: FastAPI) -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    ATTACHMENTS_DIR.mkdir(parents=True, exist_ok=True)
     app.state.db = await asyncpg.create_pool(
         DATABASE_DSN,
         min_size=1,
@@ -492,7 +646,13 @@ async def list_channel_messages(
             limit,
         )
 
-    return [message_dict(row) for row in reversed(rows)]
+    result = []
+    for row in reversed(rows):
+        message = message_dict(row)
+        message["attachments"] = await fetch_message_attachments(conn, row["id"])
+        result.append(message)
+
+    return result
 
 
 @app.post("/api/emergency/channels/{channel_id}/messages", status_code=201)
@@ -593,6 +753,237 @@ async def create_channel_message(
 
     return message
 
+
+@app.post("/api/emergency/channels/{channel_id}/messages-with-attachments", status_code=201)
+async def create_channel_message_with_attachments(
+    channel_id: str,
+    sender_identity_id: str = Form(...),
+    body: str = Form(default=""),
+    files: list[UploadFile] = File(...),
+):
+    body = body.strip()
+
+    if not files:
+        raise HTTPException(status_code=422, detail="Nenhum anexo enviado")
+
+    if len(files) > ATTACHMENT_MAX_FILES:
+        raise HTTPException(status_code=413, detail="Maximo de 5 anexos por mensagem")
+
+    validated = []
+    total_bytes = 0
+
+    for upload in files:
+        original_name, extension, content, sha256 = await validate_upload(upload)
+        total_bytes += len(content)
+
+        if total_bytes > ATTACHMENT_MAX_TOTAL_BYTES:
+            raise HTTPException(status_code=413, detail="Anexos excedem 50 MB por mensagem")
+
+        validated.append(
+            {
+                "original_name": original_name,
+                "extension": extension,
+                "mime_type": (upload.content_type or "application/octet-stream").lower(),
+                "content": content,
+                "sha256": sha256,
+            }
+        )
+
+    async with app.state.db.acquire() as conn:
+        identity, channel, _ = await ensure_channel_access(
+            conn,
+            channel_id,
+            sender_identity_id,
+        )
+
+        saved_paths = []
+
+        try:
+            async with conn.transaction():
+                row = await conn.fetchrow(
+                    """
+                    INSERT INTO chat_messages(
+                        room_id,
+                        conversation_id,
+                        sender_identity_id,
+                        display_name,
+                        body
+                    )
+                    VALUES ($1, $1, $2, $3, $4)
+                    RETURNING
+                        id,
+                        conversation_id,
+                        sender_identity_id,
+                        display_name,
+                        body,
+                        created_at
+                    """,
+                    channel_id,
+                    sender_identity_id,
+                    identity["display_name"],
+                    body,
+                )
+
+                attachments = []
+
+                for item in validated:
+                    attachment_id = "att:" + uuid.uuid4().hex
+                    stored_name = uuid.uuid4().hex + item["extension"]
+
+                    channel_folder = ATTACHMENTS_DIR / re.sub(
+                        r"[^A-Za-z0-9._-]+",
+                        "_",
+                        channel_id,
+                    )
+                    channel_folder.mkdir(parents=True, exist_ok=True)
+
+                    storage_path = channel_folder / stored_name
+                    storage_path.write_bytes(item["content"])
+                    saved_paths.append(storage_path)
+
+                    attachment_row = await conn.fetchrow(
+                        """
+                        INSERT INTO chat_attachments(
+                            id,
+                            message_id,
+                            channel_id,
+                            uploader_identity_id,
+                            original_name,
+                            stored_name,
+                            mime_type,
+                            extension,
+                            size_bytes,
+                            sha256,
+                            storage_path,
+                            validation_status
+                        )
+                        VALUES (
+                            $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'TYPE_VALIDATED'
+                        )
+                        RETURNING
+                            id,
+                            original_name,
+                            mime_type,
+                            extension,
+                            size_bytes,
+                            sha256,
+                            validation_status,
+                            created_at
+                        """,
+                        attachment_id,
+                        row["id"],
+                        channel_id,
+                        sender_identity_id,
+                        item["original_name"],
+                        stored_name,
+                        item["mime_type"],
+                        item["extension"],
+                        len(item["content"]),
+                        item["sha256"],
+                        str(storage_path),
+                    )
+
+                    attachments.append(attachment_public_dict(attachment_row))
+
+                await conn.execute(
+                    """
+                    UPDATE chat_conversations
+                    SET updated_at = now()
+                    WHERE id = $1
+                    """,
+                    channel_id,
+                )
+
+                audience = await conn.fetch(
+                    """
+                    SELECT identity_id
+                    FROM chat_conversation_members
+                    WHERE conversation_id = $1
+                      AND left_at IS NULL
+                    """,
+                    channel_id,
+                )
+
+                audience_ids = [item["identity_id"] for item in audience]
+
+                message = {
+                    "id": row["id"],
+                    "channel_id": row["conversation_id"],
+                    "sender_identity_id": row["sender_identity_id"],
+                    "display_name": identity["display_name"],
+                    "sender_organization_kind": identity["organization_kind"],
+                    "sender_role": identity["role"],
+                    "body": row["body"],
+                    "created_at": row["created_at"].isoformat(),
+                    "attachments": attachments,
+                }
+
+                event = {
+                    "type": "emergency.message.created",
+                    "channel_id": channel_id,
+                    "school_code": channel["school_code"],
+                    "message": message,
+                    "_audience": audience_ids,
+                }
+
+                await conn.execute(
+                    """
+                    INSERT INTO chat_outbox(event_type, aggregate_id, payload)
+                    VALUES ($1, $2, $3::jsonb)
+                    """,
+                    "emergency.message.created",
+                    row["id"],
+                    json.dumps(event, ensure_ascii=False),
+                )
+
+            return message
+
+        except Exception:
+            for path in saved_paths:
+                with suppress(Exception):
+                    path.unlink()
+            raise
+
+
+@app.get("/api/emergency/attachments/{attachment_id}")
+async def download_attachment(
+    attachment_id: str,
+    identity_id: str = Query(...),
+):
+    async with app.state.db.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT
+                id,
+                channel_id,
+                original_name,
+                mime_type,
+                storage_path
+            FROM chat_attachments
+            WHERE id = $1
+            """,
+            attachment_id,
+        )
+
+        if not row:
+            raise HTTPException(status_code=404, detail="Anexo inexistente")
+
+        await ensure_channel_access(
+            conn,
+            row["channel_id"],
+            identity_id,
+        )
+
+    path = Path(row["storage_path"])
+
+    if not path.is_file():
+        raise HTTPException(status_code=410, detail="Arquivo nao encontrado no storage")
+
+    return FileResponse(
+        path=path,
+        media_type=row["mime_type"],
+        filename=row["original_name"],
+    )
 
 @app.post("/api/emergency/channels/{channel_id}/read")
 async def mark_channel_read(

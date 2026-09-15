@@ -53,7 +53,7 @@
                 </div>
 
                 <div class="header-tags">
-                    <span class="tag">Somente texto</span>
+                    <span class="tag">Texto + anexos</span>
                     <span class="tag critical">Canal institucional</span>
                 </div>
             </header>
@@ -69,14 +69,29 @@
                 Guarda Municipal e Secretaria de Educação autorizadas.
             </div>
 
+            <div id="attachmentTray" class="attachment-tray" hidden></div>
+
             <form id="composer" class="composer">
+                <label id="attachButton" class="attach-button" title="Adicionar anexos">
+                    <span>Anexar</span>
+                    <input
+                        id="fileInput"
+                        type="file"
+                        multiple
+                        hidden
+                        accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+                        disabled
+                    />
+                </label>
+
                 <input
                     id="body"
                     maxlength="2000"
                     autocomplete="off"
-                    placeholder="Digite uma mensagem..."
+                    placeholder="Digite uma mensagem ou envie anexos..."
                     disabled
                 />
+
                 <button id="send" type="submit" disabled>Enviar</button>
             </form>
         </section>
