@@ -48,7 +48,8 @@ const MAX_FILES = 5;
 const MAX_TOTAL_BYTES = 50 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = new Set([
   ".jpg", ".jpeg", ".png", ".webp", ".pdf",
-  ".doc", ".docx", ".xls", ".xlsx", ".txt", ".csv",`n  ".webm", ".ogg", ".m4a"
+  ".doc", ".docx", ".xls", ".xlsx", ".txt", ".csv",
+  ".webm", ".ogg", ".m4a"
 ]);
 
 function friendlyHttpError(status, detail = "") {
@@ -372,7 +373,8 @@ function resetChat() {
 
   bodyEl.disabled = true;
   sendEl.disabled = true;
-  if (fileInputEl) fileInputEl.disabled = true;`n  if (recordAudioEl) recordAudioEl.disabled = true;
+  if (fileInputEl) fileInputEl.disabled = true;
+  if (recordAudioEl) recordAudioEl.disabled = true;
   clearSelectedFiles();
 }
 
@@ -570,7 +572,8 @@ async function selectChannel(channelId) {
 
   bodyEl.disabled = true;
   sendEl.disabled = true;
-  if (fileInputEl) fileInputEl.disabled = true;`n  if (recordAudioEl) recordAudioEl.disabled = true;
+  if (fileInputEl) fileInputEl.disabled = true;
+  if (recordAudioEl) recordAudioEl.disabled = true;
   clearSelectedFiles();
 
   try {
@@ -596,7 +599,8 @@ async function selectChannel(channelId) {
 
     bodyEl.disabled = false;
     sendEl.disabled = false;
-    if (fileInputEl) fileInputEl.disabled = false;`n    if (recordAudioEl) recordAudioEl.disabled = !supportsAudioRecording();
+    if (fileInputEl) fileInputEl.disabled = false;
+    if (recordAudioEl) recordAudioEl.disabled = !supportsAudioRecording();
     bodyEl.focus();
   }
   catch (error) {
@@ -609,7 +613,8 @@ async function selectChannel(channelId) {
 
     bodyEl.disabled = true;
     sendEl.disabled = true;
-    if (fileInputEl) fileInputEl.disabled = true;`n  if (recordAudioEl) recordAudioEl.disabled = true;
+    if (fileInputEl) fileInputEl.disabled = true;
+  if (recordAudioEl) recordAudioEl.disabled = true;
 
     setStatus("erro");
     alert(error.message || "Não foi possível carregar o canal.");
@@ -695,7 +700,8 @@ function connectSocket() {
   };
 }
 
-identityEl.addEventListener("change", async () => {`n  cancelAudioRecording();
+identityEl.addEventListener("change", async () => {
+  cancelAudioRecording();
   generation += 1;
   loadToken += 1;
 
@@ -776,7 +782,8 @@ composerEl.addEventListener("submit", async event => {
   bodyEl.value = "";
   bodyEl.disabled = true;
   sendEl.disabled = true;
-  if (fileInputEl) fileInputEl.disabled = true;`n  if (recordAudioEl) recordAudioEl.disabled = true;
+  if (fileInputEl) fileInputEl.disabled = true;
+  if (recordAudioEl) recordAudioEl.disabled = true;
 
   try {
     let message;
@@ -846,13 +853,17 @@ composerEl.addEventListener("submit", async event => {
     if (currentChannelId) {
       bodyEl.disabled = false;
       sendEl.disabled = false;
-      if (fileInputEl) fileInputEl.disabled = false;`n    if (recordAudioEl) recordAudioEl.disabled = !supportsAudioRecording();
+      if (fileInputEl) fileInputEl.disabled = false;
+    if (recordAudioEl) recordAudioEl.disabled = !supportsAudioRecording();
       bodyEl.focus();
     }
   }
 });
 
-window.addEventListener("beforeunload", stopSocket);
+window.addEventListener("beforeunload", () => {
+  cancelAudioRecording();
+  stopSocket();
+});
 
 (async () => {
   try {
