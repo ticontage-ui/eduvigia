@@ -1,5 +1,8 @@
 const identityEl = document.getElementById("identity");
 const identityInfoEl = document.getElementById("identityInfo");
+const operatorToolsEl = document.getElementById("operatorTools");
+const searchEl = document.getElementById("channelSearch");
+const sectionTitleEl = document.getElementById("channelSectionTitle");
 const channelsEl = document.getElementById("channels");
 const channelCountEl = document.getElementById("channelCount");
 const messagesEl = document.getElementById("messages");
@@ -12,7 +15,8 @@ const sendEl = document.getElementById("send");
 
 let identities = [];
 let channels = [];
-let currentIdentity = localStorage.getItem("eduvigia_emergency_identity") || "mock:escola-a";
+let currentIdentity =
+  localStorage.getItem("eduvigia_emergency_identity") || "mock:escola-a";
 let currentChannelId = null;
 let socket = null;
 let reconnectTimer = null;
@@ -49,6 +53,14 @@ function currentChannel() {
   return channels.find(item => item.id === currentChannelId) || null;
 }
 
+function isSchoolIdentity() {
+  return currentIdentityObject()?.organization_kind === "ESCOLA";
+}
+
+function channelLabel(channel) {
+  return channel.school_display_name || channel.title || channel.school_code;
+}
+
 function renderIdentityInfo() {
   const identity = currentIdentityObject();
 
@@ -59,12 +71,16 @@ function renderIdentityInfo() {
 
   if (identity.organization_kind === "ESCOLA") {
     identityInfoEl.textContent =
-      `${identity.role} Â· ${identity.school_code}`;
+      `${identity.role} Â· ${identity.school_code} Â· acesso somente Ã  prÃ³pria escola`;
+    operatorToolsEl.hidden = true;
+    sectionTitleEl.textContent = "Meu Canal de EmergÃªncia";
     return;
   }
 
   identityInfoEl.textContent =
-    `${identity.role} Â· acesso institucional`;
+    `${identity.role} Â· visÃ£o operacional das escolas autorizadas`;
+  operatorToolsEl.hidden = false;
+  sectionTitleEl.textContent = "Canais das Escolas";
 }
 
 async function loadIdentities() {
@@ -96,28 +112,53 @@ async function loadIdentities() {
 function resetChat() {
   currentChannelId = null;
   seen.clear();
+
   messagesEl.innerHTML =
     '<div class="empty-chat">Selecione um canal de emergÃªncia.</div>';
+
   channelTitleEl.textContent = "Selecione um canal";
   channelMetaEl.textContent =
-    "Escolas comunicam-se somente com Guarda e Secretaria de EducaÃ§Ã£o.";
+    "Escola â†” Guarda Municipal â†” Secretaria de EducaÃ§Ã£o";
+
   bodyEl.disabled = true;
   sendEl.disabled = true;
 }
 
-function renderChannels() {
-  channelsEl.innerHTML = "";
-  channelCountEl.textContent = String(channels.length);
+function filteredChannels() {
+  const term = (searchEl?.value || "").trim().toLowerCase();
 
-  if (!channels.length) {
+  if (!term || isSchoolIdentity()) return channels;
+
+  return channels.filter(channel => {
+    const source = [
+      channel.title,
+      channel.school_code,
+      channel.school_display_name,
+      channel.last_message_body
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return source.includes(term);
+  });
+}
+
+function renderChannels() {
+  const visible = filteredChannels();
+
+  channelsEl.innerHTML = "";
+  channelCountEl.textContent = String(visible.length);
+
+  if (!visible.length) {
     const empty = document.createElement("div");
     empty.className = "empty-list";
-    empty.textContent = "Nenhum canal autorizado.";
+    empty.textContent = "Nenhum canal encontrado.";
     channelsEl.appendChild(empty);
     return;
   }
 
-  for (const channel of channels) {
+  for (const channel of visible) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "channel";
@@ -130,7 +171,7 @@ function renderChannels() {
     top.className = "channel-top";
 
     const name = document.createElement("strong");
-    name.textContent = channel.title;
+    name.textContent = channelLabel(channel);
 
     const badge = document.createElement("em");
     const unread = Number(channel.unread_count || 0);
@@ -144,7 +185,7 @@ function renderChannels() {
 
     const preview = document.createElement("span");
     preview.textContent =
-      channel.last_message_body || "Sem mensagens ainda";
+      channel.last_message_body || "Sem mensagens registradas";
 
     button.append(top, school, preview);
     button.addEventListener("click", () => selectChannel(channel.id));
@@ -164,6 +205,14 @@ async function refreshChannels({preserveSelection = true} = {}) {
 
   channels = data;
 
+  // Defense-in-depth in the UI: a school will only keep its own school_code.
+  const identity = currentIdentityObject();
+  if (identity?.organization_kind === "ESCOLA") {
+    channels = channels.filter(
+      channel => channel.school_code === identity.school_code
+    );
+  }
+
   if (
     !preserveSelection ||
     !currentChannelId ||
@@ -179,12 +228,11 @@ function senderLabel(message) {
   if (message.sender_organization_kind === "ESCOLA") return "ESCOLA";
   if (message.sender_organization_kind === "GUARDA") return "GUARDA";
   if (message.sender_organization_kind === "SECRETARIA") return "SECRETARIA";
-  return message.sender_organization_kind || "SISTEMA";
+  return "SISTEMA";
 }
 
 function appendMessage(message) {
   if (!message || seen.has(message.id)) return;
-
   seen.add(message.id);
 
   const article = document.createElement("article");
@@ -212,12 +260,11 @@ function appendMessage(message) {
   const time = document.createElement("time");
   time.textContent = new Date(message.created_at).toLocaleString();
 
-  header.append(sender, time);
-
   const text = document.createElement("div");
   text.className = "message-body";
   text.textContent = message.body;
 
+  header.append(sender, time);
   article.append(header, text);
   messagesEl.appendChild(article);
   messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -247,13 +294,24 @@ async function selectChannel(channelId) {
     return;
   }
 
+  const identity = currentIdentityObject();
+
+  if (
+    identity?.organization_kind === "ESCOLA" &&
+    channel.school_code !== identity.school_code
+  ) {
+    resetChat();
+    alert("A escola nÃ£o possui acesso a este canal.");
+    return;
+  }
+
   const token = ++loadToken;
   currentChannelId = channelId;
   seen.clear();
   messagesEl.innerHTML = "";
   renderChannels();
 
-  channelTitleEl.textContent = channel.title;
+  channelTitleEl.textContent = channelLabel(channel);
   channelMetaEl.textContent =
     `${channel.school_code} Â· Escola â†” Guarda Municipal â†” Secretaria de EducaÃ§Ã£o`;
 
@@ -273,9 +331,7 @@ async function selectChannel(channelId) {
         '<div class="empty-chat">Canal disponÃ­vel. Nenhuma mensagem registrada.</div>';
     } else {
       messages.forEach(appendMessage);
-
-      const lastId = messages[messages.length - 1].id;
-      await markRead(channelId, lastId);
+      await markRead(channelId, messages[messages.length - 1].id);
     }
 
     const local = channels.find(item => item.id === channelId);
@@ -289,7 +345,6 @@ async function selectChannel(channelId) {
   }
   catch (error) {
     if (token !== loadToken) return;
-
     console.error(error);
     resetChat();
     alert(error.message);
@@ -297,15 +352,11 @@ async function selectChannel(channelId) {
 }
 
 function stopSocket() {
-  if (reconnectTimer) {
-    clearTimeout(reconnectTimer);
-    reconnectTimer = null;
-  }
+  if (reconnectTimer) clearTimeout(reconnectTimer);
+  if (heartbeatTimer) clearInterval(heartbeatTimer);
 
-  if (heartbeatTimer) {
-    clearInterval(heartbeatTimer);
-    heartbeatTimer = null;
-  }
+  reconnectTimer = null;
+  heartbeatTimer = null;
 
   if (socket) {
     socket.onclose = null;
@@ -332,9 +383,7 @@ function connectSocket() {
     setStatus("online", true);
 
     heartbeatTimer = setInterval(() => {
-      if (socket?.readyState === WebSocket.OPEN) {
-        socket.send("ping");
-      }
+      if (socket?.readyState === WebSocket.OPEN) socket.send("ping");
     }, 20000);
   };
 
@@ -346,47 +395,38 @@ function connectSocket() {
     if (
       payload.type === "system.ready" ||
       payload.type === "system.pong"
-    ) {
-      return;
+    ) return;
+
+    if (payload.type !== "emergency.message.created") return;
+
+    if (payload.channel_id === currentChannelId) {
+      const empty = messagesEl.querySelector(".empty-chat");
+      if (empty) empty.remove();
+
+      appendMessage(payload.message);
+      await markRead(payload.channel_id, payload.message.id);
     }
 
-    if (payload.type === "emergency.message.created") {
-      if (payload.channel_id === currentChannelId) {
-        const empty = messagesEl.querySelector(".empty-chat");
-        if (empty) empty.remove();
-
-        appendMessage(payload.message);
-        await markRead(
-          payload.channel_id,
-          payload.message.id
-        );
-      }
-
-      await refreshChannels({preserveSelection: true});
-    }
+    // If another school channel receives a message, Guard/Secretariat
+    // receive a refreshed unread badge without marking it as read.
+    await refreshChannels({preserveSelection: true});
   };
 
   socket.onclose = () => {
     if (socketGeneration !== generation) return;
 
-    if (heartbeatTimer) {
-      clearInterval(heartbeatTimer);
-      heartbeatTimer = null;
-    }
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
 
     setStatus("reconectandoâ€¦");
 
     reconnectTimer = setTimeout(() => {
-      if (socketGeneration === generation) {
-        connectSocket();
-      }
+      if (socketGeneration === generation) connectSocket();
     }, 1500);
   };
 
   socket.onerror = () => {
-    if (socketGeneration === generation && socket) {
-      socket.close();
-    }
+    if (socketGeneration === generation && socket) socket.close();
   };
 }
 
@@ -395,10 +435,9 @@ identityEl.addEventListener("change", async () => {
   loadToken += 1;
 
   currentIdentity = identityEl.value;
-  localStorage.setItem(
-    "eduvigia_emergency_identity",
-    currentIdentity
-  );
+  localStorage.setItem("eduvigia_emergency_identity", currentIdentity);
+
+  if (searchEl) searchEl.value = "";
 
   renderIdentityInfo();
   resetChat();
@@ -418,11 +457,23 @@ identityEl.addEventListener("change", async () => {
   }
 });
 
+searchEl?.addEventListener("input", renderChannels);
+
 composerEl.addEventListener("submit", async event => {
   event.preventDefault();
 
   const channel = currentChannel();
   if (!channel) return;
+
+  const identity = currentIdentityObject();
+
+  if (
+    identity?.organization_kind === "ESCOLA" &&
+    channel.school_code !== identity.school_code
+  ) {
+    alert("A escola nÃ£o possui acesso a este canal.");
+    return;
+  }
 
   const body = bodyEl.value.trim();
   if (!body) return;

@@ -392,6 +392,11 @@ async def list_emergency_channels(identity_id: str = Query(...)):
                 c.school_code,
                 c.status,
                 c.updated_at,
+                CASE
+                    WHEN c.school_code = 'SCHOOL-A' THEN 'Escola A'
+                    WHEN c.school_code = 'SCHOOL-B' THEN 'Escola B'
+                    ELSE c.school_code
+                END AS school_display_name,
                 m.last_read_message_id,
                 COALESCE(last_msg.id, 0) AS last_message_id,
                 last_msg.body AS last_message_body,
@@ -424,6 +429,16 @@ async def list_emergency_channels(identity_id: str = Query(...)):
                     OR c.school_code = $3
               )
             ORDER BY
+                CASE
+                    WHEN (
+                        SELECT count(*)
+                        FROM chat_messages unread_msg
+                        WHERE unread_msg.conversation_id = c.id
+                          AND unread_msg.id > m.last_read_message_id
+                          AND COALESCE(unread_msg.sender_identity_id, '') <> $1
+                    ) > 0 THEN 0
+                    ELSE 1
+                END,
                 COALESCE(last_msg.created_at, c.updated_at) DESC,
                 c.school_code
             """,

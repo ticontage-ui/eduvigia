@@ -1,7 +1,7 @@
 :root {
     font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     color: #172033;
-    background: #eef2f6;
+    background: #edf2f6;
 }
 
 * { box-sizing: border-box; }
@@ -14,7 +14,7 @@ button, input, select { font: inherit; }
 .app {
     height: 100vh;
     display: grid;
-    grid-template-columns: 360px minmax(0, 1fr);
+    grid-template-columns: 370px minmax(0, 1fr);
     background: #fff;
 }
 
@@ -27,7 +27,7 @@ button, input, select { font: inherit; }
 }
 
 .brand {
-    padding: 20px;
+    padding: 18px 20px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -35,43 +35,45 @@ button, input, select { font: inherit; }
     border-bottom: 1px solid #e3e9ef;
 }
 
-.brand strong {
-    display: block;
-    font-size: 18px;
-}
-
-.brand small {
-    display: block;
-    margin-top: 2px;
-    color: #66768a;
-}
+.brand strong { display: block; font-size: 18px; }
+.brand small { color: #66768a; }
 
 .status {
     padding: 5px 9px;
     border-radius: 999px;
-    background: #e8edf2;
-    color: #657487;
+    background: #e7edf3;
+    color: #677588;
     font-size: 11px;
 }
-
 .status.online {
-    background: #e5f3e9;
-    color: #245c36;
+    background: #e2f2e8;
+    color: #245b36;
 }
 
-.identity-area {
-    padding: 16px 20px;
+.qa-panel {
+    padding: 14px 20px;
     border-bottom: 1px solid #e3e9ef;
 }
 
-.identity-area label {
-    display: grid;
-    gap: 6px;
-    color: #657487;
-    font-size: 12px;
+.qa-label {
+    display: block;
+    margin-bottom: 9px;
+    color: #8a6670;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .08em;
 }
 
-.identity-area select {
+.qa-panel label,
+.operator-tools label {
+    display: grid;
+    gap: 6px;
+    color: #68778a;
+    font-size: 11px;
+}
+
+.qa-panel select,
+.operator-tools input {
     width: 100%;
     min-width: 0;
     padding: 10px;
@@ -82,20 +84,24 @@ button, input, select { font: inherit; }
 
 .identity-info {
     margin-top: 8px;
-    color: #6f7d90;
+    color: #758396;
     font-size: 11px;
+    line-height: 1.35;
+}
+
+.operator-tools {
+    padding: 13px 20px 5px;
 }
 
 .section-title {
-    padding: 15px 20px 8px;
+    padding: 14px 20px 8px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
     color: #69788b;
     font-size: 11px;
-    font-weight: 700;
-    letter-spacing: .06em;
+    font-weight: 800;
+    letter-spacing: .05em;
     text-transform: uppercase;
 }
 
@@ -104,7 +110,7 @@ button, input, select { font: inherit; }
     padding: 2px 6px;
     text-align: center;
     border-radius: 999px;
-    background: #e8edf2;
+    background: #e6ecf2;
     font-size: 10px;
 }
 
@@ -126,9 +132,7 @@ button, input, select { font: inherit; }
 }
 
 .channel:hover,
-.channel.active {
-    background: #e9eff5;
-}
+.channel.active { background: #e8eef4; }
 
 .channel-top {
     display: flex;
@@ -147,13 +151,12 @@ button, input, select { font: inherit; }
 .channel em {
     min-width: 22px;
     padding: 3px 6px;
+    text-align: center;
     border-radius: 999px;
     background: #dce6ef;
-    text-align: center;
     font-size: 10px;
     font-style: normal;
 }
-
 .channel em[hidden] { display: none; }
 
 .channel small,
@@ -177,7 +180,7 @@ button, input, select { font: inherit; }
 .chat {
     min-width: 0;
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
 }
 
 .chat-header {
@@ -193,7 +196,7 @@ button, input, select { font: inherit; }
     margin-bottom: 3px;
     color: #76869a;
     font-size: 10px;
-    font-weight: 700;
+    font-weight: 800;
     letter-spacing: .08em;
 }
 
@@ -208,13 +211,24 @@ button, input, select { font: inherit; }
     font-size: 12px;
 }
 
-.text-only {
-    flex: 0 0 auto;
+.header-tags {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+.tag {
     padding: 6px 9px;
     border: 1px solid #d5dee7;
     border-radius: 999px;
     color: #66768a;
-    font-size: 11px;
+    font-size: 10px;
+}
+.tag.critical {
+    border-color: #e4c9c9;
+    background: #fbf3f3;
+    color: #7d4545;
 }
 
 .messages {
@@ -242,9 +256,7 @@ button, input, select { font: inherit; }
     background: #fff;
 }
 
-.message.own {
-    margin-left: auto;
-}
+.message.own { margin-left: auto; }
 
 .message-header {
     margin-bottom: 6px;
@@ -278,9 +290,9 @@ button, input, select { font: inherit; }
     font-weight: 800;
 }
 
-.institution.escola { background: #e9f0f8; }
-.institution.guarda { background: #eceaf7; }
-.institution.secretaria { background: #e8f3ed; }
+.institution.escola { background: #e7eef7; }
+.institution.guarda { background: #edeaf7; }
+.institution.secretaria { background: #e6f1eb; }
 
 .message time {
     flex: 0 0 auto;
@@ -294,8 +306,17 @@ button, input, select { font: inherit; }
     line-height: 1.45;
 }
 
+.policy-banner {
+    padding: 8px 20px;
+    background: #f8fafc;
+    border-top: 1px solid #e3e9ef;
+    color: #6d7c8f;
+    text-align: center;
+    font-size: 10px;
+}
+
 .composer {
-    padding: 16px 20px;
+    padding: 14px 20px;
     display: flex;
     gap: 10px;
     border-top: 1px solid #e3e9ef;
@@ -323,19 +344,19 @@ button, input, select { font: inherit; }
     cursor: not-allowed;
 }
 
-@media (max-width: 800px) {
-    .app {
-        grid-template-columns: 180px minmax(0, 1fr);
-    }
+@media (max-width: 820px) {
+    .app { grid-template-columns: 190px minmax(0, 1fr); }
 
     .brand,
-    .identity-area {
+    .qa-panel,
+    .operator-tools {
         padding-left: 12px;
         padding-right: 12px;
     }
 
     .brand small,
-    .identity-info {
+    .identity-info,
+    .qa-label {
         display: none;
     }
 
@@ -344,15 +365,7 @@ button, input, select { font: inherit; }
         padding-right: 12px;
     }
 
-    .channel {
-        padding: 10px 8px;
-    }
-
-    .message {
-        width: 92%;
-    }
-
-    .text-only {
-        display: none;
-    }
+    .channel { padding: 10px 8px; }
+    .message { width: 92%; }
+    .header-tags { display: none; }
 }

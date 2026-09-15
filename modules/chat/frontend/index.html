@@ -17,16 +17,25 @@
                 <span id="status" class="status">offline</span>
             </div>
 
-            <div class="identity-area">
+            <div class="qa-panel">
+                <span class="qa-label">AMBIENTE STANDALONE / QA</span>
                 <label>
-                    Perfil de teste
+                    Simular perfil
                     <select id="identity"></select>
                 </label>
                 <div id="identityInfo" class="identity-info"></div>
             </div>
 
+            <div id="operatorTools" class="operator-tools" hidden>
+                <label>
+                    Localizar escola
+                    <input id="channelSearch" type="search"
+                           placeholder="Nome ou cÃ³digo da escola" />
+                </label>
+            </div>
+
             <div class="section-title">
-                <span>Canais de EmergÃªncia</span>
+                <span id="channelSectionTitle">Canal de EmergÃªncia</span>
                 <strong id="channelCount">0</strong>
             </div>
 
@@ -36,13 +45,17 @@
         <section class="chat">
             <header class="chat-header">
                 <div>
-                    <div class="eyebrow">COMUNICAÃ‡ÃƒO INSTITUCIONAL</div>
+                    <div class="eyebrow">COMUNICAÃ‡ÃƒO INSTITUCIONAL DE EMERGÃŠNCIA</div>
                     <h1 id="channelTitle">Selecione um canal</h1>
                     <p id="channelMeta">
-                        Escolas comunicam-se somente com Guarda e Secretaria de EducaÃ§Ã£o.
+                        Escola â†” Guarda Municipal â†” Secretaria de EducaÃ§Ã£o
                     </p>
                 </div>
-                <div class="text-only">Somente texto</div>
+
+                <div class="header-tags">
+                    <span class="tag">Somente texto</span>
+                    <span class="tag critical">Canal institucional</span>
+                </div>
             </header>
 
             <section id="messages" class="messages">
@@ -51,12 +64,17 @@
                 </div>
             </section>
 
+            <div id="policyBanner" class="policy-banner">
+                As escolas nÃ£o se comunicam entre si. Este canal Ã© restrito Ã  escola,
+                Guarda Municipal e Secretaria de EducaÃ§Ã£o autorizadas.
+            </div>
+
             <form id="composer" class="composer">
                 <input
                     id="body"
                     maxlength="2000"
                     autocomplete="off"
-                    placeholder="Digite uma mensagem de emergÃªncia..."
+                    placeholder="Digite uma mensagem..."
                     disabled
                 />
                 <button id="send" type="submit" disabled>Enviar</button>
