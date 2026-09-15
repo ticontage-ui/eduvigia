@@ -1,0 +1,4 @@
+﻿infra/.env.chat.local
+backend/__pycache__/
+backend/app/__pycache__/
+*.pyc

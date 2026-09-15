@@ -1,0 +1,100 @@
+﻿name: eduvigia-chat
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${CHAT_POSTGRES_DB}
+      POSTGRES_USER: ${CHAT_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${CHAT_POSTGRES_PASSWORD}
+    ports:
+      - "127.0.0.1:15447:5432"
+    volumes:
+      - chat_pgdata:/var/lib/postgresql/data
+      - ../backend/schema.sql:/docker-entrypoint-initdb.d/001_chat_schema.sql:ro
+    networks:
+      - chat_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${CHAT_POSTGRES_USER} -d ${CHAT_POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    environment:
+      CHAT_REDIS_PASSWORD: ${CHAT_REDIS_PASSWORD}
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--requirepass",
+        "${CHAT_REDIS_PASSWORD}"
+      ]
+    ports:
+      - "127.0.0.1:16392:6379"
+    volumes:
+      - chat_redisdata:/data
+    networks:
+      - chat_net
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${CHAT_REDIS_PASSWORD}\" ping | grep PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  api:
+    build:
+      context: ../backend
+    restart: unless-stopped
+    environment:
+      CHAT_VERSION: "0.1.0-R1"
+      CHAT_DATABASE_DSN: postgresql://${CHAT_POSTGRES_USER}:${CHAT_POSTGRES_PASSWORD}@postgres:5432/${CHAT_POSTGRES_DB}
+      CHAT_REDIS_URL: redis://:${CHAT_REDIS_PASSWORD}@redis:6379/0
+      CHAT_REDIS_CHANNEL: eduvigia:chat:events
+    ports:
+      - "127.0.0.1:18012:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - chat_net
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"
+        ]
+      interval: 5s
+      timeout: 4s
+      retries: 20
+      start_period: 10s
+
+  web:
+    build:
+      context: ../frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:15187:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - chat_net
+
+networks:
+  chat_net:
+    driver: bridge
+
+volumes:
+  chat_pgdata:
+  chat_redisdata:

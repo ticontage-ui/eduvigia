@@ -1,0 +1,42 @@
+﻿<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>EduVigIA Chat â€” Standalone</title>
+    <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+    <main class="shell">
+        <header>
+            <div>
+                <h1>EduVigIA Chat</h1>
+                <p>Standalone v0.1.0-R1 Â· sem integraÃ§Ã£o com o Core</p>
+            </div>
+            <span id="status" class="status">conectandoâ€¦</span>
+        </header>
+
+        <section class="identity">
+            <label>
+                Operador de teste
+                <input id="displayName" maxlength="80" value="DEV B" />
+            </label>
+            <div class="room">Sala: <strong>general</strong></div>
+        </section>
+
+        <section id="messages" class="messages" aria-live="polite"></section>
+
+        <form id="form" class="composer">
+            <input
+                id="body"
+                maxlength="2000"
+                autocomplete="off"
+                placeholder="Digite uma mensagem de teste..."
+            />
+            <button type="submit">Enviar</button>
+        </form>
+    </main>
+
+    <script src="/app.js"></script>
+</body>
+</html>
