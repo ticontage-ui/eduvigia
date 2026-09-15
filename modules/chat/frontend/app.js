@@ -18,8 +18,12 @@ const cancelDialog = document.getElementById("cancelDialog");
 let identities = [];
 let conversations = [];
 let currentIdentity = localStorage.getItem("eduvigia_chat_identity") || "mock:diego";
-let currentConversation = null;
+let currentConversationId = null;
 let socket = null;
+let reconnectTimer = null;
+let heartbeatTimer = null;
+let identityGeneration = 0;
+let loadingConversationToken = 0;
 const seen = new Set();
 
 async function jsonFetch(url, options = {}) {
@@ -34,6 +38,26 @@ async function jsonFetch(url, options = {}) {
 function setStatus(text, online = false) {
   statusEl.textContent = text;
   statusEl.className = online ? "status online" : "status";
+}
+
+function currentConversation() {
+  return conversations.find(c => c.id === currentConversationId) || null;
+}
+
+function conversationLabel(conversation) {
+  if (conversation.title) return conversation.title;
+  const others = conversation.members.filter(m => m.id !== currentIdentity);
+  return others.map(m => m.display_name).join(", ") || "Conversa";
+}
+
+function resetConversationView() {
+  currentConversationId = null;
+  seen.clear();
+  messagesEl.innerHTML = "";
+  titleEl.textContent = "Selecione uma conversa";
+  metaEl.textContent = "Identity Provider: mock Â· Core: desconectado";
+  bodyEl.disabled = true;
+  sendEl.disabled = true;
 }
 
 async function loadIdentities() {
@@ -76,50 +100,62 @@ function renderMemberChoices() {
   }
 }
 
-function conversationLabel(conversation) {
-  if (conversation.title) return conversation.title;
-  const others = conversation.members.filter(m => m.id !== currentIdentity);
-  return others.map(m => m.display_name).join(", ") || "Conversa";
-}
-
-async function loadConversations(selectId = null) {
-  conversations = await jsonFetch(
-    `/api/conversations?identity_id=${encodeURIComponent(currentIdentity)}`
-  );
-
+function renderConversations() {
   conversationsEl.innerHTML = "";
+
+  if (!conversations.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty-list";
+    empty.textContent = "Nenhuma conversa.";
+    conversationsEl.appendChild(empty);
+    return;
+  }
 
   for (const conversation of conversations) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "conversation";
-    if (currentConversation?.id === conversation.id) {
+
+    if (currentConversationId === conversation.id) {
       button.classList.add("active");
     }
 
     const name = document.createElement("strong");
     name.textContent = conversationLabel(conversation);
 
-    const info = document.createElement("span");
-    info.textContent = conversation.type;
+    const preview = document.createElement("span");
+    preview.textContent = conversation.last_message_body || conversation.type;
 
     const badge = document.createElement("em");
-    badge.textContent = conversation.unread_count > 0
-      ? String(conversation.unread_count)
-      : "";
-    badge.hidden = conversation.unread_count <= 0;
+    const unread = Number(conversation.unread_count || 0);
+    badge.textContent = unread > 99 ? "99+" : String(unread);
+    badge.hidden = unread <= 0;
 
-    button.append(name, info, badge);
-    button.addEventListener("click", () => openConversation(conversation.id));
+    button.append(name, preview, badge);
+    button.addEventListener("click", () => selectConversation(conversation.id));
     conversationsEl.appendChild(button);
   }
+}
 
-  const wanted = selectId || currentConversation?.id;
-  if (wanted && conversations.some(c => c.id === wanted)) {
-    await openConversation(wanted, false);
-  } else if (conversations.length && !currentConversation) {
-    await openConversation(conversations[0].id, false);
+async function refreshConversations({preserveSelection = true} = {}) {
+  const generation = identityGeneration;
+  const data = await jsonFetch(
+    `/api/conversations?identity_id=${encodeURIComponent(currentIdentity)}`
+  );
+
+  if (generation !== identityGeneration) return;
+
+  conversations = data;
+
+  if (
+    !preserveSelection ||
+    !currentConversationId ||
+    !conversations.some(c => c.id === currentConversationId)
+  ) {
+    currentConversationId = conversations[0]?.id || null;
   }
+
+  renderConversations();
 }
 
 function appendMessage(message) {
@@ -150,127 +186,227 @@ function appendMessage(message) {
   messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
-async function markCurrentRead() {
-  if (!currentConversation) return;
-
-  const ids = [...seen];
-  if (!ids.length) return;
-  const maxId = Math.max(...ids);
+async function markRead(conversationId, messageId) {
+  if (!conversationId || !messageId) return;
 
   await jsonFetch(
-    `/api/conversations/${encodeURIComponent(currentConversation.id)}/read`,
+    `/api/conversations/${encodeURIComponent(conversationId)}/read`,
     {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
         identity_id: currentIdentity,
-        message_id: maxId
+        message_id: messageId
       })
     }
   );
 }
 
-async function openConversation(id, reloadList = true) {
+async function selectConversation(id) {
   const conversation = conversations.find(c => c.id === id);
-  if (!conversation) return;
+  if (!conversation) {
+    resetConversationView();
+    return;
+  }
 
-  currentConversation = conversation;
+  const token = ++loadingConversationToken;
+  currentConversationId = id;
   seen.clear();
   messagesEl.innerHTML = "";
+
+  renderConversations();
 
   titleEl.textContent = conversationLabel(conversation);
   metaEl.textContent =
     `${conversation.type} Â· ${conversation.members.map(m => m.display_name).join(", ")}`;
 
-  bodyEl.disabled = false;
-  sendEl.disabled = false;
+  bodyEl.disabled = true;
+  sendEl.disabled = true;
 
-  const messages = await jsonFetch(
-    `/api/conversations/${encodeURIComponent(id)}/messages` +
-    `?identity_id=${encodeURIComponent(currentIdentity)}&limit=200`
-  );
+  try {
+    const messages = await jsonFetch(
+      `/api/conversations/${encodeURIComponent(id)}/messages` +
+      `?identity_id=${encodeURIComponent(currentIdentity)}&limit=200`
+    );
 
-  messages.forEach(appendMessage);
-  await markCurrentRead();
+    if (token !== loadingConversationToken || currentConversationId !== id) return;
 
-  if (reloadList) {
-    await loadConversations(id);
+    messages.forEach(appendMessage);
+
+    const lastId = messages.length ? messages[messages.length - 1].id : 0;
+    if (lastId) {
+      await markRead(id, lastId);
+    }
+
+    const current = conversations.find(c => c.id === id);
+    if (current) current.unread_count = 0;
+
+    renderConversations();
+
+    bodyEl.disabled = false;
+    sendEl.disabled = false;
+    bodyEl.focus();
+  } catch (error) {
+    if (token !== loadingConversationToken) return;
+    console.error(error);
+    resetConversationView();
+    alert(error.message);
+  }
+}
+
+function stopSocket() {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+
+  if (heartbeatTimer) {
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  }
+
+  if (socket) {
+    socket.onclose = null;
+    socket.onerror = null;
+    socket.onmessage = null;
+    socket.close();
+    socket = null;
   }
 }
 
 function connectSocket() {
-  if (socket) {
-    socket.onclose = null;
-    socket.close();
-  }
+  stopSocket();
 
+  const generation = identityGeneration;
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+
   socket = new WebSocket(
     `${protocol}//${location.host}/ws?identity_id=${encodeURIComponent(currentIdentity)}`
   );
 
-  socket.onopen = () => setStatus("online", true);
+  socket.onopen = () => {
+    if (generation !== identityGeneration) return;
+    setStatus("online", true);
+
+    heartbeatTimer = setInterval(() => {
+      if (socket?.readyState === WebSocket.OPEN) {
+        socket.send("ping");
+      }
+    }, 20000);
+  };
 
   socket.onmessage = async event => {
+    if (generation !== identityGeneration) return;
+
     const payload = JSON.parse(event.data);
 
+    if (payload.type === "system.pong" || payload.type === "system.ready") {
+      return;
+    }
+
     if (payload.type === "message.created") {
-      if (currentConversation?.id === payload.conversation_id) {
+      if (payload.conversation_id === currentConversationId) {
         appendMessage(payload.message);
-        await markCurrentRead();
+        await markRead(payload.conversation_id, payload.message.id);
       }
-      await loadConversations(currentConversation?.id || null);
+
+      await refreshConversations({preserveSelection: true});
+      return;
     }
 
     if (payload.type === "conversation.created") {
-      await loadConversations(payload.conversation_id);
+      await refreshConversations({preserveSelection: true});
     }
   };
 
   socket.onclose = () => {
+    if (generation !== identityGeneration) return;
+
+    if (heartbeatTimer) {
+      clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
+    }
+
     setStatus("reconectandoâ€¦");
-    setTimeout(connectSocket, 2000);
+
+    reconnectTimer = setTimeout(() => {
+      if (generation === identityGeneration) connectSocket();
+    }, 1500);
   };
 
-  socket.onerror = () => socket.close();
+  socket.onerror = () => {
+    if (generation === identityGeneration && socket) {
+      socket.close();
+    }
+  };
 }
 
 identityEl.addEventListener("change", async () => {
+  identityGeneration += 1;
   currentIdentity = identityEl.value;
   localStorage.setItem("eduvigia_chat_identity", currentIdentity);
-  currentConversation = null;
-  bodyEl.disabled = true;
-  sendEl.disabled = true;
-  messagesEl.innerHTML = "";
+
+  loadingConversationToken += 1;
+  resetConversationView();
   renderMemberChoices();
   connectSocket();
-  await loadConversations();
+
+  try {
+    await refreshConversations({preserveSelection: false});
+    if (currentConversationId) {
+      await selectConversation(currentConversationId);
+    }
+  } catch (error) {
+    console.error(error);
+    setStatus("erro");
+    alert(error.message);
+  }
 });
 
 composer.addEventListener("submit", async event => {
   event.preventDefault();
-  if (!currentConversation) return;
+
+  const conversation = currentConversation();
+  if (!conversation) return;
 
   const body = bodyEl.value.trim();
   if (!body) return;
 
-  const message = await jsonFetch(
-    `/api/conversations/${encodeURIComponent(currentConversation.id)}/messages`,
-    {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({
-        sender_identity_id: currentIdentity,
-        body
-      })
-    }
-  );
-
-  appendMessage(message);
+  const sentBody = body;
   bodyEl.value = "";
-  bodyEl.focus();
-  await markCurrentRead();
-  await loadConversations(currentConversation.id);
+  bodyEl.disabled = true;
+  sendEl.disabled = true;
+
+  try {
+    const message = await jsonFetch(
+      `/api/conversations/${encodeURIComponent(conversation.id)}/messages`,
+      {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          sender_identity_id: currentIdentity,
+          body: sentBody
+        })
+      }
+    );
+
+    if (currentConversationId === conversation.id) {
+      appendMessage(message);
+      await markRead(conversation.id, message.id);
+    }
+
+    await refreshConversations({preserveSelection: true});
+  } catch (error) {
+    bodyEl.value = sentBody;
+    console.error(error);
+    alert(error.message);
+  } finally {
+    if (currentConversationId) {
+      bodyEl.disabled = false;
+      sendEl.disabled = false;
+      bodyEl.focus();
+    }
+  }
 });
 
 newConversation.addEventListener("click", () => {
@@ -281,6 +417,13 @@ newConversation.addEventListener("click", () => {
 });
 
 cancelDialog.addEventListener("click", () => dialog.close());
+
+conversationType.addEventListener("change", () => {
+  conversationName.disabled = conversationType.value === "DIRECT";
+  if (conversationType.value === "DIRECT") {
+    conversationName.value = "";
+  }
+});
 
 conversationForm.addEventListener("submit", async event => {
   event.preventDefault();
@@ -300,26 +443,46 @@ conversationForm.addEventListener("submit", async event => {
     return;
   }
 
-  const created = await jsonFetch("/api/conversations", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({
-      type,
-      title: type === "DIRECT" ? null : conversationName.value.trim(),
-      created_by: currentIdentity,
-      member_ids: memberIds
-    })
-  });
+  try {
+    const created = await jsonFetch("/api/conversations", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        type,
+        title: type === "DIRECT" ? null : conversationName.value.trim(),
+        created_by: currentIdentity,
+        member_ids: memberIds
+      })
+    });
 
-  dialog.close();
-  await loadConversations(created.id);
+    dialog.close();
+
+    await refreshConversations({preserveSelection: true});
+    await selectConversation(created.id);
+
+    if (created.reused) {
+      console.info("Conversa direta existente reutilizada.");
+    }
+  } catch (error) {
+    console.error(error);
+    alert(error.message);
+  }
 });
+
+window.addEventListener("beforeunload", stopSocket);
 
 (async () => {
   try {
     await loadIdentities();
+
+    identityGeneration += 1;
     connectSocket();
-    await loadConversations();
+
+    await refreshConversations({preserveSelection: false});
+
+    if (currentConversationId) {
+      await selectConversation(currentConversationId);
+    }
   } catch (error) {
     console.error(error);
     setStatus("erro");

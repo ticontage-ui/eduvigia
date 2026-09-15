@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import os
 import uuid
 from contextlib import asynccontextmanager, suppress
@@ -10,10 +11,13 @@ from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnec
 from pydantic import BaseModel, Field
 from redis.asyncio import Redis
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("eduvigia-chat")
+
 DATABASE_DSN = os.environ["CHAT_DATABASE_DSN"]
 REDIS_URL = os.environ["CHAT_REDIS_URL"]
 REDIS_CHANNEL = os.getenv("CHAT_REDIS_CHANNEL", "eduvigia:chat:events")
-APP_VERSION = os.getenv("CHAT_VERSION", "0.2.0-R1")
+APP_VERSION = os.getenv("CHAT_VERSION", "0.2.1-R1")
 
 
 class ConversationIn(BaseModel):
@@ -54,22 +58,26 @@ class Hub:
 
     async def broadcast_to(self, audience: list[str], message: str) -> None:
         async with self.lock:
-            targets = []
-            for identity_id in audience:
-                targets.extend(list(self.by_identity.get(identity_id, set())))
+            targets = [
+                (identity_id, ws)
+                for identity_id in audience
+                for ws in list(self.by_identity.get(identity_id, set()))
+            ]
 
         dead: list[tuple[str, WebSocket]] = []
-        for ws in targets:
+
+        for identity_id, ws in targets:
             try:
                 await ws.send_text(message)
             except Exception:
-                for identity_id, sockets in self.by_identity.items():
-                    if ws in sockets:
-                        dead.append((identity_id, ws))
-                        break
+                dead.append((identity_id, ws))
 
         for identity_id, ws in dead:
             await self.disconnect(identity_id, ws)
+
+    async def connection_count(self) -> int:
+        async with self.lock:
+            return sum(len(items) for items in self.by_identity.values())
 
 
 hub = Hub()
@@ -118,22 +126,57 @@ def message_dict(row: asyncpg.Record) -> dict:
     }
 
 
+async def direct_conversation_between(
+    conn: asyncpg.Connection,
+    member_ids: list[str],
+):
+    if len(member_ids) != 2:
+        return None
+
+    return await conn.fetchrow(
+        """
+        SELECT c.id, c.type, c.title, c.created_by
+        FROM chat_conversations c
+        WHERE c.type = 'DIRECT'
+          AND c.archived_at IS NULL
+          AND (
+              SELECT array_agg(cm.identity_id ORDER BY cm.identity_id)
+              FROM chat_conversation_members cm
+              WHERE cm.conversation_id = c.id
+                AND cm.left_at IS NULL
+          ) = $1::text[]
+        LIMIT 1
+        """,
+        sorted(member_ids),
+    )
+
+
 async def redis_listener(redis: Redis) -> None:
-    pubsub = redis.pubsub()
-    await pubsub.subscribe(REDIS_CHANNEL)
-    try:
-        async for event in pubsub.listen():
-            if event.get("type") != "message":
-                continue
-            raw = event.get("data")
-            if isinstance(raw, bytes):
-                raw = raw.decode("utf-8")
-            payload = json.loads(raw)
-            audience = payload.pop("_audience", [])
-            await hub.broadcast_to(audience, json.dumps(payload, ensure_ascii=False))
-    finally:
-        await pubsub.unsubscribe(REDIS_CHANNEL)
-        await pubsub.aclose()
+    while True:
+        pubsub = redis.pubsub()
+        try:
+            await pubsub.subscribe(REDIS_CHANNEL)
+            async for event in pubsub.listen():
+                if event.get("type") != "message":
+                    continue
+
+                raw = event.get("data")
+                if isinstance(raw, bytes):
+                    raw = raw.decode("utf-8")
+
+                payload = json.loads(raw)
+                audience = payload.pop("_audience", [])
+                await hub.broadcast_to(audience, json.dumps(payload, ensure_ascii=False))
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Redis listener failed; reconnecting")
+            await asyncio.sleep(1)
+        finally:
+            with suppress(Exception):
+                await pubsub.unsubscribe(REDIS_CHANNEL)
+            with suppress(Exception):
+                await pubsub.aclose()
 
 
 async def outbox_worker(app: FastAPI) -> None:
@@ -156,7 +199,9 @@ async def outbox_worker(app: FastAPI) -> None:
                         payload = row["payload"]
                         if not isinstance(payload, str):
                             payload = json.dumps(payload, ensure_ascii=False)
+
                         await app.state.redis.publish(REDIS_CHANNEL, payload)
+
                         await conn.execute(
                             "UPDATE chat_outbox SET published_at = now() WHERE id = $1",
                             row["id"],
@@ -164,7 +209,7 @@ async def outbox_worker(app: FastAPI) -> None:
         except asyncio.CancelledError:
             raise
         except Exception:
-            pass
+            logger.exception("Outbox worker iteration failed")
 
         await asyncio.sleep(0.5)
 
@@ -177,7 +222,13 @@ async def lifespan(app: FastAPI):
         max_size=10,
         command_timeout=10,
     )
-    app.state.redis = Redis.from_url(REDIS_URL, decode_responses=True)
+    app.state.redis = Redis.from_url(
+        REDIS_URL,
+        decode_responses=True,
+        socket_connect_timeout=3,
+        socket_timeout=5,
+        health_check_interval=20,
+    )
     await app.state.redis.ping()
 
     listener = asyncio.create_task(redis_listener(app.state.redis))
@@ -188,10 +239,12 @@ async def lifespan(app: FastAPI):
     finally:
         listener.cancel()
         outbox.cancel()
+
         with suppress(asyncio.CancelledError):
             await listener
         with suppress(asyncio.CancelledError):
             await outbox
+
         await app.state.redis.aclose()
         await app.state.db.close()
 
@@ -223,6 +276,7 @@ async def health():
         "redis": "ok" if redis_ok else "fail",
         "outbox_pending": pending,
         "migrations": migrations,
+        "websocket_connections": await hub.connection_count(),
         "core_integration": "disabled",
         "identity_provider": "mock",
     }
@@ -246,6 +300,7 @@ async def list_identities():
 async def list_conversations(identity_id: str = Query(...)):
     async with app.state.db.acquire() as conn:
         await ensure_identity(conn, identity_id)
+
         rows = await conn.fetch(
             """
             SELECT
@@ -253,16 +308,12 @@ async def list_conversations(identity_id: str = Query(...)):
                 c.type,
                 c.title,
                 c.created_at,
+                c.updated_at,
                 m.member_role,
                 m.last_read_message_id,
-                COALESCE(
-                    (
-                        SELECT max(msg.id)
-                        FROM chat_messages msg
-                        WHERE msg.conversation_id = c.id
-                    ),
-                    0
-                ) AS last_message_id,
+                COALESCE(last_msg.id, 0) AS last_message_id,
+                last_msg.body AS last_message_body,
+                last_msg.created_at AS last_message_at,
                 (
                     SELECT count(*)
                     FROM chat_messages msg
@@ -275,8 +326,15 @@ async def list_conversations(identity_id: str = Query(...)):
               ON m.conversation_id = c.id
              AND m.identity_id = $1
              AND m.left_at IS NULL
+            LEFT JOIN LATERAL (
+                SELECT msg.id, msg.body, msg.created_at
+                FROM chat_messages msg
+                WHERE msg.conversation_id = c.id
+                ORDER BY msg.id DESC
+                LIMIT 1
+            ) last_msg ON TRUE
             WHERE c.archived_at IS NULL
-            ORDER BY c.updated_at DESC, c.created_at DESC
+            ORDER BY COALESCE(last_msg.created_at, c.updated_at) DESC, c.created_at DESC
             """,
             identity_id,
         )
@@ -294,8 +352,15 @@ async def list_conversations(identity_id: str = Query(...)):
                 """,
                 row["id"],
             )
+
             item = dict(row)
             item["created_at"] = row["created_at"].isoformat()
+            item["updated_at"] = row["updated_at"].isoformat()
+            item["last_message_at"] = (
+                row["last_message_at"].isoformat()
+                if row["last_message_at"]
+                else None
+            )
             item["members"] = [dict(member) for member in members]
             result.append(item)
 
@@ -307,17 +372,35 @@ async def create_conversation(payload: ConversationIn):
     member_ids = list(dict.fromkeys([payload.created_by, *payload.member_ids]))
 
     if payload.type == "DIRECT" and len(member_ids) != 2:
-        raise HTTPException(status_code=422, detail="Conversa DIRECT exige exatamente 2 membros")
+        raise HTTPException(
+            status_code=422,
+            detail="Conversa DIRECT exige exatamente 2 membros",
+        )
 
-    if payload.type != "DIRECT" and not payload.title:
-        raise HTTPException(status_code=422, detail="Grupo/institucional exige titulo")
-
-    conversation_id = "conv:" + uuid.uuid4().hex
+    if payload.type != "DIRECT" and not (payload.title or "").strip():
+        raise HTTPException(
+            status_code=422,
+            detail="Grupo/institucional exige titulo",
+        )
 
     async with app.state.db.acquire() as conn:
         async with conn.transaction():
             for identity_id in member_ids:
                 await ensure_identity(conn, identity_id)
+
+            if payload.type == "DIRECT":
+                existing = await direct_conversation_between(conn, member_ids)
+                if existing:
+                    return {
+                        "id": existing["id"],
+                        "type": existing["type"],
+                        "title": existing["title"],
+                        "created_by": existing["created_by"],
+                        "member_ids": member_ids,
+                        "reused": True,
+                    }
+
+            conversation_id = "conv:" + uuid.uuid4().hex
 
             await conn.execute(
                 """
@@ -348,6 +431,7 @@ async def create_conversation(payload: ConversationIn):
                 "conversation_id": conversation_id,
                 "_audience": member_ids,
             }
+
             await conn.execute(
                 """
                 INSERT INTO chat_outbox(event_type, aggregate_id, payload)
@@ -364,6 +448,7 @@ async def create_conversation(payload: ConversationIn):
         "title": payload.title,
         "created_by": payload.created_by,
         "member_ids": member_ids,
+        "reused": False,
     }
 
 
@@ -406,7 +491,7 @@ async def create_message(conversation_id: str, payload: MessageIn):
 
     async with app.state.db.acquire() as conn:
         async with conn.transaction():
-            member = await ensure_member(conn, conversation_id, payload.sender_identity_id)
+            await ensure_member(conn, conversation_id, payload.sender_identity_id)
             identity = await ensure_identity(conn, payload.sender_identity_id)
 
             row = await conn.fetchrow(
@@ -517,6 +602,7 @@ async def websocket_endpoint(websocket: WebSocket, identity_id: str = Query(...)
         return
 
     await hub.connect(identity_id, websocket)
+
     try:
         await websocket.send_json(
             {
@@ -525,9 +611,13 @@ async def websocket_endpoint(websocket: WebSocket, identity_id: str = Query(...)
                 "identity_id": identity_id,
             }
         )
+
         while True:
-            await websocket.receive_text()
+            message = await websocket.receive_text()
+            if message == "ping":
+                await websocket.send_json({"type": "system.pong"})
     except WebSocketDisconnect:
         await hub.disconnect(identity_id, websocket)
     except Exception:
+        logger.exception("WebSocket error for %s", identity_id)
         await hub.disconnect(identity_id, websocket)

@@ -236,3 +236,25 @@ dialog::backdrop { background: rgba(20,30,45,.35); }
     .conversation { padding-left: 8px; }
     .message { width: 90%; }
 }
+.empty-list {
+    padding: 18px 12px;
+    color: #7b8798;
+    font-size: 13px;
+    text-align: center;
+}
+
+.composer button:disabled,
+.composer input:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+}
+
+.conversation span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.conversation em[hidden] {
+    display: none;
+}
