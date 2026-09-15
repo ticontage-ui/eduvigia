@@ -4173,3 +4173,25 @@ button:disabled {
   .actionFeedbackBanner { padding: 7px 11px; }
   .actionFeedbackContent > div { display: grid; gap: 1px; }
 }
+
+/* F7-R3 HF8 — estado agregado da frota de câmeras */
+.onlineStatus.success {
+  border-color: #b8e4c5 !important;
+  background: #f3fbf6 !important;
+}
+.onlineStatus.success b { color: #11823a !important; }
+.onlineStatus.warning {
+  border-color: #f1c75b !important;
+  background: #fff9e8 !important;
+}
+.onlineStatus.warning b { color: #a56500 !important; }
+.onlineStatus.danger {
+  border-color: #efb2ac !important;
+  background: #fff3f2 !important;
+}
+.onlineStatus.danger b { color: #b42318 !important; }
+.onlineStatus.neutral {
+  border-color: #cedae4 !important;
+  background: #f7f9fb !important;
+}
+.onlineStatus.neutral b { color: #5f6f7d !important; }

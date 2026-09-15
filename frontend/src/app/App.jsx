@@ -44,6 +44,63 @@ import "../styles/main.css";
 import { API_URL } from "../config/runtime";
 import { api } from "../services/api";
 
+const CameraFleetStatusContext = React.createContext({
+  total: 0,
+  online: 0,
+  offline: 0,
+  attention: 0,
+  tone: "neutral",
+  label: "SEM CÂMERAS",
+  detail: "Nenhuma câmera cadastrada para compor o estado operacional.",
+});
+
+function deriveCameraFleetStatus(cameras = []) {
+  const total = cameras.length;
+  const normalized = cameras.map((camera) => String(camera?.status || "").toUpperCase());
+  const online = normalized.filter((status) => status === "ONLINE").length;
+  const offline = normalized.filter((status) => status === "OFFLINE").length;
+  const attention = total - online - offline;
+
+  if (total === 0) {
+    return {
+      total, online, offline, attention,
+      tone: "neutral",
+      label: "SEM CÂMERAS",
+      detail: "Nenhuma câmera cadastrada para compor o estado operacional.",
+    };
+  }
+
+  if (online === total) {
+    return {
+      total, online, offline, attention,
+      tone: "success",
+      label: "SISTEMA ONLINE",
+      detail: `${online}/${total} câmeras online.`,
+    };
+  }
+
+  if (offline === total) {
+    return {
+      total, online, offline, attention,
+      tone: "danger",
+      label: "SISTEMA OFFLINE",
+      detail: `${offline}/${total} câmeras offline.`,
+    };
+  }
+
+  const hasOnlineAndOffline = online > 0 && offline > 0;
+  return {
+    total, online, offline, attention,
+    tone: "warning",
+    label: hasOnlineAndOffline ? "SISTEMA PARCIAL" : "SISTEMA COM ATENÇÃO",
+    detail: `${online} online · ${offline} offline${attention ? ` · ${attention} em atenção` : ""}.`,
+  };
+}
+
+function useCameraFleetStatus() {
+  return React.useContext(CameraFleetStatusContext);
+}
+
 function SecureStreamFrame({ cameraId = null, profile = "SUB", testStream = false, title = "Vídeo EduVigIA" }) {
   const [access, setAccess] = useState(null);
   const [error, setError] = useState("");
@@ -208,6 +265,7 @@ export default function App() {
   const [dashboard, setDashboard] = useState({});
   const [schools, setSchools] = useState([]);
   const [cameras, setCameras] = useState([]);
+  const cameraFleetStatus = useMemo(() => deriveCameraFleetStatus(cameras), [cameras]);
   const [alerts, setAlerts] = useState([]);
   const [cameraEvents, setCameraEvents] = useState([]);
   const [cameraHealth, setCameraHealth] = useState([]);
@@ -1747,7 +1805,8 @@ export default function App() {
           </div>
         )}
 
-        <div className="contentArea">
+        <CameraFleetStatusContext.Provider value={cameraFleetStatus}>
+          <div className="contentArea">
           {message && <div className="notice">{message}</div>}
 
           {section === "dashboard" && (
@@ -2002,7 +2061,8 @@ export default function App() {
               onChangePassword={changePassword}
             />
           )}
-        </div>
+          </div>
+        </CameraFleetStatusContext.Provider>
 
         {supportDialog}
 
@@ -2070,6 +2130,7 @@ function Dashboard({
   navigate,
   systemHealth,
 }) {
+  const cameraFleetStatus = useCameraFleetStatus();
   const cards = [
     ["Total de Escolas", dashboard.schools || 0, Building2, "navy"],
     ["Total de Câmeras", dashboard.cameras || 0, Camera, "cyan"],
@@ -2085,7 +2146,7 @@ function Dashboard({
         <div>
           <h1>Olá! <span>Bem-vindo ao EduVigIA. Aqui está o resumo da segurança escolar.</span></h1>
         </div>
-        <div className="onlineStatus">
+        <div className={`onlineStatus ${cameraFleetStatus.tone}`} title={cameraFleetStatus.detail}>
           {new Date().toLocaleString("pt-BR", {
             weekday: "long",
             day: "2-digit",
@@ -2093,7 +2154,7 @@ function Dashboard({
             hour: "2-digit",
             minute: "2-digit",
           })}
-          <b>ONLINE</b>
+          <b>{cameraFleetStatus.label}</b>
         </div>
       </div>
 
@@ -5429,11 +5490,18 @@ function LoginPage({ form, setForm, onSubmit, message, loading, onSupport, onFor
 }
 
 function Page({ title, subtitle, children }) {
+  const cameraFleetStatus = useCameraFleetStatus();
   return (
     <>
       <div className="pageHeading">
         <div><h1>{title}</h1><p>{subtitle}</p></div>
-        <span className="statusPill success">SISTEMA ONLINE</span>
+        <span
+          className={`statusPill ${cameraFleetStatus.tone}`}
+          title={cameraFleetStatus.detail}
+          aria-label={cameraFleetStatus.detail}
+        >
+          {cameraFleetStatus.label}
+        </span>
       </div>
       {children}
     </>
