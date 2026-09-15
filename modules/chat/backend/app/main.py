@@ -31,6 +31,8 @@ ATTACHMENTS_DIR = Path(os.getenv("CHAT_ATTACHMENTS_DIR", "/data/attachments"))
 ATTACHMENT_MAX_BYTES = 25 * 1024 * 1024
 ATTACHMENT_MAX_FILES = 5
 ATTACHMENT_MAX_TOTAL_BYTES = 50 * 1024 * 1024
+AUDIO_MESSAGE_MAX_BYTES = 12 * 1024 * 1024
+AUDIO_MESSAGE_MAX_DURATION_SECONDS = 60
 
 ALLOWED_ATTACHMENT_TYPES = {
     ".jpg": {"image/jpeg"},
@@ -57,6 +59,9 @@ ALLOWED_ATTACHMENT_TYPES = {
         "application/vnd.ms-excel",
         "application/octet-stream",
     },
+    ".webm": {"audio/webm", "audio/webm;codecs=opus", "video/webm", "application/octet-stream"},
+    ".ogg": {"audio/ogg", "audio/ogg;codecs=opus", "application/ogg", "application/octet-stream"},
+    ".m4a": {"audio/mp4", "audio/x-m4a", "application/mp4", "application/octet-stream"},
 }
 
 
@@ -160,6 +165,18 @@ def validate_binary_signature(extension: str, content: bytes) -> None:
         if b"\x00" in content[:4096]:
             raise HTTPException(status_code=415, detail="Arquivo textual invalido")
 
+    elif extension == ".webm":
+        if not content.startswith(b"\x1a\x45\xdf\xa3"):
+            raise HTTPException(status_code=415, detail="Assinatura WEBM invalida")
+
+    elif extension == ".ogg":
+        if not content.startswith(b"OggS"):
+            raise HTTPException(status_code=415, detail="Assinatura OGG invalida")
+
+    elif extension == ".m4a":
+        if len(content) < 12 or content[4:8] != b"ftyp":
+            raise HTTPException(status_code=415, detail="Assinatura M4A invalida")
+
 
 async def validate_upload(upload: UploadFile) -> tuple[str, str, bytes, str]:
     original_name = sanitize_filename(upload.filename or "arquivo")
@@ -178,7 +195,10 @@ async def validate_upload(upload: UploadFile) -> tuple[str, str, bytes, str]:
     if not content:
         raise HTTPException(status_code=422, detail="Arquivo vazio")
 
-    if len(content) > ATTACHMENT_MAX_BYTES:
+    if extension in {".webm", ".ogg", ".m4a"}:
+        if len(content) > AUDIO_MESSAGE_MAX_BYTES:
+            raise HTTPException(status_code=413, detail="Audio excede 12 MB")
+    elif len(content) > ATTACHMENT_MAX_BYTES:
         raise HTTPException(status_code=413, detail="Arquivo excede 25 MB")
 
     validate_binary_signature(extension, content)

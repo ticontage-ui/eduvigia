@@ -14,6 +14,12 @@ const bodyEl = document.getElementById("body");
 const sendEl = document.getElementById("send");
 const fileInputEl = document.getElementById("fileInput");
 const attachmentTrayEl = document.getElementById("attachmentTray");
+const recordAudioEl = document.getElementById("recordAudio");
+const audioRecorderEl = document.getElementById("audioRecorder");
+const audioRecorderLabelEl = document.getElementById("audioRecorderLabel");
+const audioTimerEl = document.getElementById("audioTimer");
+const cancelAudioEl = document.getElementById("cancelAudio");
+const finishAudioEl = document.getElementById("finishAudio");
 
 let identities = [];
 let channels = [];
@@ -27,13 +33,22 @@ let generation = 0;
 let loadToken = 0;
 const seen = new Set();
 let selectedFiles = [];
+let audioStream = null;
+let mediaRecorder = null;
+let audioChunks = [];
+let audioStartedAt = 0;
+let audioTimerHandle = null;
+let audioAutoStopHandle = null;
+let audioCancelled = false;
+const AUDIO_MAX_SECONDS = 60;
+const AUDIO_MAX_BYTES = 12 * 1024 * 1024;
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const MAX_FILES = 5;
 const MAX_TOTAL_BYTES = 50 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = new Set([
   ".jpg", ".jpeg", ".png", ".webp", ".pdf",
-  ".doc", ".docx", ".xls", ".xlsx", ".txt", ".csv"
+  ".doc", ".docx", ".xls", ".xlsx", ".txt", ".csv",`n  ".webm", ".ogg", ".m4a"
 ]);
 
 function friendlyHttpError(status, detail = "") {
@@ -152,6 +167,97 @@ async function loadIdentities() {
   renderIdentityInfo();
 }
 
+function supportsAudioRecording() {
+  return Boolean(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
+}
+function preferredAudioMimeType() {
+  const candidates = ["audio/webm;codecs=opus", "audio/ogg;codecs=opus", "audio/mp4"];
+  for (const mime of candidates) {
+    if (MediaRecorder.isTypeSupported?.(mime)) return mime;
+  }
+  return "";
+}
+function audioExtensionForMime(mime) {
+  if (mime.includes("ogg")) return ".ogg";
+  if (mime.includes("mp4")) return ".m4a";
+  return ".webm";
+}
+function recorderTime(seconds) {
+  const safe = Math.max(0, Math.min(AUDIO_MAX_SECONDS, seconds));
+  return `${String(Math.floor(safe / 60)).padStart(2,"0")}:${String(safe % 60).padStart(2,"0")}`;
+}
+function setAudioRecorderVisible(visible) {
+  if (audioRecorderEl) audioRecorderEl.hidden = !visible;
+}
+function stopAudioTracks() {
+  if (audioStream) for (const track of audioStream.getTracks()) track.stop();
+  audioStream = null;
+}
+function resetAudioRecorder() {
+  if (audioTimerHandle) clearInterval(audioTimerHandle);
+  if (audioAutoStopHandle) clearTimeout(audioAutoStopHandle);
+  audioTimerHandle = null;
+  audioAutoStopHandle = null;
+  audioStartedAt = 0;
+  audioChunks = [];
+  mediaRecorder = null;
+  stopAudioTracks();
+  setAudioRecorderVisible(false);
+  if (audioTimerEl) audioTimerEl.textContent = "00:00";
+  if (audioRecorderLabelEl) audioRecorderLabelEl.textContent = "Gravando áudio";
+}
+async function startAudioRecording() {
+  if (!supportsAudioRecording()) { alert("Este navegador não oferece suporte à gravação de áudio."); return; }
+  if (!currentChannelId) { alert("Selecione um canal antes de gravar."); return; }
+  try {
+    audioCancelled = false;
+    audioStream = await navigator.mediaDevices.getUserMedia({
+      audio: {echoCancellation:true, noiseSuppression:true, autoGainControl:true}, video:false
+    });
+    const mimeType = preferredAudioMimeType();
+    mediaRecorder = new MediaRecorder(audioStream, mimeType ? {mimeType} : undefined);
+    audioChunks = [];
+    mediaRecorder.addEventListener("dataavailable", e => { if (e.data?.size > 0) audioChunks.push(e.data); });
+    mediaRecorder.addEventListener("stop", () => {
+      const recorderMime = mediaRecorder?.mimeType || mimeType || "audio/webm";
+      const chunks = [...audioChunks];
+      const cancelled = audioCancelled;
+      resetAudioRecorder();
+      if (cancelled || !chunks.length) return;
+      const blob = new Blob(chunks,{type:recorderMime});
+      if (!blob.size) { alert("A gravação ficou vazia. Tente novamente."); return; }
+      if (blob.size > AUDIO_MAX_BYTES) { alert("A gravação excedeu o limite de 12 MB."); return; }
+      const ext = audioExtensionForMime(recorderMime);
+      const stamp = new Date().toISOString().replace(/[:.]/g,"-");
+      const file = new File([blob],`audio-${stamp}${ext}`,{type:recorderMime});
+      try { const merged=[...selectedFiles,file]; validateSelectedFiles(merged); selectedFiles=merged; renderSelectedFiles(); }
+      catch (error) { alert(error.message); }
+    });
+    mediaRecorder.start(500);
+    audioStartedAt = Date.now();
+    setAudioRecorderVisible(true);
+    if (audioTimerEl) audioTimerEl.textContent = "00:00";
+    audioTimerHandle = setInterval(() => {
+      if (audioTimerEl) audioTimerEl.textContent = recorderTime(Math.floor((Date.now()-audioStartedAt)/1000));
+    },250);
+    audioAutoStopHandle = setTimeout(() => {
+      if (mediaRecorder?.state === "recording") {
+        if (audioRecorderLabelEl) audioRecorderLabelEl.textContent = "Limite de 60s atingido";
+        mediaRecorder.stop();
+      }
+    },AUDIO_MAX_SECONDS*1000);
+  } catch (error) {
+    resetAudioRecorder();
+    if (error?.name === "NotAllowedError" || error?.name === "PermissionDeniedError") {
+      alert("Permita o acesso ao microfone para gravar uma mensagem de áudio.");
+    } else {
+      console.error("Falha no microfone:",error);
+      alert("Não foi possível iniciar a gravação de áudio.");
+    }
+  }
+}
+function finishAudioRecording() { audioCancelled=false; if (mediaRecorder?.state === "recording") mediaRecorder.stop(); }
+function cancelAudioRecording() { audioCancelled=true; if (mediaRecorder?.state === "recording") mediaRecorder.stop(); else resetAudioRecorder(); }
 function fileExtension(name) {
   const index = String(name || "").lastIndexOf(".");
   return index >= 0 ? String(name).slice(index).toLowerCase() : "";
@@ -213,7 +319,11 @@ function validateSelectedFiles(files) {
       throw new Error(`Arquivo vazio: ${file.name}`);
     }
 
-    if (file.size > MAX_FILE_BYTES) {
+    const isAudio = [".webm", ".ogg", ".m4a"].includes(extension);
+    if (isAudio && file.size > AUDIO_MAX_BYTES) {
+      throw new Error(`Áudio excede 12 MB: ${file.name}`);
+    }
+    if (!isAudio && file.size > MAX_FILE_BYTES) {
       throw new Error(`Arquivo excede 25 MB: ${file.name}`);
     }
 
@@ -226,38 +336,29 @@ function validateSelectedFiles(files) {
 }
 
 function renderAttachments(message, article) {
-  const attachments = Array.isArray(message.attachments)
-    ? message.attachments
-    : [];
-
+  const attachments = Array.isArray(message.attachments) ? message.attachments : [];
   if (!attachments.length) return;
-
   const list = document.createElement("div");
   list.className = "message-attachments";
-
   for (const attachment of attachments) {
-    const link = document.createElement("a");
-    link.className = "message-attachment";
-    link.href =
-      `/api/emergency/attachments/${encodeURIComponent(attachment.id)}` +
-      `?identity_id=${encodeURIComponent(currentIdentity)}`;
-    link.target = "_blank";
-    link.rel = "noopener";
-
-    const name = document.createElement("strong");
-    name.textContent = attachment.original_name;
-
-    const meta = document.createElement("span");
-    meta.textContent =
-      `${attachment.extension.toUpperCase()} · ${formatBytes(attachment.size_bytes)}`;
-
-    link.append(name, meta);
-    list.appendChild(link);
+    const url = `/api/emergency/attachments/${encodeURIComponent(attachment.id)}?identity_id=${encodeURIComponent(currentIdentity)}`;
+    const isAudio = String(attachment.mime_type || "").startsWith("audio/") || [".webm",".ogg",".m4a"].includes(String(attachment.extension || "").toLowerCase());
+    if (isAudio) {
+      const card=document.createElement("div"); card.className="audio-message";
+      const head=document.createElement("div"); head.className="audio-message-head";
+      const title=document.createElement("strong"); title.textContent="Mensagem de áudio";
+      const meta=document.createElement("span"); meta.textContent=formatBytes(attachment.size_bytes);
+      head.append(title,meta);
+      const player=document.createElement("audio"); player.controls=true; player.preload="metadata"; player.src=url;
+      card.append(head,player); list.appendChild(card); continue;
+    }
+    const link=document.createElement("a"); link.className="message-attachment"; link.href=url; link.target="_blank"; link.rel="noopener";
+    const name=document.createElement("strong"); name.textContent=attachment.original_name;
+    const meta=document.createElement("span"); meta.textContent=`${attachment.extension.toUpperCase()} · ${formatBytes(attachment.size_bytes)}`;
+    link.append(name,meta); list.appendChild(link);
   }
-
   article.appendChild(list);
 }
-
 function resetChat() {
   currentChannelId = null;
   seen.clear();
@@ -271,7 +372,7 @@ function resetChat() {
 
   bodyEl.disabled = true;
   sendEl.disabled = true;
-  if (fileInputEl) fileInputEl.disabled = true;
+  if (fileInputEl) fileInputEl.disabled = true;`n  if (recordAudioEl) recordAudioEl.disabled = true;
   clearSelectedFiles();
 }
 
@@ -469,7 +570,7 @@ async function selectChannel(channelId) {
 
   bodyEl.disabled = true;
   sendEl.disabled = true;
-  if (fileInputEl) fileInputEl.disabled = true;
+  if (fileInputEl) fileInputEl.disabled = true;`n  if (recordAudioEl) recordAudioEl.disabled = true;
   clearSelectedFiles();
 
   try {
@@ -495,7 +596,7 @@ async function selectChannel(channelId) {
 
     bodyEl.disabled = false;
     sendEl.disabled = false;
-    if (fileInputEl) fileInputEl.disabled = false;
+    if (fileInputEl) fileInputEl.disabled = false;`n    if (recordAudioEl) recordAudioEl.disabled = !supportsAudioRecording();
     bodyEl.focus();
   }
   catch (error) {
@@ -508,7 +609,7 @@ async function selectChannel(channelId) {
 
     bodyEl.disabled = true;
     sendEl.disabled = true;
-    if (fileInputEl) fileInputEl.disabled = true;
+    if (fileInputEl) fileInputEl.disabled = true;`n  if (recordAudioEl) recordAudioEl.disabled = true;
 
     setStatus("erro");
     alert(error.message || "Não foi possível carregar o canal.");
@@ -594,7 +695,7 @@ function connectSocket() {
   };
 }
 
-identityEl.addEventListener("change", async () => {
+identityEl.addEventListener("change", async () => {`n  cancelAudioRecording();
   generation += 1;
   loadToken += 1;
 
@@ -623,6 +724,9 @@ identityEl.addEventListener("change", async () => {
 
 searchEl?.addEventListener("input", renderChannels);
 
+recordAudioEl?.addEventListener("click", startAudioRecording);
+finishAudioEl?.addEventListener("click", finishAudioRecording);
+cancelAudioEl?.addEventListener("click", cancelAudioRecording);
 fileInputEl?.addEventListener("change", () => {
   const incoming = [...(fileInputEl.files || [])];
 
@@ -672,7 +776,7 @@ composerEl.addEventListener("submit", async event => {
   bodyEl.value = "";
   bodyEl.disabled = true;
   sendEl.disabled = true;
-  if (fileInputEl) fileInputEl.disabled = true;
+  if (fileInputEl) fileInputEl.disabled = true;`n  if (recordAudioEl) recordAudioEl.disabled = true;
 
   try {
     let message;
@@ -742,7 +846,7 @@ composerEl.addEventListener("submit", async event => {
     if (currentChannelId) {
       bodyEl.disabled = false;
       sendEl.disabled = false;
-      if (fileInputEl) fileInputEl.disabled = false;
+      if (fileInputEl) fileInputEl.disabled = false;`n    if (recordAudioEl) recordAudioEl.disabled = !supportsAudioRecording();
       bodyEl.focus();
     }
   }

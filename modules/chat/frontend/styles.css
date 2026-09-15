@@ -460,3 +460,16 @@ button, input, select { font: inherit; }
     color: #758396;
     font-size: 10px;
 }
+.record-audio { flex:0 0 auto; padding:0 12px; border:1px solid #cbd5df; border-radius:10px; background:#f8fafc; cursor:pointer; }
+.record-audio:disabled { opacity:.55; cursor:not-allowed; }
+.audio-recorder { padding:10px 20px; display:flex; align-items:center; justify-content:space-between; gap:14px; border-top:1px solid #e3e9ef; background:#fff7f7; }
+.audio-recorder[hidden] { display:none; }
+.audio-recorder-status,.audio-recorder-actions { display:flex; align-items:center; gap:9px; }
+.recording-dot { width:10px; height:10px; border-radius:999px; background:#a33; animation:audio-pulse 1.1s infinite; }
+.audio-recorder-actions button { padding:7px 10px; border:1px solid #d1d9e2; border-radius:8px; background:#fff; cursor:pointer; }
+.audio-message { padding:9px 10px; border:1px solid #d8e0e8; border-radius:10px; background:#f8fafc; }
+.audio-message-head { margin-bottom:7px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.audio-message-head strong { font-size:11px; }
+.audio-message-head span { color:#758396; font-size:10px; }
+.audio-message audio { width:min(100%,420px); display:block; }
+@keyframes audio-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.45;transform:scale(.8)} }

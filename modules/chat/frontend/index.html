@@ -69,9 +69,24 @@
                 Guarda Municipal e Secretaria de Educação autorizadas.
             </div>
 
+                        <div id="audioRecorder" class="audio-recorder" hidden>
+                <div class="audio-recorder-status">
+                    <span class="recording-dot"></span>
+                    <strong id="audioRecorderLabel">Gravando áudio</strong>
+                    <span id="audioTimer">00:00</span>
+                </div>
+                <div class="audio-recorder-actions">
+                    <button id="cancelAudio" type="button">Cancelar</button>
+                    <button id="finishAudio" type="button">Concluir</button>
+                </div>
+            </div>
             <div id="attachmentTray" class="attachment-tray" hidden></div>
 
             <form id="composer" class="composer">
+                <button id="recordAudio" class="record-audio" type="button" title="Gravar mensagem de áudio" disabled>
+                    Gravar áudio
+                </button>
+
                 <label id="attachButton" class="attach-button" title="Adicionar anexos">
                     <span>Anexar</span>
                     <input
@@ -79,7 +94,7 @@
                         type="file"
                         multiple
                         hidden
-                        accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+                        accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.webm,.ogg,.m4a"
                         disabled
                     />
                 </label>
