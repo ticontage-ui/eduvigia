@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>EduVigIA Chat â€” V0.2</title>
+    <title>EduVigIA â€” Canal de EmergÃªncia</title>
     <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
@@ -11,72 +11,58 @@
         <aside class="sidebar">
             <div class="brand">
                 <div>
-                    <strong>EduVigIA Chat</strong>
-                    <small>Standalone 0.2.0-R1</small>
+                    <strong>EduVigIA</strong>
+                    <small>Canal de EmergÃªncia</small>
                 </div>
                 <span id="status" class="status">offline</span>
             </div>
 
-            <label class="identity-picker">
-                Identidade de teste
-                <select id="identity"></select>
-            </label>
+            <div class="identity-area">
+                <label>
+                    Perfil de teste
+                    <select id="identity"></select>
+                </label>
+                <div id="identityInfo" class="identity-info"></div>
+            </div>
 
-            <button id="newConversation" class="new-button" type="button">
-                + Nova conversa
-            </button>
+            <div class="section-title">
+                <span>Canais de EmergÃªncia</span>
+                <strong id="channelCount">0</strong>
+            </div>
 
-            <div id="conversations" class="conversations"></div>
+            <div id="channels" class="channels"></div>
         </aside>
 
         <section class="chat">
             <header class="chat-header">
                 <div>
-                    <h1 id="conversationTitle">Selecione uma conversa</h1>
-                    <p id="conversationMeta">Identity Provider: mock Â· Core: desconectado</p>
+                    <div class="eyebrow">COMUNICAÃ‡ÃƒO INSTITUCIONAL</div>
+                    <h1 id="channelTitle">Selecione um canal</h1>
+                    <p id="channelMeta">
+                        Escolas comunicam-se somente com Guarda e Secretaria de EducaÃ§Ã£o.
+                    </p>
                 </div>
+                <div class="text-only">Somente texto</div>
             </header>
 
-            <section id="messages" class="messages"></section>
+            <section id="messages" class="messages">
+                <div class="empty-chat">
+                    Selecione um canal de emergÃªncia.
+                </div>
+            </section>
 
             <form id="composer" class="composer">
-                <input id="body" maxlength="2000" autocomplete="off"
-                       placeholder="Digite uma mensagem..." disabled />
+                <input
+                    id="body"
+                    maxlength="2000"
+                    autocomplete="off"
+                    placeholder="Digite uma mensagem de emergÃªncia..."
+                    disabled
+                />
                 <button id="send" type="submit" disabled>Enviar</button>
             </form>
         </section>
     </main>
-
-    <dialog id="conversationDialog">
-        <form id="conversationForm" method="dialog" class="dialog-form">
-            <h2>Nova conversa</h2>
-
-            <label>
-                Tipo
-                <select id="conversationType">
-                    <option value="DIRECT">Direta</option>
-                    <option value="GROUP">Grupo</option>
-                    <option value="INSTITUTIONAL">Institucional</option>
-                </select>
-            </label>
-
-            <label>
-                TÃ­tulo
-                <input id="conversationName" maxlength="160"
-                       placeholder="ObrigatÃ³rio para grupo/institucional" />
-            </label>
-
-            <fieldset>
-                <legend>Membros</legend>
-                <div id="memberChoices" class="member-choices"></div>
-            </fieldset>
-
-            <div class="dialog-actions">
-                <button id="cancelDialog" type="button">Cancelar</button>
-                <button type="submit">Criar</button>
-            </div>
-        </form>
-    </dialog>
 
     <script src="/app.js"></script>
 </body>

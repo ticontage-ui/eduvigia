@@ -2,13 +2,12 @@ import asyncio
 import json
 import logging
 import os
-import uuid
 from contextlib import asynccontextmanager, suppress
 from typing import Dict, Set
 
 import asyncpg
 from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from redis.asyncio import Redis
 
 logging.basicConfig(level=logging.INFO)
@@ -17,22 +16,21 @@ logger = logging.getLogger("eduvigia-chat")
 DATABASE_DSN = os.environ["CHAT_DATABASE_DSN"]
 REDIS_URL = os.environ["CHAT_REDIS_URL"]
 REDIS_CHANNEL = os.getenv("CHAT_REDIS_CHANNEL", "eduvigia:chat:events")
-APP_VERSION = os.getenv("CHAT_VERSION", "0.2.1-R1")
+APP_VERSION = os.getenv("CHAT_VERSION", "0.3.0-R1")
+
+ALLOWED_ORGANIZATIONS = {"ESCOLA", "GUARDA", "SECRETARIA"}
 
 
-class ConversationIn(BaseModel):
-    type: str = Field(pattern="^(DIRECT|GROUP|INSTITUTIONAL)$")
-    title: str | None = Field(default=None, max_length=160)
-    created_by: str = Field(min_length=1, max_length=120)
-    member_ids: list[str] = Field(min_length=1, max_length=100)
+class TextMessageIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
-
-class MessageIn(BaseModel):
     sender_identity_id: str = Field(min_length=1, max_length=120)
     body: str = Field(min_length=1, max_length=2000)
 
 
 class ReadIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     identity_id: str = Field(min_length=1, max_length=120)
     message_id: int = Field(ge=0)
 
@@ -83,72 +81,108 @@ class Hub:
 hub = Hub()
 
 
-async def ensure_identity(conn: asyncpg.Connection, identity_id: str):
+async def get_operational_identity(conn: asyncpg.Connection, identity_id: str):
     row = await conn.fetchrow(
         """
-        SELECT id, display_name, organization_kind, school_code, role, active
+        SELECT
+            id,
+            display_name,
+            organization_kind,
+            school_code,
+            role,
+            active
         FROM chat_identities
         WHERE id = $1
         """,
         identity_id,
     )
+
     if not row or not row["active"]:
         raise HTTPException(status_code=403, detail="Identidade inexistente ou inativa")
+
+    if row["organization_kind"] not in ALLOWED_ORGANIZATIONS:
+        raise HTTPException(status_code=403, detail="Identidade fora do dominio emergencial")
+
     return row
 
 
-async def ensure_member(conn: asyncpg.Connection, conversation_id: str, identity_id: str):
-    await ensure_identity(conn, identity_id)
-    row = await conn.fetchrow(
+async def ensure_channel_access(
+    conn: asyncpg.Connection,
+    channel_id: str,
+    identity_id: str,
+):
+    identity = await get_operational_identity(conn, identity_id)
+
+    channel = await conn.fetchrow(
         """
-        SELECT conversation_id, identity_id, member_role, last_read_message_id
+        SELECT
+            id,
+            type,
+            title,
+            school_code,
+            managed_by_system,
+            status
+        FROM chat_conversations
+        WHERE id = $1
+          AND type = 'EMERGENCY'
+          AND managed_by_system = TRUE
+          AND status = 'ACTIVE'
+          AND archived_at IS NULL
+        """,
+        channel_id,
+    )
+
+    if not channel:
+        raise HTTPException(status_code=404, detail="Canal de emergencia inexistente")
+
+    # School isolation is evaluated BEFORE membership. Even if an erroneous
+    # membership exists in the database, a school can never cross school_code.
+    if identity["organization_kind"] == "ESCOLA":
+        if not identity["school_code"]:
+            raise HTTPException(status_code=403, detail="Escola sem vinculo institucional")
+
+        if identity["school_code"] != channel["school_code"]:
+            logger.warning(
+                "Cross-school access denied identity=%s identity_school=%s channel=%s channel_school=%s",
+                identity_id,
+                identity["school_code"],
+                channel_id,
+                channel["school_code"],
+            )
+            raise HTTPException(
+                status_code=403,
+                detail="Escola nao pode acessar canal de outra escola",
+            )
+
+    membership = await conn.fetchrow(
+        """
+        SELECT conversation_id, identity_id, last_read_message_id
         FROM chat_conversation_members
         WHERE conversation_id = $1
           AND identity_id = $2
           AND left_at IS NULL
         """,
-        conversation_id,
+        channel_id,
         identity_id,
     )
-    if not row:
-        raise HTTPException(status_code=403, detail="Identidade nao pertence a conversa")
-    return row
+
+    if not membership:
+        raise HTTPException(status_code=403, detail="Sem acesso ao canal")
+
+    return identity, channel, membership
 
 
 def message_dict(row: asyncpg.Record) -> dict:
     return {
         "id": row["id"],
-        "conversation_id": row["conversation_id"],
+        "channel_id": row["conversation_id"],
         "sender_identity_id": row["sender_identity_id"],
         "display_name": row["display_name"],
+        "sender_organization_kind": row["sender_organization_kind"],
+        "sender_role": row["sender_role"],
         "body": row["body"],
         "created_at": row["created_at"].isoformat(),
     }
-
-
-async def direct_conversation_between(
-    conn: asyncpg.Connection,
-    member_ids: list[str],
-):
-    if len(member_ids) != 2:
-        return None
-
-    return await conn.fetchrow(
-        """
-        SELECT c.id, c.type, c.title, c.created_by
-        FROM chat_conversations c
-        WHERE c.type = 'DIRECT'
-          AND c.archived_at IS NULL
-          AND (
-              SELECT array_agg(cm.identity_id ORDER BY cm.identity_id)
-              FROM chat_conversation_members cm
-              WHERE cm.conversation_id = c.id
-                AND cm.left_at IS NULL
-          ) = $1::text[]
-        LIMIT 1
-        """,
-        sorted(member_ids),
-    )
 
 
 async def redis_listener(redis: Redis) -> None:
@@ -156,6 +190,7 @@ async def redis_listener(redis: Redis) -> None:
         pubsub = redis.pubsub()
         try:
             await pubsub.subscribe(REDIS_CHANNEL)
+
             async for event in pubsub.listen():
                 if event.get("type") != "message":
                     continue
@@ -166,7 +201,11 @@ async def redis_listener(redis: Redis) -> None:
 
                 payload = json.loads(raw)
                 audience = payload.pop("_audience", [])
-                await hub.broadcast_to(audience, json.dumps(payload, ensure_ascii=False))
+                await hub.broadcast_to(
+                    audience,
+                    json.dumps(payload, ensure_ascii=False),
+                )
+
         except asyncio.CancelledError:
             raise
         except Exception:
@@ -197,15 +236,24 @@ async def outbox_worker(app: FastAPI) -> None:
 
                     for row in rows:
                         payload = row["payload"]
+
                         if not isinstance(payload, str):
                             payload = json.dumps(payload, ensure_ascii=False)
 
-                        await app.state.redis.publish(REDIS_CHANNEL, payload)
+                        await app.state.redis.publish(
+                            REDIS_CHANNEL,
+                            payload,
+                        )
 
                         await conn.execute(
-                            "UPDATE chat_outbox SET published_at = now() WHERE id = $1",
+                            """
+                            UPDATE chat_outbox
+                            SET published_at = now()
+                            WHERE id = $1
+                            """,
                             row["id"],
                         )
+
         except asyncio.CancelledError:
             raise
         except Exception:
@@ -222,6 +270,7 @@ async def lifespan(app: FastAPI):
         max_size=10,
         command_timeout=10,
     )
+
     app.state.redis = Redis.from_url(
         REDIS_URL,
         decode_responses=True,
@@ -229,6 +278,7 @@ async def lifespan(app: FastAPI):
         socket_timeout=5,
         health_check_interval=20,
     )
+
     await app.state.redis.ping()
 
     listener = asyncio.create_task(redis_listener(app.state.redis))
@@ -242,6 +292,7 @@ async def lifespan(app: FastAPI):
 
         with suppress(asyncio.CancelledError):
             await listener
+
         with suppress(asyncio.CancelledError):
             await outbox
 
@@ -250,7 +301,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="EduVigIA Chat Standalone",
+    title="EduVigIA Emergency Chat",
     version=APP_VERSION,
     lifespan=lifespan,
 )
@@ -260,11 +311,24 @@ app = FastAPI(
 async def health():
     async with app.state.db.acquire() as conn:
         await conn.fetchval("SELECT 1")
+
         pending = await conn.fetchval(
             "SELECT count(*) FROM chat_outbox WHERE published_at IS NULL"
         )
+
         migrations = await conn.fetchval(
             "SELECT count(*) FROM chat_schema_migrations"
+        )
+
+        active_channels = await conn.fetchval(
+            """
+            SELECT count(*)
+            FROM chat_conversations
+            WHERE type = 'EMERGENCY'
+              AND managed_by_system = TRUE
+              AND status = 'ACTIVE'
+              AND archived_at IS NULL
+            """
         )
 
     redis_ok = await app.state.redis.ping()
@@ -272,44 +336,62 @@ async def health():
     return {
         "status": "ok",
         "version": APP_VERSION,
+        "domain": "EMERGENCY_CHANNELS",
+        "text_only": True,
         "postgres": "ok",
         "redis": "ok" if redis_ok else "fail",
         "outbox_pending": pending,
         "migrations": migrations,
+        "active_channels": active_channels,
         "websocket_connections": await hub.connection_count(),
         "core_integration": "disabled",
         "identity_provider": "mock",
     }
 
 
-@app.get("/api/identities")
-async def list_identities():
+@app.get("/api/emergency/identities")
+async def list_operational_identities():
     async with app.state.db.acquire() as conn:
         rows = await conn.fetch(
             """
-            SELECT id, display_name, organization_kind, school_code, role, active
+            SELECT
+                id,
+                display_name,
+                organization_kind,
+                school_code,
+                role,
+                active
             FROM chat_identities
             WHERE active = TRUE
-            ORDER BY display_name
-            """
+              AND organization_kind = ANY($1::text[])
+            ORDER BY
+                CASE organization_kind
+                    WHEN 'ESCOLA' THEN 1
+                    WHEN 'GUARDA' THEN 2
+                    WHEN 'SECRETARIA' THEN 3
+                    ELSE 9
+                END,
+                display_name
+            """,
+            sorted(ALLOWED_ORGANIZATIONS),
         )
+
     return [dict(row) for row in rows]
 
 
-@app.get("/api/conversations")
-async def list_conversations(identity_id: str = Query(...)):
+@app.get("/api/emergency/channels")
+async def list_emergency_channels(identity_id: str = Query(...)):
     async with app.state.db.acquire() as conn:
-        await ensure_identity(conn, identity_id)
+        identity = await get_operational_identity(conn, identity_id)
 
         rows = await conn.fetch(
             """
             SELECT
                 c.id,
-                c.type,
                 c.title,
-                c.created_at,
+                c.school_code,
+                c.status,
                 c.updated_at,
-                m.member_role,
                 m.last_read_message_id,
                 COALESCE(last_msg.id, 0) AS last_message_id,
                 last_msg.body AS last_message_body,
@@ -333,133 +415,45 @@ async def list_conversations(identity_id: str = Query(...)):
                 ORDER BY msg.id DESC
                 LIMIT 1
             ) last_msg ON TRUE
-            WHERE c.archived_at IS NULL
-            ORDER BY COALESCE(last_msg.created_at, c.updated_at) DESC, c.created_at DESC
+            WHERE c.type = 'EMERGENCY'
+              AND c.managed_by_system = TRUE
+              AND c.status = 'ACTIVE'
+              AND c.archived_at IS NULL
+              AND (
+                    $2 <> 'ESCOLA'
+                    OR c.school_code = $3
+              )
+            ORDER BY
+                COALESCE(last_msg.created_at, c.updated_at) DESC,
+                c.school_code
             """,
             identity_id,
+            identity["organization_kind"],
+            identity["school_code"],
         )
 
-        result = []
-        for row in rows:
-            members = await conn.fetch(
-                """
-                SELECT i.id, i.display_name, i.organization_kind, i.role, cm.member_role
-                FROM chat_conversation_members cm
-                JOIN chat_identities i ON i.id = cm.identity_id
-                WHERE cm.conversation_id = $1
-                  AND cm.left_at IS NULL
-                ORDER BY i.display_name
-                """,
-                row["id"],
-            )
-
-            item = dict(row)
-            item["created_at"] = row["created_at"].isoformat()
-            item["updated_at"] = row["updated_at"].isoformat()
-            item["last_message_at"] = (
-                row["last_message_at"].isoformat()
-                if row["last_message_at"]
-                else None
-            )
-            item["members"] = [dict(member) for member in members]
-            result.append(item)
+    result = []
+    for row in rows:
+        item = dict(row)
+        item["updated_at"] = row["updated_at"].isoformat()
+        item["last_message_at"] = (
+            row["last_message_at"].isoformat()
+            if row["last_message_at"]
+            else None
+        )
+        result.append(item)
 
     return result
 
 
-@app.post("/api/conversations", status_code=201)
-async def create_conversation(payload: ConversationIn):
-    member_ids = list(dict.fromkeys([payload.created_by, *payload.member_ids]))
-
-    if payload.type == "DIRECT" and len(member_ids) != 2:
-        raise HTTPException(
-            status_code=422,
-            detail="Conversa DIRECT exige exatamente 2 membros",
-        )
-
-    if payload.type != "DIRECT" and not (payload.title or "").strip():
-        raise HTTPException(
-            status_code=422,
-            detail="Grupo/institucional exige titulo",
-        )
-
-    async with app.state.db.acquire() as conn:
-        async with conn.transaction():
-            for identity_id in member_ids:
-                await ensure_identity(conn, identity_id)
-
-            if payload.type == "DIRECT":
-                existing = await direct_conversation_between(conn, member_ids)
-                if existing:
-                    return {
-                        "id": existing["id"],
-                        "type": existing["type"],
-                        "title": existing["title"],
-                        "created_by": existing["created_by"],
-                        "member_ids": member_ids,
-                        "reused": True,
-                    }
-
-            conversation_id = "conv:" + uuid.uuid4().hex
-
-            await conn.execute(
-                """
-                INSERT INTO chat_conversations(id, type, title, created_by)
-                VALUES ($1, $2, $3, $4)
-                """,
-                conversation_id,
-                payload.type,
-                payload.title.strip() if payload.title else None,
-                payload.created_by,
-            )
-
-            for identity_id in member_ids:
-                await conn.execute(
-                    """
-                    INSERT INTO chat_conversation_members(
-                        conversation_id, identity_id, member_role
-                    )
-                    VALUES ($1, $2, $3)
-                    """,
-                    conversation_id,
-                    identity_id,
-                    "OWNER" if identity_id == payload.created_by else "MEMBER",
-                )
-
-            event = {
-                "type": "conversation.created",
-                "conversation_id": conversation_id,
-                "_audience": member_ids,
-            }
-
-            await conn.execute(
-                """
-                INSERT INTO chat_outbox(event_type, aggregate_id, payload)
-                VALUES ($1, $2, $3::jsonb)
-                """,
-                "conversation.created",
-                0,
-                json.dumps(event, ensure_ascii=False),
-            )
-
-    return {
-        "id": conversation_id,
-        "type": payload.type,
-        "title": payload.title,
-        "created_by": payload.created_by,
-        "member_ids": member_ids,
-        "reused": False,
-    }
-
-
-@app.get("/api/conversations/{conversation_id}/messages")
-async def list_messages(
-    conversation_id: str,
+@app.get("/api/emergency/channels/{channel_id}/messages")
+async def list_channel_messages(
+    channel_id: str,
     identity_id: str = Query(...),
     limit: int = Query(default=100, ge=1, le=200),
 ):
     async with app.state.db.acquire() as conn:
-        await ensure_member(conn, conversation_id, identity_id)
+        await ensure_channel_access(conn, channel_id, identity_id)
 
         rows = await conn.fetch(
             """
@@ -468,31 +462,41 @@ async def list_messages(
                 m.conversation_id,
                 m.sender_identity_id,
                 COALESCE(i.display_name, m.display_name) AS display_name,
+                COALESCE(i.organization_kind, 'LEGACY') AS sender_organization_kind,
+                COALESCE(i.role, 'LEGACY_USER') AS sender_role,
                 m.body,
                 m.created_at
             FROM chat_messages m
-            LEFT JOIN chat_identities i ON i.id = m.sender_identity_id
+            LEFT JOIN chat_identities i
+              ON i.id = m.sender_identity_id
             WHERE m.conversation_id = $1
             ORDER BY m.id DESC
             LIMIT $2
             """,
-            conversation_id,
+            channel_id,
             limit,
         )
 
     return [message_dict(row) for row in reversed(rows)]
 
 
-@app.post("/api/conversations/{conversation_id}/messages", status_code=201)
-async def create_message(conversation_id: str, payload: MessageIn):
+@app.post("/api/emergency/channels/{channel_id}/messages", status_code=201)
+async def create_channel_message(
+    channel_id: str,
+    payload: TextMessageIn,
+):
     body = payload.body.strip()
+
     if not body:
         raise HTTPException(status_code=422, detail="Mensagem vazia")
 
     async with app.state.db.acquire() as conn:
         async with conn.transaction():
-            await ensure_member(conn, conversation_id, payload.sender_identity_id)
-            identity = await ensure_identity(conn, payload.sender_identity_id)
+            identity, channel, _ = await ensure_channel_access(
+                conn,
+                channel_id,
+                payload.sender_identity_id,
+            )
 
             row = await conn.fetchrow(
                 """
@@ -512,10 +516,19 @@ async def create_message(conversation_id: str, payload: MessageIn):
                     body,
                     created_at
                 """,
-                conversation_id,
+                channel_id,
                 payload.sender_identity_id,
                 identity["display_name"],
                 body,
+            )
+
+            await conn.execute(
+                """
+                UPDATE chat_conversations
+                SET updated_at = now()
+                WHERE id = $1
+                """,
+                channel_id,
             )
 
             audience = await conn.fetch(
@@ -525,43 +538,58 @@ async def create_message(conversation_id: str, payload: MessageIn):
                 WHERE conversation_id = $1
                   AND left_at IS NULL
                 """,
-                conversation_id,
+                channel_id,
             )
+
             audience_ids = [item["identity_id"] for item in audience]
 
-            await conn.execute(
-                """
-                UPDATE chat_conversations
-                SET updated_at = now()
-                WHERE id = $1
-                """,
-                conversation_id,
-            )
+            message = {
+                "id": row["id"],
+                "channel_id": row["conversation_id"],
+                "sender_identity_id": row["sender_identity_id"],
+                "display_name": identity["display_name"],
+                "sender_organization_kind": identity["organization_kind"],
+                "sender_role": identity["role"],
+                "body": row["body"],
+                "created_at": row["created_at"].isoformat(),
+            }
 
             event = {
-                "type": "message.created",
-                "conversation_id": conversation_id,
-                "message": message_dict(row),
+                "type": "emergency.message.created",
+                "channel_id": channel_id,
+                "school_code": channel["school_code"],
+                "message": message,
                 "_audience": audience_ids,
             }
 
             await conn.execute(
                 """
-                INSERT INTO chat_outbox(event_type, aggregate_id, payload)
+                INSERT INTO chat_outbox(
+                    event_type,
+                    aggregate_id,
+                    payload
+                )
                 VALUES ($1, $2, $3::jsonb)
                 """,
-                "message.created",
+                "emergency.message.created",
                 row["id"],
                 json.dumps(event, ensure_ascii=False),
             )
 
-    return message_dict(row)
+    return message
 
 
-@app.post("/api/conversations/{conversation_id}/read")
-async def mark_read(conversation_id: str, payload: ReadIn):
+@app.post("/api/emergency/channels/{channel_id}/read")
+async def mark_channel_read(
+    channel_id: str,
+    payload: ReadIn,
+):
     async with app.state.db.acquire() as conn:
-        await ensure_member(conn, conversation_id, payload.identity_id)
+        await ensure_channel_access(
+            conn,
+            channel_id,
+            payload.identity_id,
+        )
 
         max_id = await conn.fetchval(
             """
@@ -569,7 +597,7 @@ async def mark_read(conversation_id: str, payload: ReadIn):
             FROM chat_messages
             WHERE conversation_id = $1
             """,
-            conversation_id,
+            channel_id,
         )
 
         target = min(payload.message_id, max_id)
@@ -577,27 +605,44 @@ async def mark_read(conversation_id: str, payload: ReadIn):
         await conn.execute(
             """
             UPDATE chat_conversation_members
-            SET last_read_message_id = GREATEST(last_read_message_id, $3)
+            SET last_read_message_id = GREATEST(
+                last_read_message_id,
+                $3
+            )
             WHERE conversation_id = $1
               AND identity_id = $2
             """,
-            conversation_id,
+            channel_id,
             payload.identity_id,
             target,
         )
 
-    return {"status": "ok", "last_read_message_id": target}
+    return {
+        "status": "ok",
+        "last_read_message_id": target,
+    }
 
 
 @app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket, identity_id: str = Query(...)):
+async def websocket_endpoint(
+    websocket: WebSocket,
+    identity_id: str = Query(...),
+):
     async with app.state.db.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT id, active FROM chat_identities WHERE id = $1",
+            """
+            SELECT id, active, organization_kind
+            FROM chat_identities
+            WHERE id = $1
+            """,
             identity_id,
         )
 
-    if not row or not row["active"]:
+    if (
+        not row
+        or not row["active"]
+        or row["organization_kind"] not in ALLOWED_ORGANIZATIONS
+    ):
         await websocket.close(code=4403)
         return
 
@@ -608,16 +653,23 @@ async def websocket_endpoint(websocket: WebSocket, identity_id: str = Query(...)
             {
                 "type": "system.ready",
                 "version": APP_VERSION,
+                "domain": "EMERGENCY_CHANNELS",
                 "identity_id": identity_id,
             }
         )
 
         while True:
             message = await websocket.receive_text()
+
             if message == "ping":
                 await websocket.send_json({"type": "system.pong"})
+
     except WebSocketDisconnect:
         await hub.disconnect(identity_id, websocket)
+
     except Exception:
-        logger.exception("WebSocket error for %s", identity_id)
+        logger.exception(
+            "WebSocket error for identity=%s",
+            identity_id,
+        )
         await hub.disconnect(identity_id, websocket)

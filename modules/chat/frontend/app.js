@@ -1,37 +1,34 @@
 const identityEl = document.getElementById("identity");
-const conversationsEl = document.getElementById("conversations");
+const identityInfoEl = document.getElementById("identityInfo");
+const channelsEl = document.getElementById("channels");
+const channelCountEl = document.getElementById("channelCount");
 const messagesEl = document.getElementById("messages");
-const titleEl = document.getElementById("conversationTitle");
-const metaEl = document.getElementById("conversationMeta");
+const channelTitleEl = document.getElementById("channelTitle");
+const channelMetaEl = document.getElementById("channelMeta");
 const statusEl = document.getElementById("status");
-const composer = document.getElementById("composer");
+const composerEl = document.getElementById("composer");
 const bodyEl = document.getElementById("body");
 const sendEl = document.getElementById("send");
-const newConversation = document.getElementById("newConversation");
-const dialog = document.getElementById("conversationDialog");
-const conversationForm = document.getElementById("conversationForm");
-const conversationType = document.getElementById("conversationType");
-const conversationName = document.getElementById("conversationName");
-const memberChoices = document.getElementById("memberChoices");
-const cancelDialog = document.getElementById("cancelDialog");
 
 let identities = [];
-let conversations = [];
-let currentIdentity = localStorage.getItem("eduvigia_chat_identity") || "mock:diego";
-let currentConversationId = null;
+let channels = [];
+let currentIdentity = localStorage.getItem("eduvigia_emergency_identity") || "mock:escola-a";
+let currentChannelId = null;
 let socket = null;
 let reconnectTimer = null;
 let heartbeatTimer = null;
-let identityGeneration = 0;
-let loadingConversationToken = 0;
+let generation = 0;
+let loadToken = 0;
 const seen = new Set();
 
 async function jsonFetch(url, options = {}) {
   const response = await fetch(url, options);
+
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
     throw new Error(payload.detail || `HTTP ${response.status}`);
   }
+
   return response.json();
 }
 
@@ -40,157 +37,197 @@ function setStatus(text, online = false) {
   statusEl.className = online ? "status online" : "status";
 }
 
-function currentConversation() {
-  return conversations.find(c => c.id === currentConversationId) || null;
+function identityById(id) {
+  return identities.find(item => item.id === id) || null;
 }
 
-function conversationLabel(conversation) {
-  if (conversation.title) return conversation.title;
-  const others = conversation.members.filter(m => m.id !== currentIdentity);
-  return others.map(m => m.display_name).join(", ") || "Conversa";
+function currentIdentityObject() {
+  return identityById(currentIdentity);
 }
 
-function resetConversationView() {
-  currentConversationId = null;
-  seen.clear();
-  messagesEl.innerHTML = "";
-  titleEl.textContent = "Selecione uma conversa";
-  metaEl.textContent = "Identity Provider: mock Â· Core: desconectado";
-  bodyEl.disabled = true;
-  sendEl.disabled = true;
+function currentChannel() {
+  return channels.find(item => item.id === currentChannelId) || null;
+}
+
+function renderIdentityInfo() {
+  const identity = currentIdentityObject();
+
+  if (!identity) {
+    identityInfoEl.textContent = "";
+    return;
+  }
+
+  if (identity.organization_kind === "ESCOLA") {
+    identityInfoEl.textContent =
+      `${identity.role} Â· ${identity.school_code}`;
+    return;
+  }
+
+  identityInfoEl.textContent =
+    `${identity.role} Â· acesso institucional`;
 }
 
 async function loadIdentities() {
-  identities = await jsonFetch("/api/identities");
+  identities = await jsonFetch("/api/emergency/identities");
   identityEl.innerHTML = "";
 
   for (const identity of identities) {
     const option = document.createElement("option");
     option.value = identity.id;
-    option.textContent = `${identity.display_name} Â· ${identity.role}`;
+
+    const suffix = identity.school_code
+      ? ` Â· ${identity.school_code}`
+      : "";
+
+    option.textContent =
+      `${identity.display_name} Â· ${identity.organization_kind}${suffix}`;
+
     identityEl.appendChild(option);
   }
 
-  if (!identities.some(i => i.id === currentIdentity)) {
+  if (!identities.some(item => item.id === currentIdentity)) {
     currentIdentity = identities[0]?.id || "";
   }
 
   identityEl.value = currentIdentity;
-  renderMemberChoices();
+  renderIdentityInfo();
 }
 
-function renderMemberChoices() {
-  memberChoices.innerHTML = "";
-
-  for (const identity of identities) {
-    if (identity.id === currentIdentity) continue;
-
-    const label = document.createElement("label");
-    label.className = "member-choice";
-
-    const input = document.createElement("input");
-    input.type = "checkbox";
-    input.value = identity.id;
-
-    const span = document.createElement("span");
-    span.textContent = `${identity.display_name} (${identity.organization_kind})`;
-
-    label.append(input, span);
-    memberChoices.appendChild(label);
-  }
+function resetChat() {
+  currentChannelId = null;
+  seen.clear();
+  messagesEl.innerHTML =
+    '<div class="empty-chat">Selecione um canal de emergÃªncia.</div>';
+  channelTitleEl.textContent = "Selecione um canal";
+  channelMetaEl.textContent =
+    "Escolas comunicam-se somente com Guarda e Secretaria de EducaÃ§Ã£o.";
+  bodyEl.disabled = true;
+  sendEl.disabled = true;
 }
 
-function renderConversations() {
-  conversationsEl.innerHTML = "";
+function renderChannels() {
+  channelsEl.innerHTML = "";
+  channelCountEl.textContent = String(channels.length);
 
-  if (!conversations.length) {
+  if (!channels.length) {
     const empty = document.createElement("div");
     empty.className = "empty-list";
-    empty.textContent = "Nenhuma conversa.";
-    conversationsEl.appendChild(empty);
+    empty.textContent = "Nenhum canal autorizado.";
+    channelsEl.appendChild(empty);
     return;
   }
 
-  for (const conversation of conversations) {
+  for (const channel of channels) {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "conversation";
+    button.className = "channel";
 
-    if (currentConversationId === conversation.id) {
+    if (channel.id === currentChannelId) {
       button.classList.add("active");
     }
 
-    const name = document.createElement("strong");
-    name.textContent = conversationLabel(conversation);
+    const top = document.createElement("div");
+    top.className = "channel-top";
 
-    const preview = document.createElement("span");
-    preview.textContent = conversation.last_message_body || conversation.type;
+    const name = document.createElement("strong");
+    name.textContent = channel.title;
 
     const badge = document.createElement("em");
-    const unread = Number(conversation.unread_count || 0);
+    const unread = Number(channel.unread_count || 0);
     badge.textContent = unread > 99 ? "99+" : String(unread);
     badge.hidden = unread <= 0;
 
-    button.append(name, preview, badge);
-    button.addEventListener("click", () => selectConversation(conversation.id));
-    conversationsEl.appendChild(button);
+    top.append(name, badge);
+
+    const school = document.createElement("small");
+    school.textContent = channel.school_code;
+
+    const preview = document.createElement("span");
+    preview.textContent =
+      channel.last_message_body || "Sem mensagens ainda";
+
+    button.append(top, school, preview);
+    button.addEventListener("click", () => selectChannel(channel.id));
+
+    channelsEl.appendChild(button);
   }
 }
 
-async function refreshConversations({preserveSelection = true} = {}) {
-  const generation = identityGeneration;
+async function refreshChannels({preserveSelection = true} = {}) {
+  const requestGeneration = generation;
+
   const data = await jsonFetch(
-    `/api/conversations?identity_id=${encodeURIComponent(currentIdentity)}`
+    `/api/emergency/channels?identity_id=${encodeURIComponent(currentIdentity)}`
   );
 
-  if (generation !== identityGeneration) return;
+  if (requestGeneration !== generation) return;
 
-  conversations = data;
+  channels = data;
 
   if (
     !preserveSelection ||
-    !currentConversationId ||
-    !conversations.some(c => c.id === currentConversationId)
+    !currentChannelId ||
+    !channels.some(item => item.id === currentChannelId)
   ) {
-    currentConversationId = conversations[0]?.id || null;
+    currentChannelId = channels[0]?.id || null;
   }
 
-  renderConversations();
+  renderChannels();
+}
+
+function senderLabel(message) {
+  if (message.sender_organization_kind === "ESCOLA") return "ESCOLA";
+  if (message.sender_organization_kind === "GUARDA") return "GUARDA";
+  if (message.sender_organization_kind === "SECRETARIA") return "SECRETARIA";
+  return message.sender_organization_kind || "SISTEMA";
 }
 
 function appendMessage(message) {
   if (!message || seen.has(message.id)) return;
+
   seen.add(message.id);
 
-  const row = document.createElement("article");
-  row.className = message.sender_identity_id === currentIdentity
-    ? "message own"
-    : "message";
+  const article = document.createElement("article");
+  article.className =
+    message.sender_identity_id === currentIdentity
+      ? "message own"
+      : "message";
 
-  const meta = document.createElement("div");
-  meta.className = "message-meta";
+  const header = document.createElement("div");
+  header.className = "message-header";
 
-  const who = document.createElement("strong");
-  who.textContent = message.display_name;
+  const sender = document.createElement("div");
+  sender.className = "sender";
 
-  const when = document.createElement("time");
-  when.textContent = new Date(message.created_at).toLocaleString();
+  const institution = document.createElement("span");
+  institution.className =
+    `institution ${String(message.sender_organization_kind || "").toLowerCase()}`;
+  institution.textContent = senderLabel(message);
+
+  const name = document.createElement("strong");
+  name.textContent = message.display_name;
+
+  sender.append(institution, name);
+
+  const time = document.createElement("time");
+  time.textContent = new Date(message.created_at).toLocaleString();
+
+  header.append(sender, time);
 
   const text = document.createElement("div");
   text.className = "message-body";
   text.textContent = message.body;
 
-  meta.append(who, when);
-  row.append(meta, text);
-  messagesEl.appendChild(row);
+  article.append(header, text);
+  messagesEl.appendChild(article);
   messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
-async function markRead(conversationId, messageId) {
-  if (!conversationId || !messageId) return;
+async function markRead(channelId, messageId) {
+  if (!channelId || !messageId) return;
 
   await jsonFetch(
-    `/api/conversations/${encodeURIComponent(conversationId)}/read`,
+    `/api/emergency/channels/${encodeURIComponent(channelId)}/read`,
     {
       method: "POST",
       headers: {"Content-Type": "application/json"},
@@ -202,54 +239,59 @@ async function markRead(conversationId, messageId) {
   );
 }
 
-async function selectConversation(id) {
-  const conversation = conversations.find(c => c.id === id);
-  if (!conversation) {
-    resetConversationView();
+async function selectChannel(channelId) {
+  const channel = channels.find(item => item.id === channelId);
+
+  if (!channel) {
+    resetChat();
     return;
   }
 
-  const token = ++loadingConversationToken;
-  currentConversationId = id;
+  const token = ++loadToken;
+  currentChannelId = channelId;
   seen.clear();
   messagesEl.innerHTML = "";
+  renderChannels();
 
-  renderConversations();
-
-  titleEl.textContent = conversationLabel(conversation);
-  metaEl.textContent =
-    `${conversation.type} Â· ${conversation.members.map(m => m.display_name).join(", ")}`;
+  channelTitleEl.textContent = channel.title;
+  channelMetaEl.textContent =
+    `${channel.school_code} Â· Escola â†” Guarda Municipal â†” Secretaria de EducaÃ§Ã£o`;
 
   bodyEl.disabled = true;
   sendEl.disabled = true;
 
   try {
     const messages = await jsonFetch(
-      `/api/conversations/${encodeURIComponent(id)}/messages` +
+      `/api/emergency/channels/${encodeURIComponent(channelId)}/messages` +
       `?identity_id=${encodeURIComponent(currentIdentity)}&limit=200`
     );
 
-    if (token !== loadingConversationToken || currentConversationId !== id) return;
+    if (token !== loadToken || currentChannelId !== channelId) return;
 
-    messages.forEach(appendMessage);
+    if (!messages.length) {
+      messagesEl.innerHTML =
+        '<div class="empty-chat">Canal disponÃ­vel. Nenhuma mensagem registrada.</div>';
+    } else {
+      messages.forEach(appendMessage);
 
-    const lastId = messages.length ? messages[messages.length - 1].id : 0;
-    if (lastId) {
-      await markRead(id, lastId);
+      const lastId = messages[messages.length - 1].id;
+      await markRead(channelId, lastId);
     }
 
-    const current = conversations.find(c => c.id === id);
-    if (current) current.unread_count = 0;
+    const local = channels.find(item => item.id === channelId);
+    if (local) local.unread_count = 0;
 
-    renderConversations();
+    renderChannels();
 
     bodyEl.disabled = false;
     sendEl.disabled = false;
     bodyEl.focus();
-  } catch (error) {
-    if (token !== loadingConversationToken) return;
+  }
+  catch (error) {
+    if (token !== loadToken) return;
+
     console.error(error);
-    resetConversationView();
+    resetChat();
     alert(error.message);
   }
 }
@@ -277,7 +319,7 @@ function stopSocket() {
 function connectSocket() {
   stopSocket();
 
-  const generation = identityGeneration;
+  const socketGeneration = generation;
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
 
   socket = new WebSocket(
@@ -285,7 +327,8 @@ function connectSocket() {
   );
 
   socket.onopen = () => {
-    if (generation !== identityGeneration) return;
+    if (socketGeneration !== generation) return;
+
     setStatus("online", true);
 
     heartbeatTimer = setInterval(() => {
@@ -296,31 +339,35 @@ function connectSocket() {
   };
 
   socket.onmessage = async event => {
-    if (generation !== identityGeneration) return;
+    if (socketGeneration !== generation) return;
 
     const payload = JSON.parse(event.data);
 
-    if (payload.type === "system.pong" || payload.type === "system.ready") {
+    if (
+      payload.type === "system.ready" ||
+      payload.type === "system.pong"
+    ) {
       return;
     }
 
-    if (payload.type === "message.created") {
-      if (payload.conversation_id === currentConversationId) {
+    if (payload.type === "emergency.message.created") {
+      if (payload.channel_id === currentChannelId) {
+        const empty = messagesEl.querySelector(".empty-chat");
+        if (empty) empty.remove();
+
         appendMessage(payload.message);
-        await markRead(payload.conversation_id, payload.message.id);
+        await markRead(
+          payload.channel_id,
+          payload.message.id
+        );
       }
 
-      await refreshConversations({preserveSelection: true});
-      return;
-    }
-
-    if (payload.type === "conversation.created") {
-      await refreshConversations({preserveSelection: true});
+      await refreshChannels({preserveSelection: true});
     }
   };
 
   socket.onclose = () => {
-    if (generation !== identityGeneration) return;
+    if (socketGeneration !== generation) return;
 
     if (heartbeatTimer) {
       clearInterval(heartbeatTimer);
@@ -330,142 +377,94 @@ function connectSocket() {
     setStatus("reconectandoâ€¦");
 
     reconnectTimer = setTimeout(() => {
-      if (generation === identityGeneration) connectSocket();
+      if (socketGeneration === generation) {
+        connectSocket();
+      }
     }, 1500);
   };
 
   socket.onerror = () => {
-    if (generation === identityGeneration && socket) {
+    if (socketGeneration === generation && socket) {
       socket.close();
     }
   };
 }
 
 identityEl.addEventListener("change", async () => {
-  identityGeneration += 1;
-  currentIdentity = identityEl.value;
-  localStorage.setItem("eduvigia_chat_identity", currentIdentity);
+  generation += 1;
+  loadToken += 1;
 
-  loadingConversationToken += 1;
-  resetConversationView();
-  renderMemberChoices();
+  currentIdentity = identityEl.value;
+  localStorage.setItem(
+    "eduvigia_emergency_identity",
+    currentIdentity
+  );
+
+  renderIdentityInfo();
+  resetChat();
   connectSocket();
 
   try {
-    await refreshConversations({preserveSelection: false});
-    if (currentConversationId) {
-      await selectConversation(currentConversationId);
+    await refreshChannels({preserveSelection: false});
+
+    if (currentChannelId) {
+      await selectChannel(currentChannelId);
     }
-  } catch (error) {
+  }
+  catch (error) {
     console.error(error);
     setStatus("erro");
     alert(error.message);
   }
 });
 
-composer.addEventListener("submit", async event => {
+composerEl.addEventListener("submit", async event => {
   event.preventDefault();
 
-  const conversation = currentConversation();
-  if (!conversation) return;
+  const channel = currentChannel();
+  if (!channel) return;
 
   const body = bodyEl.value.trim();
   if (!body) return;
 
-  const sentBody = body;
   bodyEl.value = "";
   bodyEl.disabled = true;
   sendEl.disabled = true;
 
   try {
     const message = await jsonFetch(
-      `/api/conversations/${encodeURIComponent(conversation.id)}/messages`,
+      `/api/emergency/channels/${encodeURIComponent(channel.id)}/messages`,
       {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({
           sender_identity_id: currentIdentity,
-          body: sentBody
+          body
         })
       }
     );
 
-    if (currentConversationId === conversation.id) {
+    if (currentChannelId === channel.id) {
+      const empty = messagesEl.querySelector(".empty-chat");
+      if (empty) empty.remove();
+
       appendMessage(message);
-      await markRead(conversation.id, message.id);
+      await markRead(channel.id, message.id);
     }
 
-    await refreshConversations({preserveSelection: true});
-  } catch (error) {
-    bodyEl.value = sentBody;
+    await refreshChannels({preserveSelection: true});
+  }
+  catch (error) {
+    bodyEl.value = body;
     console.error(error);
     alert(error.message);
-  } finally {
-    if (currentConversationId) {
+  }
+  finally {
+    if (currentChannelId) {
       bodyEl.disabled = false;
       sendEl.disabled = false;
       bodyEl.focus();
     }
-  }
-});
-
-newConversation.addEventListener("click", () => {
-  conversationType.value = "DIRECT";
-  conversationName.value = "";
-  renderMemberChoices();
-  dialog.showModal();
-});
-
-cancelDialog.addEventListener("click", () => dialog.close());
-
-conversationType.addEventListener("change", () => {
-  conversationName.disabled = conversationType.value === "DIRECT";
-  if (conversationType.value === "DIRECT") {
-    conversationName.value = "";
-  }
-});
-
-conversationForm.addEventListener("submit", async event => {
-  event.preventDefault();
-
-  const memberIds = [...memberChoices.querySelectorAll("input:checked")]
-    .map(el => el.value);
-
-  const type = conversationType.value;
-
-  if (type === "DIRECT" && memberIds.length !== 1) {
-    alert("Conversa direta exige exatamente um outro membro.");
-    return;
-  }
-
-  if (type !== "DIRECT" && !conversationName.value.trim()) {
-    alert("Informe o tÃ­tulo do grupo.");
-    return;
-  }
-
-  try {
-    const created = await jsonFetch("/api/conversations", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({
-        type,
-        title: type === "DIRECT" ? null : conversationName.value.trim(),
-        created_by: currentIdentity,
-        member_ids: memberIds
-      })
-    });
-
-    dialog.close();
-
-    await refreshConversations({preserveSelection: true});
-    await selectConversation(created.id);
-
-    if (created.reused) {
-      console.info("Conversa direta existente reutilizada.");
-    }
-  } catch (error) {
-    console.error(error);
-    alert(error.message);
   }
 });
 
@@ -475,15 +474,16 @@ window.addEventListener("beforeunload", stopSocket);
   try {
     await loadIdentities();
 
-    identityGeneration += 1;
+    generation += 1;
     connectSocket();
 
-    await refreshConversations({preserveSelection: false});
+    await refreshChannels({preserveSelection: false});
 
-    if (currentConversationId) {
-      await selectConversation(currentConversationId);
+    if (currentChannelId) {
+      await selectChannel(currentChannelId);
     }
-  } catch (error) {
+  }
+  catch (error) {
     console.error(error);
     setStatus("erro");
     alert(error.message);
