@@ -239,10 +239,12 @@ function routeFromHash() {
 function ActionFeedbackBanner({ feedback, onClose }) {
   if (!feedback) return null;
   const isError = feedback.type === "error";
-  const Icon = isError ? XCircle : CheckCircle2;
+  const isWarning = feedback.type === "warning";
+  const visualType = isError ? "error" : isWarning ? "warning" : "success";
+  const Icon = isError ? XCircle : isWarning ? AlertTriangle : CheckCircle2;
   return (
     <div
-      className={`actionFeedbackBanner ${isError ? "error" : "success"}`}
+      className={`actionFeedbackBanner ${visualType}`}
       role={isError ? "alert" : "status"}
       aria-live={isError ? "assertive" : "polite"}
     >
@@ -461,7 +463,7 @@ export default function App() {
   const showActionFeedback = (type, title, detail = "") => {
     if (actionFeedbackTimer.current) window.clearTimeout(actionFeedbackTimer.current);
     setActionFeedback({ type, title, detail, id: Date.now() });
-    const timeoutMs = type === "error" ? 8000 : 5000;
+    const timeoutMs = type === "error" || type === "warning" ? 8000 : 5000;
     actionFeedbackTimer.current = window.setTimeout(() => {
       setActionFeedback(null);
       actionFeedbackTimer.current = null;
@@ -3948,9 +3950,28 @@ function CameraEventsHealthPage({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ camera_ids: cameraIds }),
       });
-      const detail = `${result.online || 0} online, ${result.degraded || 0} degradada(s), ${result.offline || 0} offline. Nenhum evento automático foi gerado.`;
+      const online = Number(result.online || 0);
+      const degraded = Number(result.degraded || 0);
+      const offline = Number(result.offline || 0);
+      const total = online + degraded + offline;
+      const detail = `${online} online, ${degraded} degradada(s), ${offline} offline. Nenhum evento automático foi gerado.`;
+
+      let feedbackType = "warning";
+      let feedbackTitle = "Sistema de câmeras com atenção";
+
+      if (total > 0 && online === total) {
+        feedbackType = "success";
+        feedbackTitle = "Saúde das câmeras atualizada";
+      } else if (total > 0 && offline === total) {
+        feedbackType = "error";
+        feedbackTitle = "Sistema de câmeras offline";
+      } else if (online > 0 && offline > 0) {
+        feedbackType = "warning";
+        feedbackTitle = "Sistema de câmeras parcial";
+      }
+
       setLocalMessage(`Saúde atualizada: ${detail}`);
-      onFeedback?.("success", "Saúde das câmeras atualizada", detail);
+      onFeedback?.(feedbackType, feedbackTitle, detail);
       await onRefresh?.();
     } catch (error) {
       const detail = error.message || "Falha ao atualizar a saúde das câmeras.";

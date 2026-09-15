@@ -4120,6 +4120,11 @@ body {
   border-color: #f2aaa3;
   color: #a52a22;
 }
+.actionFeedbackBanner.warning {
+  background: #fff8e6;
+  border-color: #f1c75b;
+  color: #8a5a00;
+}
 .actionFeedbackBanner::before {
   content: "";
   position: absolute;
@@ -4195,3 +4200,5 @@ button:disabled {
   background: #f7f9fb !important;
 }
 .onlineStatus.neutral b { color: #5f6f7d !important; }
+
+/* F7-R3 HF8-HF1 — feedback de saúde segue o estado agregado da frota */
