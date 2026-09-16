@@ -860,6 +860,25 @@ composerEl.addEventListener("submit", async event => {
   }
 });
 
+
+/*
+ * Explicit integration contract for optional frontend modules.
+ * Do not make modules depend on lexical globals declared by app.js.
+ */
+window.EduVigIAChatContext = Object.freeze({
+  get() {
+    return {
+      identityId:
+        typeof currentIdentity === "string" && currentIdentity
+          ? currentIdentity
+          : null,
+      channelId:
+        typeof currentChannelId === "string" && currentChannelId
+          ? currentChannelId
+          : null
+    };
+  }
+});
 window.addEventListener("beforeunload", () => {
   cancelAudioRecording();
   stopSocket();
