@@ -164,6 +164,7 @@ async function loadIdentities() {
     currentIdentity = identities[0]?.id || "";
   }
 
+  publishChatContext();
   identityEl.value = currentIdentity;
   renderIdentityInfo();
 }
@@ -360,8 +361,45 @@ function renderAttachments(message, article) {
   }
   article.appendChild(list);
 }
+function publishChatContext() {
+  const detail = {
+    identityId:
+      typeof currentIdentity === "string" && currentIdentity
+        ? currentIdentity
+        : null,
+    channelId:
+      typeof currentChannelId === "string" && currentChannelId
+        ? currentChannelId
+        : null
+  };
+
+  window.dispatchEvent(
+    new CustomEvent("eduvigia:chat-context", {
+      detail
+    })
+  );
+
+  return detail;
+}
+
+window.EduVigIAChatContext = Object.freeze({
+  get() {
+    return {
+      identityId:
+        typeof currentIdentity === "string" && currentIdentity
+          ? currentIdentity
+          : null,
+      channelId:
+        typeof currentChannelId === "string" && currentChannelId
+          ? currentChannelId
+          : null
+    };
+  }
+});
+
 function resetChat() {
   currentChannelId = null;
+  publishChatContext();
   seen.clear();
 
   messagesEl.innerHTML =
@@ -475,6 +513,7 @@ async function refreshChannels({preserveSelection = true} = {}) {
     currentChannelId = channels[0]?.id || null;
   }
 
+  publishChatContext();
   renderChannels();
 }
 
@@ -562,6 +601,7 @@ async function selectChannel(channelId) {
 
   const token = ++loadToken;
   currentChannelId = channelId;
+  publishChatContext();
   seen.clear();
   messagesEl.innerHTML = "";
   renderChannels();
@@ -706,6 +746,7 @@ identityEl.addEventListener("change", async () => {
   loadToken += 1;
 
   currentIdentity = identityEl.value;
+  publishChatContext();
   localStorage.setItem("eduvigia_emergency_identity", currentIdentity);
 
   if (searchEl) searchEl.value = "";

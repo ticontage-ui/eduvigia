@@ -264,10 +264,9 @@ function pttConnectSocket() {
   pttSocket.onerror = () => pttSocket?.close();
 }
 
-function pttSynchronizeContext() {
-  const context = pttReadChatContext();
-  const nextIdentity = context.identityId;
-  const nextChannel = context.channelId;
+function pttApplyChatContext(context = {}) {
+  const nextIdentity = context.identityId || null;
+  const nextChannel = context.channelId || null;
 
   if (
     nextChannel === pttCurrentChannelId &&
@@ -276,11 +275,9 @@ function pttSynchronizeContext() {
     return;
   }
 
-  /*
-   * If the operator changes context while holding the floor,
-   * stop local transmission immediately. The Redis floor has
-   * a short TTL as a secondary safety net.
-   */
+  const previousChannel = pttCurrentChannelId;
+  const previousIdentity = pttCurrentIdentity;
+
   if (pttWantToTalk || pttOwnFloorId) {
     pttWantToTalk = false;
     pttReleaseFloor();
@@ -292,7 +289,24 @@ function pttSynchronizeContext() {
   pttLastKnownChannel = nextChannel;
   pttLastKnownIdentity = nextIdentity;
 
-  if (!pttCurrentChannelId || !pttCurrentIdentity) {
+  console.info("PTT context changed", {
+    previousIdentity,
+    previousChannel,
+    identityId: pttCurrentIdentity,
+    channelId: pttCurrentChannelId
+  });
+
+  if (!pttCurrentIdentity) {
+    pttDisconnectSocket();
+    pttSetState(
+      "disabled",
+      "PTT indisponível",
+      "Selecione um perfil"
+    );
+    return;
+  }
+
+  if (!pttCurrentChannelId) {
     pttDisconnectSocket();
     pttSetState(
       "disabled",
@@ -309,6 +323,11 @@ function pttSynchronizeContext() {
   );
 
   pttConnectSocket();
+}
+
+function pttSynchronizeContext() {
+  const context = pttReadChatContext();
+  pttApplyChatContext(context);
 }
 
 function pttPressStart(event) {
@@ -344,5 +363,27 @@ window.addEventListener("beforeunload", () => {
   pttStopPublishing();
   pttDisconnectSocket();
 });
-setInterval(pttSynchronizeContext, 300);
-pttSynchronizeContext();
+
+window.addEventListener("eduvigia:chat-context", event => {
+  pttApplyChatContext(event.detail || {});
+});
+
+/*
+ * Initial snapshot covers the case where app.js completed its bootstrap
+ * before ptt.js finished loading.
+ */
+pttApplyChatContext(pttReadChatContext());
+
+/*
+ * Low-frequency fallback only. Normal operation is event-driven.
+ */
+setInterval(() => {
+  const context = pttReadChatContext();
+
+  if (
+    context.identityId !== pttCurrentIdentity ||
+    context.channelId !== pttCurrentChannelId
+  ) {
+    pttApplyChatContext(context);
+  }
+}, 2000);
