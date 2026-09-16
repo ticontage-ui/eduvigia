@@ -216,6 +216,7 @@ class PttRecordingManager:
                 "final_path": str(final_path),
                 "sha256": hashlib.sha256(),
                 "size_bytes": 0,
+                "buffer": bytearray(),
                 "started_monotonic": time.monotonic(),
                 "overflow": False,
             }
@@ -243,12 +244,7 @@ class PttRecordingManager:
                 session["overflow"] = True
                 return
 
-            with open(
-                session["temp_path"],
-                "ab",
-            ) as handle:
-                handle.write(payload)
-
+            session["buffer"].extend(payload)
             session["sha256"].update(payload)
             session["size_bytes"] = projected
 
@@ -292,13 +288,22 @@ class PttRecordingManager:
         )
 
         if ready:
-            if temp_path.exists():
-                os.replace(
-                    str(temp_path),
-                    str(final_path),
-                )
+            payload = bytes(session["buffer"])
 
-            digest = session["sha256"].hexdigest()
+            with open(
+                temp_path,
+                "wb",
+            ) as handle:
+                handle.write(payload)
+                handle.flush()
+                os.fsync(handle.fileno())
+
+            os.replace(
+                str(temp_path),
+                str(final_path),
+            )
+
+            digest = hashlib.sha256(payload).hexdigest()
 
             async with app.state.db.acquire() as conn:
                 await conn.execute(
@@ -662,12 +667,22 @@ async def ptt_websocket(websocket: WebSocket, identity_id: str, channel_id: str)
             if not floor or floor.get("identity_id") != identity_id:
                 continue
 
-            await recording_manager.append(
-                floor.get("floor_id", ""),
+            # Preserve the V0.6 real-time path as the primary operation.
+            # Recording is secondary and must never prevent live audio.
+            await hub.broadcast_bytes(
+                channel_id,
                 payload,
+                exclude=websocket,
             )
 
-            await hub.broadcast_bytes(channel_id, payload, exclude=websocket)
+            try:
+                await recording_manager.append(
+                    floor.get("floor_id", ""),
+                    payload,
+                )
+            except Exception:
+                # A recording failure must not break institutional PTT.
+                pass
 
     except WebSocketDisconnect:
         pass
