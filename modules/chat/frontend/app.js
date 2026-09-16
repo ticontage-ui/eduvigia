@@ -454,6 +454,7 @@ function renderChannels() {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "channel";
+    button.dataset.channelId = channel.id;
 
     if (channel.id === currentChannelId) {
       button.classList.add("active");

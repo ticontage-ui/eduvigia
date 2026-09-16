@@ -29,20 +29,47 @@ let pttCurrentChannelId = null;
 let pttCurrentIdentity = null;
 
 function pttReadChatContext() {
-  const provider = window.EduVigIAChatContext;
+  const identitySelect = document.getElementById("identity");
+  const channelsRoot = document.getElementById("channels");
 
-  if (!provider || typeof provider.get !== "function") {
+  const identityId =
+    identitySelect?.value ||
+    null;
+
+  const activeChannel =
+    channelsRoot?.querySelector(".channel.active[data-channel-id]") ||
+    null;
+
+  const channelId =
+    activeChannel?.dataset?.channelId ||
+    null;
+
+  /*
+   * DOM is authoritative because it reflects the channel actually selected
+   * by the operator. The previous bridge remains only as a compatibility
+   * fallback during bootstrap.
+   */
+  if (identityId && channelId) {
     return {
-      identityId: null,
-      channelId: null
+      identityId,
+      channelId
     };
   }
 
-  const context = provider.get() || {};
+  const provider = window.EduVigIAChatContext;
+
+  if (provider && typeof provider.get === "function") {
+    const fallback = provider.get() || {};
+
+    return {
+      identityId: identityId || fallback.identityId || null,
+      channelId: channelId || fallback.channelId || null
+    };
+  }
 
   return {
-    identityId: context.identityId || null,
-    channelId: context.channelId || null
+    identityId,
+    channelId
   };
 }
 
@@ -372,18 +399,79 @@ window.addEventListener("eduvigia:chat-context", event => {
  * Initial snapshot covers the case where app.js completed its bootstrap
  * before ptt.js finished loading.
  */
+
+function pttRefreshFromVisibleSelection() {
+  const context = pttReadChatContext();
+  pttApplyChatContext(context);
+}
+
+const pttIdentitySelectEl = document.getElementById("identity");
+const pttChannelsRootEl = document.getElementById("channels");
+
+pttIdentitySelectEl?.addEventListener(
+  "change",
+  () => queueMicrotask(pttRefreshFromVisibleSelection)
+);
+
+pttChannelsRootEl?.addEventListener(
+  "click",
+  () => {
+    setTimeout(pttRefreshFromVisibleSelection, 0);
+  }
+);
+
+if (pttChannelsRootEl && window.MutationObserver) {
+  const pttChannelObserver = new MutationObserver(() => {
+    pttRefreshFromVisibleSelection();
+  });
+
+  pttChannelObserver.observe(
+    pttChannelsRootEl,
+    {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class", "data-channel-id"]
+    }
+  );
+}
+
+window.addEventListener(
+  "eduvigia:chat-context",
+  () => queueMicrotask(pttRefreshFromVisibleSelection)
+);
+
+window.addEventListener(
+  "focus",
+  pttRefreshFromVisibleSelection
+);
+
 pttApplyChatContext(pttReadChatContext());
 
 /*
  * Low-frequency fallback only. Normal operation is event-driven.
  */
-setInterval(() => {
-  const context = pttReadChatContext();
+setInterval(pttRefreshFromVisibleSelection, 750);
 
-  if (
-    context.identityId !== pttCurrentIdentity ||
-    context.channelId !== pttCurrentChannelId
-  ) {
-    pttApplyChatContext(context);
+window.EduVigIAPTT = Object.freeze({
+  refreshContext() {
+    pttRefreshFromVisibleSelection();
+  },
+
+  getContext() {
+    return {
+      identityId: pttCurrentIdentity,
+      channelId: pttCurrentChannelId
+    };
+  },
+
+  getState() {
+    return {
+      identityId: pttCurrentIdentity,
+      channelId: pttCurrentChannelId,
+      socketState: pttSocket?.readyState ?? null,
+      ownFloorId: pttOwnFloorId,
+      remoteSpeaker: pttRemoteSpeaker
+    };
   }
-}, 2000);
+});
