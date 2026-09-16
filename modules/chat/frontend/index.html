@@ -53,7 +53,7 @@
                 </div>
 
                 <div class="header-tags">
-                    <span class="tag">Texto + anexos + áudio + PTT</span>
+                    <span class="tag">Texto + anexos + áudio + PTT + histórico</span>
                     <span class="tag critical">Canal institucional</span>
                 </div>
             </header>
@@ -81,8 +81,23 @@
                     <span class="ptt-button-title">SEGURE PARA FALAR</span>
                     <span id="pttTimer" class="ptt-button-subtitle">00:00 / 00:30</span>
                 </button>
-                <button id="pttEnableAudio" class="ptt-enable-audio" type="button" hidden>Ativar áudio PTT</button>
+                                <button id="pttHistoryToggle" class="ptt-history-toggle" type="button">
+                    Histórico PTT
+                </button><button id="pttEnableAudio" class="ptt-enable-audio" type="button" hidden>Ativar áudio PTT</button>
                 <audio id="pttRemoteAudio" autoplay></audio>
+            </section>
+            <section id="pttHistoryPanel" class="ptt-history" hidden>
+                <div class="ptt-history-header">
+                    <div>
+                        <strong>Histórico PTT</strong>
+                        <span>Transmissões gravadas deste canal</span>
+                    </div>
+                    <button id="pttHistoryRefresh" type="button">Atualizar</button>
+                </div>
+                <div id="pttHistoryList" class="ptt-history-list"></div>
+                <div id="pttHistoryEmpty" class="ptt-history-empty" hidden>
+                    Nenhuma transmissão gravada neste canal.
+                </div>
             </section>
 <div id="audioRecorder" class="audio-recorder" hidden>
                 <div class="audio-recorder-status">
@@ -129,5 +144,6 @@
 
     <script src="/app.js?v=060-hf5-local"></script>
     <script src="/ptt.js?v=060-hf5-local"></script>
+    <script src="/ptt-history.js?v=070-r1"></script>
 </body>
 </html>
