@@ -1128,3 +1128,6 @@ async def websocket_endpoint(
             identity_id,
         )
         await hub.disconnect(identity_id, websocket)
+# PTT institutional module (V0.6)
+from app.ptt import router as ptt_router
+app.include_router(ptt_router)

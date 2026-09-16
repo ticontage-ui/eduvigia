@@ -53,7 +53,7 @@
                 </div>
 
                 <div class="header-tags">
-                    <span class="tag">Texto + anexos</span>
+                    <span class="tag">Texto + anexos + áudio + PTT</span>
                     <span class="tag critical">Canal institucional</span>
                 </div>
             </header>
@@ -69,7 +69,22 @@
                 Guarda Municipal e Secretaria de Educação autorizadas.
             </div>
 
-                        <div id="audioRecorder" class="audio-recorder" hidden>
+                                    <section id="pttPanel" class="ptt-panel" data-state="disabled">
+                <div class="ptt-state">
+                    <span class="ptt-indicator"></span>
+                    <div>
+                        <strong id="pttStatus">PTT indisponível</strong>
+                        <span id="pttSpeaker">Selecione um canal</span>
+                    </div>
+                </div>
+                <button id="pttButton" class="ptt-button" type="button" disabled>
+                    <span class="ptt-button-title">SEGURE PARA FALAR</span>
+                    <span id="pttTimer" class="ptt-button-subtitle">00:00 / 00:30</span>
+                </button>
+                <button id="pttEnableAudio" class="ptt-enable-audio" type="button" hidden>Ativar áudio PTT</button>
+                <audio id="pttRemoteAudio" autoplay></audio>
+            </section>
+<div id="audioRecorder" class="audio-recorder" hidden>
                 <div class="audio-recorder-status">
                     <span class="recording-dot"></span>
                     <strong id="audioRecorderLabel">Gravando áudio</strong>
@@ -113,5 +128,6 @@
     </main>
 
     <script src="/app.js"></script>
+    <script src="/ptt.js"></script>
 </body>
 </html>
