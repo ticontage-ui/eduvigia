@@ -99,7 +99,7 @@ services:
       context: ../frontend
     restart: unless-stopped
     ports:
-      - "127.0.0.1:15187:80"
+      - "0.0.0.0:15187:80"
     depends_on:
       api:
         condition: service_healthy
