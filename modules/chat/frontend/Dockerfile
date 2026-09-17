@@ -7,3 +7,5 @@ COPY ptt.js ptt-history.js /usr/share/nginx/html/
 COPY styles.css /usr/share/nginx/html/styles.css
 # EduVigIA Chat product feature policy
 COPY feature-policy.js /usr/share/nginx/html/feature-policy.js
+# EduVigIA Chat PTT composer layout
+COPY ptt-composer-layout.js /usr/share/nginx/html/ptt-composer-layout.js

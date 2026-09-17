@@ -1384,3 +1384,254 @@ select:focus {
         border-radius: 50% !important;
     }
 }
+
+/* EDUVIGIA_CHAT_PTT_COMPOSER_R1 */
+
+/*
+ * PTT button inspired by the supplied microphone reference:
+ * compact navy circle + white microphone icon.
+ */
+.chat-composer-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    min-width: 0;
+}
+
+#pttButton.ptt-composer-button {
+    position: relative !important;
+
+    width: 56px !important;
+    height: 56px !important;
+    min-width: 56px !important;
+    min-height: 56px !important;
+    max-width: 56px !important;
+    max-height: 56px !important;
+
+    flex: 0 0 56px !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    display: grid !important;
+    place-items: center !important;
+
+    overflow: hidden !important;
+
+    border: 0 !important;
+    border-radius: 50% !important;
+
+    background:
+        radial-gradient(
+            circle at 35% 28%,
+            #143d73 0%,
+            #0b2c59 48%,
+            #072248 100%
+        ) !important;
+
+    color: transparent !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+
+    box-shadow:
+        0 7px 18px rgba(7, 34, 72, .22),
+        inset 0 1px 0 rgba(255,255,255,.12) !important;
+
+    cursor: pointer !important;
+
+    transition:
+        transform .14s ease,
+        box-shadow .14s ease,
+        filter .14s ease,
+        background .14s ease !important;
+}
+
+/*
+ * White microphone icon. It is vector-like CSS/SVG and does not
+ * replace any PTT event handlers or operational logic.
+ */
+#pttButton.ptt-composer-button::before {
+    content: "" !important;
+
+    width: 30px;
+    height: 30px;
+
+    display: block;
+
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+
+    background-image:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.15' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='2.5' width='6' height='12' rx='3'/%3E%3Cpath d='M5.5 11.5a6.5 6.5 0 0 0 13 0'/%3E%3Cpath d='M12 18v3'/%3E%3Cpath d='M8.5 21h7'/%3E%3C/svg%3E");
+}
+
+#pttButton.ptt-composer-button:hover {
+    transform: translateY(-1px) scale(1.035) !important;
+
+    box-shadow:
+        0 10px 22px rgba(7, 34, 72, .27),
+        inset 0 1px 0 rgba(255,255,255,.14) !important;
+}
+
+#pttButton.ptt-composer-button:active,
+#pttButton.ptt-composer-button[data-ptt-visual-state="transmitting"] {
+    transform: scale(.96) !important;
+
+    box-shadow:
+        0 0 0 5px rgba(22, 134, 92, .13),
+        0 7px 18px rgba(7, 34, 72, .22) !important;
+}
+
+#pttButton.ptt-composer-button[data-ptt-visual-state="transmitting"] {
+    background:
+        radial-gradient(
+            circle at 35% 28%,
+            #22966b 0%,
+            #147350 55%,
+            #0b553b 100%
+        ) !important;
+}
+
+#pttButton.ptt-composer-button[data-ptt-visual-state="busy"] {
+    box-shadow:
+        0 0 0 4px rgba(183, 121, 31, .12),
+        0 7px 18px rgba(7, 34, 72, .18) !important;
+}
+
+#pttButton.ptt-composer-button:disabled,
+#pttButton.ptt-composer-button[data-ptt-visual-state="disabled"] {
+    opacity: .44 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    filter: grayscale(.25);
+}
+
+/*
+ * Old centered/large PTT rules are explicitly overridden.
+ */
+@media (max-width: 900px) {
+    #pttButton.ptt-composer-button {
+        width: 52px !important;
+        height: 52px !important;
+        min-width: 52px !important;
+        min-height: 52px !important;
+        max-width: 52px !important;
+        max-height: 52px !important;
+        flex-basis: 52px !important;
+        margin: 0 !important;
+    }
+
+    #pttButton.ptt-composer-button::before {
+        width: 27px;
+        height: 27px;
+    }
+
+    .chat-composer-actions {
+        gap: 8px;
+    }
+}
+
+/*
+ * Compact operational PTT strip.
+ * It keeps existing text/state elements, including the identity
+ * currently speaking. Only layout and visual hierarchy change.
+ */
+#pttPanel.ptt-status-strip,
+.ptt-panel.ptt-status-strip,
+.ptt-card.ptt-status-strip {
+    min-height: 58px;
+
+    margin-top: 10px !important;
+    margin-bottom: 10px !important;
+
+    padding: 9px 14px !important;
+
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+
+    border-radius: 14px !important;
+    border: 1px solid var(--ev-border, #e2e8f0) !important;
+
+    background: rgba(255,255,255,.96) !important;
+
+    box-shadow:
+        0 4px 14px rgba(15,23,42,.055) !important;
+}
+
+#pttPanel.ptt-status-strip > *,
+.ptt-panel.ptt-status-strip > *,
+.ptt-card.ptt-status-strip > * {
+    min-width: 0;
+}
+
+#pttPanel.ptt-status-strip > :first-child,
+.ptt-panel.ptt-status-strip > :first-child,
+.ptt-card.ptt-status-strip > :first-child {
+    flex: 1 1 auto;
+}
+
+.ptt-status-strip strong {
+    color: var(--ev-text, #172033);
+    font-size: 14px;
+    font-weight: 750;
+}
+
+.ptt-status-strip small,
+.ptt-status-strip span {
+    color: var(--ev-text-soft, #64748b);
+}
+
+.ptt-status-strip[data-ptt-visual-state="transmitting"] {
+    border-color: rgba(22,134,92,.24) !important;
+    background: rgba(22,134,92,.055) !important;
+}
+
+.ptt-status-strip[data-ptt-visual-state="busy"] {
+    border-color: rgba(183,121,31,.22) !important;
+    background: rgba(183,121,31,.045) !important;
+}
+
+#pttTimer.ptt-status-timer {
+    flex: 0 0 auto;
+
+    min-width: 92px;
+
+    padding: 7px 10px;
+
+    border: 1px solid var(--ev-border, #e2e8f0);
+    border-radius: 999px;
+
+    background: var(--ev-surface-soft, #f8fafc);
+
+    color: var(--ev-text-soft, #64748b) !important;
+
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    font-variant-numeric: tabular-nums;
+
+    text-align: center;
+}
+
+/*
+ * Send button stays visually primary for text messages while PTT is
+ * a compact secondary action beside it.
+ */
+.chat-composer-actions .chat-send-button {
+    min-height: 46px;
+}
+
+@media (max-width: 640px) {
+    #pttPanel.ptt-status-strip,
+    .ptt-panel.ptt-status-strip,
+    .ptt-card.ptt-status-strip {
+        align-items: flex-start !important;
+        flex-wrap: wrap !important;
+    }
+
+    #pttTimer.ptt-status-timer {
+        min-width: 82px;
+    }
+}
