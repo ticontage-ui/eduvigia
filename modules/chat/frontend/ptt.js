@@ -147,6 +147,38 @@ function pttBeginRemote() {
   }, {once: true});
 }
 
+/* PTT_HF3_RECORDING_TAIL_FLUSH
+ *
+ * MediaRecorder.stop() emits the final dataavailable asynchronously.
+ * Keep a sequential send chain and wait until all binary chunks have been
+ * queued to the WebSocket before releasing the server-side floor.
+ */
+let pttChunkSendChain = Promise.resolve();
+
+function pttSleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function pttWaitSocketDrain(maxWaitMs = 2000) {
+  const startedAt = Date.now();
+
+  while (
+    pttSocket?.readyState === WebSocket.OPEN &&
+    pttSocket.bufferedAmount > 0 &&
+    Date.now() - startedAt < maxWaitMs
+  ) {
+    await pttSleep(10);
+  }
+
+  /*
+   * bufferedAmount reaching zero means the browser handed the bytes to the
+   * socket stack. A short settle window reduces the race with the HTTP
+   * floor-release request on a separate connection.
+   */
+  if (pttSocket?.readyState === WebSocket.OPEN) {
+    await pttSleep(120);
+  }
+}
 async function pttStartPublishing() {
   try {
     pttStream = await navigator.mediaDevices.getUserMedia({
@@ -155,12 +187,43 @@ async function pttStartPublishing() {
     });
     const mime = pttPreferredMime();
     if (!mime) throw new Error("WEBM/Opus indisponível");
+    pttChunkSendChain = Promise.resolve();
+
     pttRecorder = new MediaRecorder(pttStream, {mimeType: mime});
-    pttRecorder.addEventListener("dataavailable", async event => {
-      if (!event.data?.size || !pttOwnFloorId || pttSocket?.readyState !== WebSocket.OPEN) return;
-      pttSocket.send(await event.data.arrayBuffer());
+    pttRecorder.addEventListener("dataavailable", event => {
+      const chunk = event.data;
+
+      if (!chunk?.size) return;
+
+      pttChunkSendChain = pttChunkSendChain
+        .then(async () => {
+          /*
+           * pttOwnFloorId intentionally remains set until recorder stop,
+           * final dataavailable and socket drain have completed.
+           */
+          if (
+            !pttOwnFloorId ||
+            pttSocket?.readyState !== WebSocket.OPEN
+          ) {
+            return;
+          }
+
+          const payload = await chunk.arrayBuffer();
+
+          if (
+            !pttOwnFloorId ||
+            pttSocket?.readyState !== WebSocket.OPEN
+          ) {
+            return;
+          }
+
+          pttSocket.send(payload);
+        })
+        .catch(error => {
+          console.error("Falha ao enviar chunk PTT:", error);
+        });
     });
-    pttRecorder.addEventListener("stop", pttResetLocal);
+
     pttRecorder.start(PTT_CHUNK_MS);
     pttStartedAt = Date.now();
     pttTimerHandle = setInterval(pttUpdateTimer, 250);
@@ -172,9 +235,44 @@ async function pttStartPublishing() {
   }
 }
 
-function pttStopPublishing() {
-  if (pttRecorder?.state === "recording") pttRecorder.stop();
-  else pttResetLocal();
+async function pttStopPublishing() {
+  const recorder = pttRecorder;
+
+  if (!recorder || recorder.state !== "recording") {
+    try {
+      await pttChunkSendChain;
+    } catch {}
+
+    await pttWaitSocketDrain();
+    pttResetLocal();
+    return;
+  }
+
+  const recorderStopped = new Promise(resolve => {
+    recorder.addEventListener(
+      "stop",
+      resolve,
+      {once: true}
+    );
+  });
+
+  recorder.stop();
+
+  /*
+   * MediaRecorder guarantees the final dataavailable before the stop event,
+   * but the dataavailable handler itself performs async Blob.arrayBuffer().
+   * Therefore we wait for both the stop event and our send chain.
+   */
+  await recorderStopped;
+
+  try {
+    await pttChunkSendChain;
+  } catch (error) {
+    console.error("Falha ao finalizar chunks PTT:", error);
+  }
+
+  await pttWaitSocketDrain();
+  pttResetLocal();
 }
 
 async function pttRequestFloor() {
@@ -203,16 +301,39 @@ async function pttRequestFloor() {
 
 async function pttReleaseFloor() {
   const floorId = pttOwnFloorId;
-  pttOwnFloorId = null;
-  pttStopPublishing();
-  if (!floorId || !pttCurrentChannelId || !pttCurrentIdentity) return;
+  const channelId = pttCurrentChannelId;
+  const identityId = pttCurrentIdentity;
+
+  /*
+   * PTT_HF3_RELEASE_AFTER_FLUSH
+   * Do not clear pttOwnFloorId before MediaRecorder emits/sends its final
+   * chunk. The dataavailable path uses this id as the publishing guard.
+   */
   try {
-    await jsonFetch(`/api/ptt/channels/${encodeURIComponent(pttCurrentChannelId)}/floor/release`, {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({identity_id: pttCurrentIdentity, floor_id: floorId})
-    });
-  } catch (error) { console.error("Falha ao liberar PTT:", error); }
+    await pttStopPublishing();
+  } catch (error) {
+    console.error("Falha ao finalizar publicacao PTT:", error);
+  }
+
+  pttOwnFloorId = null;
+
+  if (!floorId || !channelId || !identityId) return;
+
+  try {
+    await jsonFetch(
+      `/api/ptt/channels/${encodeURIComponent(channelId)}/floor/release`,
+      {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          identity_id: identityId,
+          floor_id: floorId
+        })
+      }
+    );
+  } catch (error) {
+    console.error("Falha ao liberar PTT:", error);
+  }
 }
 
 function pttDisconnectSocket() {
