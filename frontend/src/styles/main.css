@@ -4397,3 +4397,90 @@ button:disabled {
   .sosSituation button { justify-content: center; }
   .sosDetailHeader { flex-direction: column; }
 }
+
+/* F8-R1 HF2 — SOS Audible Operational Alert */
+.sosAudioControl {
+  min-width: 0;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 7px 5px 10px;
+  border: 1px solid #b9c9d8;
+  border-radius: 999px;
+  background: #f7fafc;
+  color: #24435e;
+  box-shadow: 0 3px 10px rgba(25, 55, 82, .08);
+}
+.sosAudioControl.ready {
+  border-color: #b8d7c2;
+  background: #f3fbf6;
+  color: #176534;
+}
+.sosAudioControl.critical {
+  border-color: #dc2626;
+  background: #fff1f2;
+  color: #991b1b;
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, .07), 0 5px 16px rgba(185, 28, 28, .14);
+}
+.sosAudioControl.muted {
+  border-color: #f0b34d;
+  background: #fff8e8;
+  color: #8a5500;
+}
+.sosAudioCopy {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+.sosAudioCopy strong {
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  line-height: 1.15;
+}
+.sosAudioCopy span {
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9px;
+  opacity: .78;
+}
+.sosAudioButton {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 9px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: #fff;
+  color: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sosAudioButton:disabled {
+  opacity: .72;
+  cursor: default;
+}
+.sosAudioPulse {
+  animation: sosAudiblePulse .82s ease-in-out infinite alternate;
+}
+@keyframes sosAudiblePulse {
+  from { transform: scale(.92); opacity: .72; }
+  to { transform: scale(1.14); opacity: 1; }
+}
+@media (max-width: 1280px) {
+  .sosAudioCopy span { display: none; }
+  .sosAudioCopy strong { max-width: 160px; }
+}
+@media (max-width: 1040px) {
+  .sosAudioCopy { display: none; }
+  .sosAudioControl { padding-left: 8px; }
+}

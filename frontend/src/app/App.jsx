@@ -43,6 +43,7 @@ import "../styles/main.css";
 
 import { API_URL } from "../config/runtime";
 import { api } from "../services/api";
+import SosAudibleAlert from "../components/SosAudibleAlert";
 
 const CameraFleetStatusContext = React.createContext({
   total: 0,
@@ -1758,6 +1759,10 @@ export default function App() {
             />
           </div>
           <div className="topActions">
+            <SosAudibleAlert
+              enabled={can("sos:operate")}
+              onFeedback={showActionFeedback}
+            />
             {Boolean(authUser?.school_id && can("sos:use")) && (
               <SOSQuickButton
                 onActivated={() => navigate("sos")}
