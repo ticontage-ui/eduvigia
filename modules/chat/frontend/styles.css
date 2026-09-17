@@ -1324,3 +1324,63 @@ select:focus {
 [data-feature="voice-message"] {
     display: none !important;
 }
+
+/* EDUVIGIA_CHAT_PTT_ROUND_CENTERED_R1 */
+
+/*
+ * Compact institutional PTT button.
+ * Visual-only change: no PTT behavior, timing or transport changes.
+ */
+#pttButton {
+    width: 104px !important;
+    height: 104px !important;
+    min-width: 104px !important;
+    min-height: 104px !important;
+    max-width: 104px !important;
+    max-height: 104px !important;
+
+    aspect-ratio: 1 / 1;
+    padding: 12px !important;
+    margin: 18px auto !important;
+
+    display: grid !important;
+    place-items: center !important;
+
+    border-radius: 50% !important;
+    text-align: center !important;
+    white-space: normal !important;
+
+    font-size: 12px !important;
+    line-height: 1.18 !important;
+    letter-spacing: .015em !important;
+}
+
+#pttButton:hover {
+    transform: translateY(-1px) scale(1.025);
+}
+
+#pttButton:active {
+    transform: translateY(1px) scale(.975);
+}
+
+#pttButton:disabled {
+    transform: none;
+}
+
+/*
+ * Keep the button circular on responsive layouts.
+ * This intentionally overrides the earlier mobile width:100% rule.
+ */
+@media (max-width: 900px) {
+    #pttButton {
+        width: 104px !important;
+        height: 104px !important;
+        min-width: 104px !important;
+        min-height: 104px !important;
+        max-width: 104px !important;
+        max-height: 104px !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        border-radius: 50% !important;
+    }
+}
