@@ -1635,3 +1635,24 @@ select:focus {
         min-width: 82px;
     }
 }
+
+/* EDUVIGIA_CHAT_PTT_COMPOSER_HF1_MIC_CENTER */
+
+/*
+ * Optical centering fix:
+ * the microphone icon was slightly high inside the circular button.
+ * Keep the same asset and move it to the true visual center.
+ */
+#pttButton.ptt-composer-button::before {
+    position: absolute !important;
+    left: 50% !important;
+    top: 50% !important;
+    margin: 0 !important;
+    transform: translate(-50%, -43%) !important;
+}
+
+@media (max-width: 900px) {
+    #pttButton.ptt-composer-button::before {
+        transform: translate(-50%, -43%) !important;
+    }
+}
