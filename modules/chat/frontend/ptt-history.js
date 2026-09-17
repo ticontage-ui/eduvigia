@@ -46,6 +46,22 @@ function pttHistoryDuration(ms) {
   return `${seconds}s`;
 }
 
+function pttHistoryClockFromSeconds(value) {
+  const total = Math.max(
+    0,
+    Math.round(Number(value) || 0)
+  );
+
+  const minutes = Math.floor(total / 60);
+  const seconds = total % 60;
+
+  return (
+    String(minutes).padStart(2, "0") +
+    ":" +
+    String(seconds).padStart(2, "0")
+  );
+}
+
 function pttHistoryTimestamp(value) {
   if (!value) return "";
 
@@ -63,6 +79,140 @@ function pttHistoryAudioUrl(recordingId, identityId) {
     `/api/ptt/recordings/${encodeURIComponent(recordingId)}` +
     `/audio?identity_id=${encodeURIComponent(identityId)}`
   );
+}
+
+function pttCreateHistoryPlayer(item, identityId) {
+  const durationSeconds = Math.max(
+    0,
+    (Number(item.duration_ms) || 0) / 1000
+  );
+
+  const player = document.createElement("div");
+  player.className = "ptt-history-player";
+
+  const audio = document.createElement("audio");
+  audio.className = "ptt-history-audio";
+  audio.preload = "metadata";
+  audio.src = pttHistoryAudioUrl(item.id, identityId);
+
+  const playButton = document.createElement("button");
+  playButton.className = "ptt-history-play";
+  playButton.type = "button";
+  playButton.textContent = "▶";
+  playButton.setAttribute("aria-label", "Reproduzir gravação");
+
+  const currentTime = document.createElement("span");
+  currentTime.className = "ptt-history-current";
+  currentTime.textContent = "00:00";
+
+  const progress = document.createElement("input");
+  progress.className = "ptt-history-progress";
+  progress.type = "range";
+  progress.min = "0";
+  progress.max = String(Math.max(durationSeconds, 0.1));
+  progress.step = "0.1";
+  progress.value = "0";
+  progress.setAttribute("aria-label", "Posição da gravação");
+
+  const totalTime = document.createElement("span");
+  totalTime.className = "ptt-history-total";
+  totalTime.textContent =
+    pttHistoryClockFromSeconds(durationSeconds);
+
+  const muteButton = document.createElement("button");
+  muteButton.className = "ptt-history-mute";
+  muteButton.type = "button";
+  muteButton.textContent = "🔊";
+  muteButton.setAttribute("aria-label", "Silenciar gravação");
+
+  function updatePlayer() {
+    const current = Number(audio.currentTime) || 0;
+
+    currentTime.textContent =
+      pttHistoryClockFromSeconds(current);
+
+    progress.value = String(
+      Math.min(
+        current,
+        durationSeconds || current
+      )
+    );
+  }
+
+  playButton.addEventListener("click", async () => {
+    if (audio.paused) {
+      try {
+        await audio.play();
+      } catch (error) {
+        console.error("Falha ao reproduzir PTT:", error);
+      }
+    } else {
+      audio.pause();
+    }
+  });
+
+  audio.addEventListener("play", () => {
+    playButton.textContent = "❚❚";
+    playButton.setAttribute("aria-label", "Pausar gravação");
+  });
+
+  audio.addEventListener("pause", () => {
+    playButton.textContent = "▶";
+    playButton.setAttribute("aria-label", "Reproduzir gravação");
+  });
+
+  audio.addEventListener("timeupdate", updatePlayer);
+
+  audio.addEventListener("ended", () => {
+    playButton.textContent = "▶";
+    currentTime.textContent = "00:00";
+    progress.value = "0";
+
+    try {
+      audio.currentTime = 0;
+    } catch {}
+  });
+
+  progress.addEventListener("input", () => {
+    const requested = Number(progress.value) || 0;
+
+    currentTime.textContent =
+      pttHistoryClockFromSeconds(requested);
+
+    try {
+      audio.currentTime = requested;
+    } catch {}
+  });
+
+  muteButton.addEventListener("click", () => {
+    audio.muted = !audio.muted;
+    muteButton.textContent = audio.muted ? "🔇" : "🔊";
+    muteButton.setAttribute(
+      "aria-label",
+      audio.muted ? "Ativar som da gravação" : "Silenciar gravação"
+    );
+  });
+
+  audio.addEventListener("error", () => {
+    player.dataset.error = "true";
+    playButton.disabled = true;
+    playButton.textContent = "!";
+    playButton.setAttribute(
+      "aria-label",
+      "Não foi possível carregar a gravação"
+    );
+  });
+
+  player.append(
+    playButton,
+    currentTime,
+    progress,
+    totalTime,
+    muteButton,
+    audio
+  );
+
+  return player;
 }
 
 async function pttLoadHistory() {
@@ -116,35 +266,37 @@ async function pttLoadHistory() {
       const article = document.createElement("article");
       article.className = "ptt-history-item";
 
-      const speaker = pttHistoryEscape(
+      const meta = document.createElement("div");
+      meta.className = "ptt-history-meta";
+
+      const speaker = document.createElement("strong");
+      speaker.textContent =
         item.speaker_display_name ||
-        item.speaker_identity_id
+        item.speaker_identity_id ||
+        "Operador";
+
+      const detail = document.createElement("span");
+
+      const when = pttHistoryTimestamp(item.started_at);
+      const duration = pttHistoryDuration(item.duration_ms);
+
+      detail.textContent =
+        `${when}${when ? " · " : ""}${duration}`;
+
+      meta.append(
+        speaker,
+        detail
       );
 
-      const when = pttHistoryEscape(
-        pttHistoryTimestamp(item.started_at)
+      const player = pttCreateHistoryPlayer(
+        item,
+        context.identityId
       );
 
-      const duration = pttHistoryEscape(
-        pttHistoryDuration(item.duration_ms)
+      article.append(
+        meta,
+        player
       );
-
-      const digest = pttHistoryEscape(
-        (item.sha256 || "").slice(0, 12)
-      );
-
-      article.innerHTML = `
-        <div class="ptt-history-meta">
-          <strong>${speaker}</strong>
-          <span>${when} · ${duration}</span>
-          <small>SHA-256 ${digest}…</small>
-        </div>
-        <audio
-          controls
-          preload="metadata"
-          src="${pttHistoryAudioUrl(item.id, context.identityId)}"
-        ></audio>
-      `;
 
       pttHistoryListEl.appendChild(article);
     }

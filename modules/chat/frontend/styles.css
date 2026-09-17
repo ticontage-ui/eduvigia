@@ -578,3 +578,141 @@ button, input, select { font: inherit; }
     grid-template-columns: minmax(0,1fr);
   }
 }
+
+/* EDUVIGIA_CHAT_V071_UI_HF1 */
+
+/*
+ * Keep the navigation column independent from the main document scroll.
+ * The main content may grow when PTT history is open, while the sidebar
+ * remains visible and gets its own vertical scroll when necessary.
+ */
+.app {
+    height: auto;
+    min-height: 100vh;
+    align-items: start;
+}
+
+.sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    max-height: 100vh;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+}
+
+.channels {
+    overflow-y: visible;
+}
+
+.chat {
+    min-height: 100vh;
+    align-self: start;
+}
+
+/* PTT history player uses server-side duration_ms instead of WebM duration metadata. */
+.ptt-history-item {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 520px);
+}
+
+.ptt-history-player {
+    width: 100%;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 40px 48px minmax(120px, 1fr) 48px 40px;
+    align-items: center;
+    gap: 9px;
+    padding: 10px 12px;
+    border-radius: 999px;
+    background: #f0f2f4;
+}
+
+.ptt-history-audio {
+    display: none;
+}
+
+.ptt-history-play,
+.ptt-history-mute {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.ptt-history-play:hover,
+.ptt-history-mute:hover {
+    background: rgba(23, 32, 51, .07);
+}
+
+.ptt-history-play:disabled {
+    cursor: not-allowed;
+    opacity: .45;
+}
+
+.ptt-history-current,
+.ptt-history-total {
+    color: #172033;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+}
+
+.ptt-history-progress {
+    width: 100%;
+    min-width: 0;
+    accent-color: #52687d;
+    cursor: pointer;
+}
+
+.ptt-history-player[data-error="true"] {
+    opacity: .65;
+}
+
+@supports (height: 100dvh) {
+    .sidebar {
+        height: 100dvh;
+        max-height: 100dvh;
+    }
+}
+
+@media (max-width: 900px) {
+    .app {
+        height: auto;
+        min-height: 100vh;
+    }
+
+    .sidebar {
+        position: static;
+        width: 100%;
+        height: auto;
+        max-height: none;
+        overflow: visible;
+    }
+
+    .channels {
+        overflow-y: auto;
+        max-height: 38vh;
+    }
+
+    .chat {
+        min-height: auto;
+    }
+
+    .ptt-history-item {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .ptt-history-player {
+        grid-template-columns: 38px 44px minmax(80px, 1fr) 44px 38px;
+        gap: 6px;
+    }
+}
