@@ -1300,3 +1300,27 @@ select:focus {
         animation: none !important;
     }
 }
+
+/* EDUVIGIA_CHAT_NO_ASYNC_AUDIO_R1 */
+
+/*
+ * Async audio-message composer is intentionally disabled.
+ * Do NOT include any PTT selector here.
+ */
+#recordAudio,
+#recordAudioButton,
+#audioRecord,
+#audioRecordButton,
+#audioMessage,
+#audioMessageButton,
+#voiceMessage,
+#voiceMessageButton,
+#micButton,
+#microphoneButton,
+[data-action="record-audio"],
+[data-action="audio-message"],
+[data-action="voice-message"],
+[data-feature="audio-message"],
+[data-feature="voice-message"] {
+    display: none !important;
+}
