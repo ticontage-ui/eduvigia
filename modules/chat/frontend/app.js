@@ -116,7 +116,82 @@ function isSchoolIdentity() {
   return currentIdentityObject()?.organization_kind === "ESCOLA";
 }
 
+// EDUVIGIA_CHAT_BROADCAST_UI_V072
+const BROADCAST_CHANNEL_ID = "institutional:ALL-SCHOOLS";
+
+function isBroadcastChannel(channel) {
+  return Boolean(
+    channel &&
+    channel.id === BROADCAST_CHANNEL_ID &&
+    channel.type === "INSTITUTIONAL"
+  );
+}
+
+function canWriteChannel(channel) {
+  if (!channel) return false;
+  if (!isBroadcastChannel(channel)) return true;
+
+  const kind = currentIdentityObject()?.organization_kind;
+
+  return kind === "GUARDA" || kind === "SECRETARIA";
+}
+
+function pttContextChannelId() {
+  const channel = currentChannel();
+
+  if (
+    !channel ||
+    channel.type === "INSTITUTIONAL" ||
+    channel.ptt_enabled === false
+  ) {
+    return null;
+  }
+
+  return currentChannelId;
+}
+
+function applyChannelMode(channel) {
+  const broadcast = isBroadcastChannel(channel);
+  const writable = canWriteChannel(channel);
+
+  document.documentElement.dataset.channelMode =
+    broadcast ? "broadcast" : "emergency";
+
+  composerEl?.classList.toggle(
+    "read-only-channel",
+    Boolean(broadcast && !writable)
+  );
+
+  if (bodyEl) {
+    bodyEl.disabled = !writable;
+    bodyEl.placeholder =
+      broadcast && !writable
+        ? "Canal de avisos gerais - somente leitura para escolas"
+        : "Digite uma mensagem ou envie anexos...";
+  }
+
+  if (sendEl) sendEl.disabled = !writable;
+  if (fileInputEl) fileInputEl.disabled = !writable;
+
+  const pttButton = document.getElementById("pttButton");
+  const pttPanel =
+    document.getElementById("pttPanel") ||
+    document.querySelector(".ptt-panel") ||
+    document.querySelector(".ptt-card");
+  const pttHistoryPanel = document.getElementById("pttHistoryPanel");
+  const pttHistoryToggle = document.getElementById("pttHistoryToggle");
+
+  if (pttButton) pttButton.hidden = broadcast;
+  if (pttPanel) pttPanel.hidden = broadcast;
+  if (pttHistoryPanel && broadcast) pttHistoryPanel.hidden = true;
+  if (pttHistoryToggle) pttHistoryToggle.hidden = broadcast;
+}
+
 function channelLabel(channel) {
+  if (isBroadcastChannel(channel)) {
+    return channel.title || "Avisos Gerais - Todas as Escolas";
+  }
+
   return channel.school_display_name || channel.title || channel.school_code;
 }
 
@@ -132,14 +207,14 @@ function renderIdentityInfo() {
     identityInfoEl.textContent =
       `${identity.role} · ${identity.school_code} · acesso somente à própria escola`;
     operatorToolsEl.hidden = true;
-    sectionTitleEl.textContent = "Meu Canal de Emergência";
+    sectionTitleEl.textContent = "Meus Canais Institucionais";
     return;
   }
 
   identityInfoEl.textContent =
     `${identity.role} · visão operacional das escolas autorizadas`;
   operatorToolsEl.hidden = false;
-  sectionTitleEl.textContent = "Canais das Escolas";
+  sectionTitleEl.textContent = "Canais Institucionais";
 }
 
 async function loadIdentities() {
@@ -367,10 +442,7 @@ function publishChatContext() {
       typeof currentIdentity === "string" && currentIdentity
         ? currentIdentity
         : null,
-    channelId:
-      typeof currentChannelId === "string" && currentChannelId
-        ? currentChannelId
-        : null
+    channelId: pttContextChannelId()
   };
 
   window.dispatchEvent(
@@ -389,10 +461,7 @@ window.EduVigIAChatContext = Object.freeze({
         typeof currentIdentity === "string" && currentIdentity
           ? currentIdentity
           : null,
-      channelId:
-        typeof currentChannelId === "string" && currentChannelId
-          ? currentChannelId
-          : null
+      channelId: pttContextChannelId()
     };
   }
 });
@@ -456,6 +525,10 @@ function renderChannels() {
     button.className = "channel";
     button.dataset.channelId = channel.id;
 
+    if (isBroadcastChannel(channel)) {
+      button.classList.add("broadcast-channel");
+    }
+
     if (channel.id === currentChannelId) {
       button.classList.add("active");
     }
@@ -474,7 +547,10 @@ function renderChannels() {
     top.append(name, badge);
 
     const school = document.createElement("small");
-    school.textContent = channel.school_code;
+    school.textContent =
+      isBroadcastChannel(channel)
+        ? "TODAS AS ESCOLAS - COMUNICADO GERAL"
+        : channel.school_code;
 
     const preview = document.createElement("span");
     preview.textContent =
@@ -502,7 +578,9 @@ async function refreshChannels({preserveSelection = true} = {}) {
   const identity = currentIdentityObject();
   if (identity?.organization_kind === "ESCOLA") {
     channels = channels.filter(
-      channel => channel.school_code === identity.school_code
+      channel =>
+        isBroadcastChannel(channel) ||
+        channel.school_code === identity.school_code
     );
   }
 
@@ -593,6 +671,7 @@ async function selectChannel(channelId) {
 
   if (
     identity?.organization_kind === "ESCOLA" &&
+    !isBroadcastChannel(channel) &&
     channel.school_code !== identity.school_code
   ) {
     resetChat();
@@ -602,6 +681,7 @@ async function selectChannel(channelId) {
 
   const token = ++loadToken;
   currentChannelId = channelId;
+  applyChannelMode(channel);
   publishChatContext();
   seen.clear();
   messagesEl.innerHTML = "";
@@ -609,7 +689,13 @@ async function selectChannel(channelId) {
 
   channelTitleEl.textContent = channelLabel(channel);
   channelMetaEl.textContent =
-    `${channel.school_code} · Escola ↔ Guarda Municipal ↔ Secretaria de Educação`;
+    isBroadcastChannel(channel)
+      ? (
+          canWriteChannel(channel)
+            ? "Guarda Municipal / Secretaria -> Todas as escolas - Texto e anexos"
+            : "Avisos da Guarda Municipal e Secretaria - Somente leitura"
+        )
+      : `${channel.school_code} - Escola <-> Guarda Municipal <-> Secretaria de Educacao`;
 
   bodyEl.disabled = true;
   sendEl.disabled = true;
@@ -638,11 +724,11 @@ async function selectChannel(channelId) {
 
     renderChannels();
 
-    bodyEl.disabled = false;
-    sendEl.disabled = false;
-    if (fileInputEl) fileInputEl.disabled = false;
-    if (recordAudioEl) recordAudioEl.disabled = !supportsAudioRecording();
-    bodyEl.focus();
+    applyChannelMode(channel);
+
+    if (canWriteChannel(channel)) {
+      bodyEl.focus();
+    }
   }
   catch (error) {
     if (token !== loadToken) return;
@@ -798,8 +884,14 @@ composerEl.addEventListener("submit", async event => {
 
   const identity = currentIdentityObject();
 
+  if (!canWriteChannel(channel)) {
+    alert("Este canal e somente leitura para as escolas.");
+    return;
+  }
+
   if (
     identity?.organization_kind === "ESCOLA" &&
+    !isBroadcastChannel(channel) &&
     channel.school_code !== identity.school_code
   ) {
     alert("A escola não possui acesso a este canal.");
@@ -893,11 +985,12 @@ composerEl.addEventListener("submit", async event => {
   }
   finally {
     if (currentChannelId) {
-      bodyEl.disabled = false;
-      sendEl.disabled = false;
-      if (fileInputEl) fileInputEl.disabled = false;
-    if (recordAudioEl) recordAudioEl.disabled = !supportsAudioRecording();
-      bodyEl.focus();
+      const activeChannel = currentChannel();
+      applyChannelMode(activeChannel);
+
+      if (canWriteChannel(activeChannel)) {
+        bodyEl.focus();
+      }
     }
   }
 });
@@ -914,10 +1007,7 @@ window.EduVigIAChatContext = Object.freeze({
         typeof currentIdentity === "string" && currentIdentity
           ? currentIdentity
           : null,
-      channelId:
-        typeof currentChannelId === "string" && currentChannelId
-          ? currentChannelId
-          : null
+      channelId: pttContextChannelId()
     };
   }
 });

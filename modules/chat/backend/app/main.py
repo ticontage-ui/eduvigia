@@ -27,6 +27,10 @@ APP_VERSION = os.getenv("CHAT_VERSION", "0.3.0-R1")
 
 ALLOWED_ORGANIZATIONS = {"ESCOLA", "GUARDA", "SECRETARIA"}
 
+# EDUVIGIA_CHAT_BROADCAST_V072
+BROADCAST_CHANNEL_ID = "institutional:ALL-SCHOOLS"
+BROADCAST_WRITER_ORGANIZATIONS = {"GUARDA", "SECRETARIA"}
+
 ATTACHMENTS_DIR = Path(os.getenv("CHAT_ATTACHMENTS_DIR", "/data/attachments"))
 ATTACHMENT_MAX_BYTES = 25 * 1024 * 1024
 ATTACHMENT_MAX_FILES = 5
@@ -296,34 +300,49 @@ async def ensure_channel_access(
             status
         FROM chat_conversations
         WHERE id = $1
-          AND type = 'EMERGENCY'
+          AND (
+                type = 'EMERGENCY'
+                OR (
+                    type = 'INSTITUTIONAL'
+                    AND id = $2
+                )
+          )
           AND managed_by_system = TRUE
           AND status = 'ACTIVE'
           AND archived_at IS NULL
         """,
         channel_id,
+        BROADCAST_CHANNEL_ID,
     )
 
     if not channel:
-        raise HTTPException(status_code=404, detail="Canal de emergencia inexistente")
+        raise HTTPException(status_code=404, detail="Canal institucional inexistente")
 
-    # School isolation is evaluated BEFORE membership. Even if an erroneous
-    # membership exists in the database, a school can never cross school_code.
     if identity["organization_kind"] == "ESCOLA":
-        if not identity["school_code"]:
-            raise HTTPException(status_code=403, detail="Escola sem vinculo institucional")
+        if channel["type"] == "EMERGENCY":
+            if not identity["school_code"]:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Escola sem vinculo institucional",
+                )
 
-        if identity["school_code"] != channel["school_code"]:
-            logger.warning(
-                "Cross-school access denied identity=%s identity_school=%s channel=%s channel_school=%s",
-                identity_id,
-                identity["school_code"],
-                channel_id,
-                channel["school_code"],
-            )
+            if identity["school_code"] != channel["school_code"]:
+                logger.warning(
+                    "Cross-school access denied identity=%s identity_school=%s channel=%s channel_school=%s",
+                    identity_id,
+                    identity["school_code"],
+                    channel_id,
+                    channel["school_code"],
+                )
+                raise HTTPException(
+                    status_code=403,
+                    detail="Escola nao pode acessar canal de outra escola",
+                )
+
+        elif channel["id"] != BROADCAST_CHANNEL_ID:
             raise HTTPException(
                 status_code=403,
-                detail="Escola nao pode acessar canal de outra escola",
+                detail="Escola sem acesso ao canal institucional",
             )
 
     membership = await conn.fetchrow(
@@ -340,6 +359,29 @@ async def ensure_channel_access(
 
     if not membership:
         raise HTTPException(status_code=403, detail="Sem acesso ao canal")
+
+    return identity, channel, membership
+
+
+async def ensure_channel_write_access(
+    conn: asyncpg.Connection,
+    channel_id: str,
+    identity_id: str,
+):
+    identity, channel, membership = await ensure_channel_access(
+        conn,
+        channel_id,
+        identity_id,
+    )
+
+    if (
+        channel["id"] == BROADCAST_CHANNEL_ID
+        and identity["organization_kind"] not in BROADCAST_WRITER_ORGANIZATIONS
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Canal de avisos gerais: escolas possuem acesso somente leitura",
+        )
 
     return identity, channel, membership
 
@@ -570,11 +612,13 @@ async def list_emergency_channels(identity_id: str = Query(...)):
             """
             SELECT
                 c.id,
+                c.type,
                 c.title,
                 c.school_code,
                 c.status,
                 c.updated_at,
                 CASE
+                    WHEN c.type = 'INSTITUTIONAL' THEN 'Avisos Gerais'
                     WHEN c.school_code = 'SCHOOL-A' THEN 'Escola A'
                     WHEN c.school_code = 'SCHOOL-B' THEN 'Escola B'
                     ELSE c.school_code
@@ -602,15 +646,23 @@ async def list_emergency_channels(identity_id: str = Query(...)):
                 ORDER BY msg.id DESC
                 LIMIT 1
             ) last_msg ON TRUE
-            WHERE c.type = 'EMERGENCY'
+            WHERE (
+                    c.type = 'EMERGENCY'
+                    OR (
+                        c.type = 'INSTITUTIONAL'
+                        AND c.id = $4
+                    )
+                  )
               AND c.managed_by_system = TRUE
               AND c.status = 'ACTIVE'
               AND c.archived_at IS NULL
               AND (
                     $2 <> 'ESCOLA'
+                    OR c.type = 'INSTITUTIONAL'
                     OR c.school_code = $3
               )
             ORDER BY
+                CASE WHEN c.type = 'INSTITUTIONAL' THEN 0 ELSE 1 END,
                 CASE
                     WHEN (
                         SELECT count(*)
@@ -622,14 +674,16 @@ async def list_emergency_channels(identity_id: str = Query(...)):
                     ELSE 1
                 END,
                 COALESCE(last_msg.created_at, c.updated_at) DESC,
-                c.school_code
+                c.school_code NULLS FIRST
             """,
             identity_id,
             identity["organization_kind"],
             identity["school_code"],
+            BROADCAST_CHANNEL_ID,
         )
 
     result = []
+
     for row in rows:
         item = dict(row)
         item["updated_at"] = row["updated_at"].isoformat()
@@ -638,6 +692,11 @@ async def list_emergency_channels(identity_id: str = Query(...)):
             if row["last_message_at"]
             else None
         )
+        item["read_only"] = (
+            row["type"] == "INSTITUTIONAL"
+            and identity["organization_kind"] == "ESCOLA"
+        )
+        item["ptt_enabled"] = row["type"] == "EMERGENCY"
         result.append(item)
 
     return result
@@ -724,7 +783,7 @@ async def create_channel_message(
 
     async with app.state.db.acquire() as conn:
         async with conn.transaction():
-            identity, channel, _ = await ensure_channel_access(
+            identity, channel, _ = await ensure_channel_write_access(
                 conn,
                 channel_id,
                 payload.sender_identity_id,
@@ -847,7 +906,7 @@ async def create_channel_message_with_attachments(
         )
 
     async with app.state.db.acquire() as conn:
-        identity, channel, _ = await ensure_channel_access(
+        identity, channel, _ = await ensure_channel_write_access(
             conn,
             channel_id,
             sender_identity_id,

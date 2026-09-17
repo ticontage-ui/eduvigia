@@ -1656,3 +1656,60 @@ select:focus {
         transform: translate(-50%, -43%) !important;
     }
 }
+
+/* EDUVIGIA_CHAT_BROADCAST_UI_CSS_V072 */
+
+.channel.broadcast-channel {
+    border-color: rgba(77, 142, 219, .30);
+    background:
+        linear-gradient(
+            135deg,
+            rgba(77, 142, 219, .18),
+            rgba(255, 255, 255, .05)
+        );
+}
+
+.channel.broadcast-channel::before {
+    content: "COMUNICADO GERAL";
+    display: inline-flex;
+    width: max-content;
+    margin: 0 0 7px;
+    padding: 3px 7px;
+    border: 1px solid rgba(255,255,255,.10);
+    border-radius: 999px;
+    background: rgba(255,255,255,.08);
+    color: rgba(255,255,255,.90);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .08em;
+}
+
+.channel.broadcast-channel small {
+    color: rgba(255,255,255,.66);
+    font-size: 10px;
+    font-weight: 750;
+}
+
+#composer.read-only-channel::before {
+    content: "CANAL SOMENTE LEITURA";
+    display: inline-flex;
+    align-items: center;
+    min-height: 25px;
+    margin: 0 0 8px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: rgba(37, 99, 235, .08);
+    color: #315d9b;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .07em;
+}
+
+html[data-channel-mode="broadcast"] #pttButton,
+html[data-channel-mode="broadcast"] #pttPanel,
+html[data-channel-mode="broadcast"] .ptt-panel,
+html[data-channel-mode="broadcast"] .ptt-card,
+html[data-channel-mode="broadcast"] #pttHistoryPanel,
+html[data-channel-mode="broadcast"] #pttHistoryToggle {
+    display: none !important;
+}
