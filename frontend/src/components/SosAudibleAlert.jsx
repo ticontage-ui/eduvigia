@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Siren, Volume2, VolumeX } from "lucide-react";
 import { api } from "../services/api";
 
@@ -6,115 +6,145 @@ const ALARM_STATUSES = new Set(["ACTIVE", "CANCEL_REQUESTED"]);
 const POLL_MS = 3000;
 const REPEAT_MS = 12000;
 const MUTE_MS = 60000;
+const SOS_AUDIO_URL = "/audio/nextalk-sos.mp3";
 
 export default function SosAudibleAlert({ enabled = false, onFeedback = () => {} }) {
   const audioContextRef = useRef(null);
-  const toneRef = useRef(null);
+  const audioBufferRef = useRef(null);
+  const activeSourceRef = useRef(null);
+  const loadingAudioRef = useRef(null);
   const previousCountsRef = useRef(new Map());
   const alarmRowsRef = useRef([]);
   const mutedUntilRef = useRef(0);
   const repeatTimerRef = useRef(null);
+
   const [audioReady, setAudioReady] = useState(false);
   const [alarmRows, setAlarmRows] = useState([]);
   const [mutedUntil, setMutedUntil] = useState(0);
   const [pollError, setPollError] = useState("");
 
-  const stopTone = useCallback(() => {
-    const current = toneRef.current;
-    toneRef.current = null;
-    if (!current) return;
-    (current.oscillators || []).forEach((oscillator) => {
-      try { oscillator.stop(); } catch {}
-      try { oscillator.disconnect(); } catch {}
-    });
-    try { current.gain?.disconnect(); } catch {}
+  const stopAudio = useCallback(() => {
+    const source = activeSourceRef.current;
+    activeSourceRef.current = null;
+    if (!source) return;
+    try { source.stop(); } catch {}
+    try { source.disconnect(); } catch {}
   }, []);
 
-  const playSirenBurst = useCallback(() => {
-    const context = audioContextRef.current;
-    if (!enabled || !context || context.state !== "running") return;
-    if (mutedUntilRef.current > Date.now()) return;
-    if (!alarmRowsRef.current.length) return;
-
-    stopTone();
-
-    const now = context.currentTime;
-    const duration = 2.6;
-    const gain = context.createGain();
-    const primary = context.createOscillator();
-    const secondary = context.createOscillator();
-
-    primary.type = "sawtooth";
-    secondary.type = "square";
-
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.075, now + 0.04);
-
-    for (let index = 0; index < 7; index += 1) {
-      const time = now + (index * 0.36);
-      const high = index % 2 === 0;
-      primary.frequency.setValueAtTime(high ? 980 : 690, time);
-      secondary.frequency.setValueAtTime(high ? 490 : 345, time);
+  const ensureAudioContext = useCallback(async () => {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) {
+      throw new Error("Este navegador não oferece Web Audio para o alerta de emergência.");
     }
 
-    gain.gain.setValueAtTime(0.075, now + duration - 0.12);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    let context = audioContextRef.current;
+    if (!context || context.state === "closed") {
+      context = new AudioContextClass();
+      audioContextRef.current = context;
+    }
 
-    primary.connect(gain);
-    secondary.connect(gain);
-    gain.connect(context.destination);
+    if (context.state === "suspended") {
+      await context.resume();
+    }
 
-    primary.start(now);
-    secondary.start(now);
-    primary.stop(now + duration);
-    secondary.stop(now + duration);
+    if (context.state !== "running") {
+      throw new Error("O navegador ainda não liberou o áudio de emergência.");
+    }
 
-    toneRef.current = { oscillators: [primary, secondary], gain };
+    return context;
+  }, []);
 
-    primary.onended = () => {
-      if (toneRef.current?.oscillators?.[0] === primary) {
-        try { gain.disconnect(); } catch {}
-        toneRef.current = null;
+  const ensureOfficialAudioBuffer = useCallback(async () => {
+    if (audioBufferRef.current) return audioBufferRef.current;
+    if (loadingAudioRef.current) return loadingAudioRef.current;
+
+    loadingAudioRef.current = (async () => {
+      const context = await ensureAudioContext();
+      const response = await fetch(SOS_AUDIO_URL, { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`Falha ao carregar a sirene oficial de SOS (${response.status}).`);
       }
-    };
-  }, [enabled, stopTone]);
+
+      const bytes = await response.arrayBuffer();
+      const decoded = await context.decodeAudioData(bytes.slice(0));
+      audioBufferRef.current = decoded;
+      return decoded;
+    })();
+
+    try {
+      return await loadingAudioRef.current;
+    } finally {
+      loadingAudioRef.current = null;
+    }
+  }, [ensureAudioContext]);
+
+  const playSosAlert = useCallback(async () => {
+    if (!enabled) return false;
+    if (mutedUntilRef.current > Date.now()) return false;
+    if (!alarmRowsRef.current.length) return false;
+
+    try {
+      const context = await ensureAudioContext();
+      const buffer = await ensureOfficialAudioBuffer();
+
+      stopAudio();
+
+      const source = context.createBufferSource();
+      source.buffer = buffer;
+      source.connect(context.destination);
+      source.onended = () => {
+        if (activeSourceRef.current === source) {
+          activeSourceRef.current = null;
+        }
+        try { source.disconnect(); } catch {}
+      };
+
+      activeSourceRef.current = source;
+      source.start(0);
+
+      setAudioReady(true);
+      setPollError("");
+      return true;
+    } catch (error) {
+      setAudioReady(false);
+      setPollError(
+        error?.message ||
+          "O navegador bloqueou a sirene oficial de emergência. Clique em Ativar."
+      );
+      return false;
+    }
+  }, [enabled, ensureAudioContext, ensureOfficialAudioBuffer, stopAudio]);
 
   const armAudio = useCallback(async () => {
     if (!enabled) return false;
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContextClass) {
-      setPollError("Este navegador não oferece Web Audio para o alerta de emergência.");
-      return false;
-    }
 
     try {
-      let context = audioContextRef.current;
-      if (!context || context.state === "closed") {
-        context = new AudioContextClass();
-        audioContextRef.current = context;
-      }
-      if (context.state === "suspended") {
-        await context.resume();
-      }
-      const ready = context.state === "running";
-      setAudioReady(ready);
+      await ensureAudioContext();
+      await ensureOfficialAudioBuffer();
+      setAudioReady(true);
+      setPollError("");
 
-      if (ready && alarmRowsRef.current.length && mutedUntilRef.current <= Date.now()) {
-        window.setTimeout(playSirenBurst, 30);
+      if (alarmRowsRef.current.length && mutedUntilRef.current <= Date.now()) {
+        window.setTimeout(() => { playSosAlert(); }, 25);
       }
-      return ready;
+      return true;
     } catch (error) {
+      setAudioReady(false);
       setPollError(error?.message || "O navegador bloqueou o áudio de emergência.");
       return false;
     }
-  }, [enabled, playSirenBurst]);
+  }, [enabled, ensureAudioContext, ensureOfficialAudioBuffer, playSosAlert]);
 
   const poll = useCallback(async () => {
     if (!enabled) return;
+
     try {
       const list = await api("/sos");
       const rows = Array.isArray(list) ? list : [];
-      const alarmRowsNext = rows.filter((row) => ALARM_STATUSES.has(String(row.status || "").toUpperCase()));
+      const alarmRowsNext = rows.filter((row) =>
+        ALARM_STATUSES.has(String(row.status || "").toUpperCase())
+      );
+
       const previous = previousCountsRef.current;
       let newOrReinforced = false;
 
@@ -129,29 +159,30 @@ export default function SosAudibleAlert({ enabled = false, onFeedback = () => {}
       previousCountsRef.current = new Map(
         rows.map((row) => [row.id, Number(row.repeat_count || 1)])
       );
+
       alarmRowsRef.current = alarmRowsNext;
       setAlarmRows(alarmRowsNext);
       setPollError("");
 
       if (!alarmRowsNext.length) {
-        stopTone();
+        stopAudio();
       } else if (
         newOrReinforced &&
-        audioContextRef.current?.state === "running" &&
+        audioReady &&
         mutedUntilRef.current <= Date.now()
       ) {
-        playSirenBurst();
+        playSosAlert();
       }
     } catch (error) {
       setPollError(error?.message || "Falha ao consultar SOS para alerta sonoro.");
     }
-  }, [enabled, playSirenBurst, stopTone]);
+  }, [enabled, audioReady, playSosAlert, stopAudio]);
 
   useEffect(() => {
     if (!enabled) {
       alarmRowsRef.current = [];
       setAlarmRows([]);
-      stopTone();
+      stopAudio();
       return undefined;
     }
 
@@ -164,13 +195,15 @@ export default function SosAudibleAlert({ enabled = false, onFeedback = () => {}
       window.clearInterval(timer);
       window.removeEventListener("focus", onFocus);
     };
-  }, [enabled, poll, stopTone]);
+  }, [enabled, poll, stopAudio]);
 
   useEffect(() => {
     if (!enabled || audioReady) return undefined;
+
     const unlock = () => { armAudio(); };
     window.addEventListener("pointerdown", unlock, { passive: true });
     window.addEventListener("keydown", unlock);
+
     return () => {
       window.removeEventListener("pointerdown", unlock);
       window.removeEventListener("keydown", unlock);
@@ -189,9 +222,11 @@ export default function SosAudibleAlert({ enabled = false, onFeedback = () => {}
       alarmRows.length > 0 &&
       mutedUntilRef.current <= Date.now()
     ) {
-      repeatTimerRef.current = window.setInterval(playSirenBurst, REPEAT_MS);
+      repeatTimerRef.current = window.setInterval(() => {
+        playSosAlert();
+      }, REPEAT_MS);
     } else {
-      stopTone();
+      stopAudio();
     }
 
     return () => {
@@ -200,29 +235,39 @@ export default function SosAudibleAlert({ enabled = false, onFeedback = () => {}
         repeatTimerRef.current = null;
       }
     };
-  }, [enabled, audioReady, alarmRows.length, mutedUntil, playSirenBurst, stopTone]);
+  }, [enabled, audioReady, alarmRows.length, mutedUntil, playSosAlert, stopAudio]);
 
   useEffect(() => {
     if (!mutedUntil) return undefined;
+
     const wait = Math.max(0, mutedUntil - Date.now());
     const timer = window.setTimeout(() => {
       mutedUntilRef.current = 0;
       setMutedUntil(0);
-      if (alarmRowsRef.current.length && audioContextRef.current?.state === "running") {
-        playSirenBurst();
+
+      if (
+        alarmRowsRef.current.length &&
+        audioContextRef.current?.state === "running"
+      ) {
+        playSosAlert();
       }
     }, wait + 25);
+
     return () => window.clearTimeout(timer);
-  }, [mutedUntil, playSirenBurst]);
+  }, [mutedUntil, playSosAlert]);
 
   useEffect(() => () => {
-    stopTone();
-    if (repeatTimerRef.current) window.clearInterval(repeatTimerRef.current);
+    stopAudio();
+
+    if (repeatTimerRef.current) {
+      window.clearInterval(repeatTimerRef.current);
+    }
+
     const context = audioContextRef.current;
     if (context && context.state !== "closed") {
       context.close().catch(() => null);
     }
-  }, [stopTone]);
+  }, [stopAudio]);
 
   if (!enabled) return null;
 
@@ -237,8 +282,8 @@ export default function SosAudibleAlert({ enabled = false, onFeedback = () => {}
       if (ready) {
         onFeedback(
           "success",
-          "Som de emergência ativado",
-          "A Central está habilitada para receber alertas sonoros de SOS."
+          "Sirene oficial de SOS ativada",
+          "A Central está habilitada para receber o alerta sonoro oficial do NexTalk."
         );
       }
       return;
@@ -249,15 +294,20 @@ export default function SosAudibleAlert({ enabled = false, onFeedback = () => {}
     if (isMuted) {
       mutedUntilRef.current = 0;
       setMutedUntil(0);
-      onFeedback("success", "Alerta sonoro reativado", "O SOS volta a emitir o aviso sonoro.");
-      window.setTimeout(playSirenBurst, 25);
+      onFeedback(
+        "success",
+        "Alerta sonoro reativado",
+        "O SOS volta a emitir a sirene oficial de emergência."
+      );
+      window.setTimeout(() => { playSosAlert(); }, 25);
       return;
     }
 
     const until = Date.now() + MUTE_MS;
     mutedUntilRef.current = until;
     setMutedUntil(until);
-    stopTone();
+    stopAudio();
+
     onFeedback(
       "warning",
       "Alerta sonoro silenciado por 60 segundos",
@@ -267,9 +317,12 @@ export default function SosAudibleAlert({ enabled = false, onFeedback = () => {}
 
   let label = "Alertas sonoros ativos";
   let detail = "Central pronta para novos SOS";
+
   if (!audioReady) {
     label = activeCount ? `SOS ATIVO (${activeCount})` : "Ativar som de emergência";
-    detail = activeCount ? "Clique para liberar o áudio do navegador" : "Áudio ainda não liberado pelo navegador";
+    detail = activeCount
+      ? "Clique para liberar a sirene oficial do navegador"
+      : "Sirene oficial ainda não liberada pelo navegador";
   } else if (activeCount && isMuted) {
     label = `SOS ATIVO (${activeCount}) · SILENCIADO`;
     detail = "Silêncio temporário; o evento continua aberto";
@@ -288,10 +341,12 @@ export default function SosAudibleAlert({ enabled = false, onFeedback = () => {}
       aria-live={activeCount ? "assertive" : "polite"}
     >
       <Siren size={18} className={activeCount && !isMuted ? "sosAudioPulse" : ""} />
+
       <div className="sosAudioCopy">
         <strong>{label}</strong>
         <span>{pollError || detail}</span>
       </div>
+
       <button
         type="button"
         className="sosAudioButton"
