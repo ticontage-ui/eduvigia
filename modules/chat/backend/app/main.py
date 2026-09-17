@@ -364,7 +364,15 @@ async def redis_listener(redis: Redis) -> None:
         try:
             await pubsub.subscribe(REDIS_CHANNEL)
 
-            async for event in pubsub.listen():
+            while True:
+
+                event = await pubsub.get_message(timeout=1.0)
+
+                if event is None:
+
+                    await asyncio.sleep(0.05)
+
+                    continue
                 if event.get("type") != "message":
                     continue
 
