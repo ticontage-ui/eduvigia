@@ -89,7 +89,7 @@ services:
     restart: unless-stopped
     environment:
       APP_ENV: ${APP_ENV:-development}
-      APP_VERSION: ${APP_VERSION:-2.0.0-F7-R3}
+      APP_VERSION: ${APP_VERSION:-2.0.0-F8-R1}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5177,http://127.0.0.1:5177,http://localhost:8088,https://localhost:18443}
       EDUVIGIA_MAP_TILE_URL: ${EDUVIGIA_MAP_TILE_URL:-https://tile.openstreetmap.org/{z}/{x}/{y}.png}

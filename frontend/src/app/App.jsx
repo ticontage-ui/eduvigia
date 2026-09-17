@@ -5800,7 +5800,7 @@ function LoginPage({ form, setForm, onSubmit, message, loading, onSupport, onFor
             <span>Primeiro acesso administrativo</span>
             <code>admin@eduvigia.local</code>
           </div>
-          <small className="loginVersion">EduVigIA v2.0.0-F7-R3</small>
+          <small className="loginVersion">EduVigIA v2.0.0-F8-R1</small>
         </form>
       </section>
 
