@@ -1197,4 +1197,8 @@ async def websocket_endpoint(
         await hub.disconnect(identity_id, websocket)
 # PTT institutional module (V0.6)
 from app.ptt import router as ptt_router
+# EDUVIGIA_CHAT_CRISIS_ROUTER_V080R1
+from app.crisis import router as crisis_router
+
+app.include_router(crisis_router)
 app.include_router(ptt_router)

@@ -1,0 +1,226 @@
+/* EDUVIGIA_CHAT_CRISIS_UI_CSS_V080R1 */
+
+#crisisRoomLauncher {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 8000;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid rgba(64, 126, 204, .34);
+  border-radius: 999px;
+  background: rgba(8, 31, 57, .96);
+  color: #fff;
+  box-shadow: 0 14px 42px rgba(0, 0, 0, .22);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+#crisisRoomLauncher[hidden] {
+  display: none !important;
+}
+
+.crisis-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 0 5px rgba(239, 68, 68, .12);
+}
+
+#crisisRoomPanel {
+  position: fixed;
+  right: 22px;
+  bottom: 78px;
+  z-index: 8100;
+  width: min(410px, calc(100vw - 28px));
+  max-height: min(680px, calc(100vh - 110px));
+  overflow: auto;
+  border: 1px solid rgba(25, 65, 105, .16);
+  border-radius: 20px;
+  background: rgba(248, 251, 255, .985);
+  box-shadow: 0 24px 70px rgba(3, 18, 35, .24);
+  color: #14283d;
+}
+
+#crisisRoomPanel[hidden] {
+  display: none !important;
+}
+
+.crisis-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid rgba(33, 74, 116, .10);
+  background: rgba(248, 251, 255, .98);
+}
+
+.crisis-header strong {
+  display: block;
+  font-size: 17px;
+}
+
+.crisis-header small {
+  display: block;
+  margin-top: 3px;
+  color: #60778d;
+  font-size: 11px;
+}
+
+#crisisClose {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(17, 54, 91, .07);
+  color: #26445f;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.crisis-status {
+  margin: 14px 18px 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #eaf2fb;
+  color: #315c86;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.crisis-actions {
+  display: flex;
+  gap: 8px;
+  padding: 12px 18px;
+}
+
+.crisis-actions button,
+.crisis-card-actions button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(38, 82, 127, .18);
+  border-radius: 10px;
+  background: #fff;
+  color: #27445f;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.crisis-actions .crisis-primary {
+  border-color: #183f68;
+  background: #183f68;
+  color: #fff;
+}
+
+.crisis-rooms {
+  display: grid;
+  gap: 10px;
+  padding: 0 18px 18px;
+}
+
+.crisis-empty {
+  padding: 24px 12px;
+  text-align: center;
+  color: #6c8093;
+  font-size: 13px;
+}
+
+.crisis-card {
+  padding: 14px;
+  border: 1px solid rgba(28, 69, 110, .12);
+  border-radius: 15px;
+  background: #fff;
+}
+
+.crisis-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.crisis-card-top strong,
+.crisis-card-top small {
+  display: block;
+}
+
+.crisis-card-top small {
+  margin-top: 3px;
+  max-width: 255px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #8090a0;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.crisis-badge {
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #edf3f8;
+  color: #42617c;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .05em;
+}
+
+.crisis-badge.active {
+  background: #e5f6ed;
+  color: #287349;
+}
+
+.crisis-badge.ended {
+  background: #eef0f2;
+  color: #697581;
+}
+
+.crisis-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 7px 12px;
+  margin-top: 13px;
+  font-size: 11px;
+}
+
+.crisis-grid span {
+  color: #73879a;
+}
+
+.crisis-grid strong {
+  color: #263e54;
+}
+
+.crisis-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 13px;
+}
+
+.crisis-card-actions .danger {
+  color: #a63f3f;
+}
+
+@media (max-width: 720px) {
+  #crisisRoomLauncher {
+    right: 14px;
+    bottom: 14px;
+  }
+
+  #crisisRoomPanel {
+    right: 14px;
+    bottom: 68px;
+  }
+}
