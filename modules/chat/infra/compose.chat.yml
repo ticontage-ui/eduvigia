@@ -61,6 +61,8 @@ services:
       - chat_net
 
   api:
+    env_file:
+      - ./.env.crisis-media.local
     build:
       context: ../backend
     restart: unless-stopped
@@ -93,6 +95,23 @@ services:
       timeout: 4s
       retries: 20
       start_period: 10s
+
+  livekit-crisis:
+    image: livekit/livekit-server:v1.13.7
+    restart: unless-stopped
+    command:
+      - --config
+      - /etc/livekit/livekit.yaml
+      - --bind
+      - 0.0.0.0
+    volumes:
+      - ./crisis-livekit.local.yaml:/etc/livekit/livekit.yaml:ro
+    ports:
+      - "127.0.0.1:17880:17880"
+      - "127.0.0.1:17881:17881"
+      - "127.0.0.1:17882:17882/udp"
+    networks:
+      - chat_net
 
   web:
     build:

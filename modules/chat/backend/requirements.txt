@@ -4,3 +4,4 @@ asyncpg>=0.29,<1
 redis>=5,<7
 pydantic>=2.8,<3
 python-multipart>=0.0.9,<1
+livekit-api==1.2.1

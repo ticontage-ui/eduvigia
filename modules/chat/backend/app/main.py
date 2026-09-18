@@ -1199,6 +1199,9 @@ async def websocket_endpoint(
 from app.ptt import router as ptt_router
 # EDUVIGIA_CHAT_CRISIS_ROUTER_V080R1
 from app.crisis import router as crisis_router
+# EDUVIGIA_CHAT_CRISIS_MEDIA_ROUTER_V0821
+from app.crisis_media import router as crisis_media_router
 
 app.include_router(crisis_router)
+app.include_router(crisis_media_router)
 app.include_router(ptt_router)
