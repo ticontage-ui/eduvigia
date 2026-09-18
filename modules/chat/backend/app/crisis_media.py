@@ -90,8 +90,8 @@ async def media_foundation():
     return {
         "provider": "LIVEKIT_SELF_HOSTED",
         "configured": configured,
-        "media_enabled": False,
-        "phase": "V0.8-R2.1",
+        "media_enabled": True,
+        "phase": "V0.8-R2.2",
         "recording_enabled": False,
         "school_audio_modes": ["OFF", "PTT", "LIVE"],
     }
@@ -120,6 +120,27 @@ async def issue_media_token(
                 )
 
             grants = _grants_for(identity)
+            # EDUVIGIA_CHAT_CRISIS_OPERATOR_MEDIA_JOIN_GATE_V0822
+            if grants["participant_role"] == "OPERATOR_SUBSCRIBER":
+                joined = await conn.fetchval(
+                    """
+                    SELECT EXISTS(
+                        SELECT 1
+                        FROM chat_crisis_room_participants
+                        WHERE room_id = $1
+                          AND identity_id = $2
+                          AND left_at IS NULL
+                    )
+                    """,
+                    room_id,
+                    identity["id"],
+                )
+
+                if not joined:
+                    raise HTTPException(
+                        status_code=409,
+                        detail="Operador deve entrar na Sala de Crise antes de assinar audio",
+                    )
             room_name = _media_room_name(room_id)
             participant_identity = _participant_identity(
                 room_id,
@@ -160,7 +181,7 @@ async def issue_media_token(
 
     return {
         "provider": "LIVEKIT_SELF_HOSTED",
-        "phase": "V0.8-R2.1",
+        "phase": "V0.8-R2.2",
         "server_url": public_url,
         "room_name": room_name,
         "participant_identity": participant_identity,
@@ -172,5 +193,153 @@ async def issue_media_token(
         "token_ttl_seconds": TOKEN_TTL_SECONDS,
         "school_audio_state": room["school_audio_state"],
         "recording_enabled": False,
-        "media_enabled": False,
+        "media_enabled": True,
     }
+
+# EDUVIGIA_CHAT_CRISIS_MEDIA_STATE_V0822
+class MediaStateRequest(BaseModel):
+    identity_id: str = Field(min_length=1, max_length=255)
+    state: str = Field(min_length=2, max_length=20)
+
+
+@router.post("/rooms/{room_id}/media/state")
+async def set_media_state(
+    request: Request,
+    room_id: str,
+    payload: MediaStateRequest,
+):
+    requested = payload.state.strip().upper()
+
+    if requested not in {"OFF", "LIVE"}:
+        raise HTTPException(
+            status_code=422,
+            detail="V0.8-R2.2 aceita apenas OFF ou LIVE",
+        )
+
+    async with request.app.state.db.acquire() as conn:
+        async with conn.transaction():
+            identity = await require_crisis_identity(conn, payload.identity_id)
+            room = await get_room(conn, room_id)
+            ensure_room_scope(identity, room)
+
+            grants = _grants_for(identity)
+            # EDUVIGIA_CHAT_CRISIS_OPERATOR_MEDIA_JOIN_GATE_V0822
+            if grants["participant_role"] == "OPERATOR_SUBSCRIBER":
+                joined = await conn.fetchval(
+                    """
+                    SELECT EXISTS(
+                        SELECT 1
+                        FROM chat_crisis_room_participants
+                        WHERE room_id = $1
+                          AND identity_id = $2
+                          AND left_at IS NULL
+                    )
+                    """,
+                    room_id,
+                    identity["id"],
+                )
+
+                if not joined:
+                    raise HTTPException(
+                        status_code=409,
+                        detail="Operador deve entrar na Sala de Crise antes de assinar audio",
+                    )
+            if not grants["can_publish"]:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Somente GESTOR_ESCOLA pode publicar audio escolar",
+                )
+
+            if room["status"] == "ENDED":
+                raise HTTPException(
+                    status_code=409,
+                    detail="Sala de Crise encerrada",
+                )
+
+            current_publisher = room["school_audio_publisher_identity_id"]
+
+            if (
+                requested == "LIVE"
+                and room["school_audio_state"] == "LIVE"
+                and current_publisher
+                and current_publisher != identity["id"]
+            ):
+                raise HTTPException(
+                    status_code=409,
+                    detail="Ja existe outro gestor publicando audio escolar",
+                )
+
+            if requested == "LIVE":
+                await conn.execute(
+                    """
+                    UPDATE chat_crisis_rooms
+                    SET
+                        status = 'ACTIVE',
+                        school_audio_state = 'LIVE',
+                        school_audio_publisher_identity_id = $2,
+                        school_audio_started_at = now(),
+                        school_audio_stopped_at = NULL,
+                        updated_at = now()
+                    WHERE id = $1
+                    """,
+                    room_id,
+                    identity["id"],
+                )
+
+                await write_audit(
+                    conn,
+                    room_id,
+                    identity["id"],
+                    "SCHOOL_AUDIO_LIVE_STARTED",
+                    {"phase": "V0.8-R2.2"},
+                )
+            else:
+                await conn.execute(
+                    """
+                    UPDATE chat_crisis_rooms
+                    SET
+                        status = CASE
+                            WHEN EXISTS(
+                                SELECT 1
+                                FROM chat_crisis_room_participants p
+                                WHERE p.room_id = chat_crisis_rooms.id
+                                  AND p.left_at IS NULL
+                            )
+                            THEN 'ACTIVE'
+                            ELSE 'READY'
+                        END,
+                        school_audio_state = 'OFF',
+                        school_audio_publisher_identity_id = NULL,
+                        school_audio_stopped_at = now(),
+                        updated_at = now()
+                    WHERE id = $1
+                    """,
+                    room_id,
+                )
+
+                await write_audit(
+                    conn,
+                    room_id,
+                    identity["id"],
+                    "SCHOOL_AUDIO_LIVE_STOPPED",
+                    {"phase": "V0.8-R2.2"},
+                )
+
+            row = await conn.fetchrow(
+                """
+                SELECT
+                    r.*,
+                    (
+                        SELECT count(*)
+                        FROM chat_crisis_room_participants p
+                        WHERE p.room_id = r.id
+                          AND p.left_at IS NULL
+                    ) AS active_participants
+                FROM chat_crisis_rooms r
+                WHERE r.id = $1
+                """,
+                room_id,
+            )
+
+    return room_dict(row)
+

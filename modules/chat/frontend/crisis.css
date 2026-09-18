@@ -224,3 +224,77 @@
     bottom: 68px;
   }
 }
+
+/* EDUVIGIA_CHAT_CRISIS_LIVE_AUDIO_CSS_V0822 */
+.crisis-live-audio {
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px solid rgba(28, 69, 110, .10);
+}
+
+.crisis-media-status {
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #eef3f7;
+  color: #526c82;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.crisis-media-status.live {
+  background: #ffe8e8;
+  color: #9a3232;
+}
+
+.crisis-media-status.waiting {
+  background: #eef4fb;
+  color: #315f89;
+}
+
+.crisis-media-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.crisis-live-toggle,
+.crisis-start-playback {
+  min-height: 38px;
+  padding: 0 13px;
+  border: 1px solid rgba(26, 70, 112, .18);
+  border-radius: 10px;
+  background: #173f68;
+  color: #fff;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.crisis-live-toggle.is-live {
+  border-color: #aa3636;
+  background: #aa3636;
+}
+
+.crisis-live-toggle:disabled {
+  opacity: .55;
+  cursor: wait;
+}
+
+.crisis-start-playback {
+  background: #fff;
+  color: #173f68;
+}
+
+.crisis-remote-audio {
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.crisis-remote-audio audio {
+  width: 1px;
+  height: 1px;
+  opacity: .01;
+}

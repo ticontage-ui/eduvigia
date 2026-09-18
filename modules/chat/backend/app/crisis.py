@@ -173,7 +173,7 @@ async def crisis_context(
         "can_access": can_access_crisis(identity),
         "can_create": can_create_room(identity),
         "can_publish_school_audio": can_create_room(identity),
-        "media_enabled": False,
+        "media_enabled": True,
         "recording_enabled": False,
     }
 

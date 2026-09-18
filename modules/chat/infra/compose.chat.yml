@@ -108,17 +108,21 @@ services:
       - ./crisis-livekit.local.yaml:/etc/livekit/livekit.yaml:ro
     ports:
       - "127.0.0.1:17880:17880"
-      - "127.0.0.1:17881:17881"
-      - "127.0.0.1:17882:17882/udp"
+      - "0.0.0.0:17881:17881"
+      - "0.0.0.0:17882:17882/udp"
     networks:
       - chat_net
 
   web:
+    volumes:
+      - ./crisis-certs.local:/etc/nginx/crisis-certs:ro
     build:
       context: ../frontend
     restart: unless-stopped
     ports:
       - "0.0.0.0:15187:80"
+      - "0.0.0.0:16443:443"
+      - "0.0.0.0:16444:4443"
     depends_on:
       api:
         condition: service_healthy
