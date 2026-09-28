@@ -298,3 +298,69 @@
   height: 1px;
   opacity: .01;
 }
+
+/* EDUVIGIA_CHAT_CRISIS_COMPOSER_DOCK_HF2 */
+
+/*
+ * Launcher acoplado ao composer:
+ * [Sala de Crise] [mensagem] [Anexar] [PTT] [Enviar]
+ *
+ * O painel #crisisRoomPanel continua sendo overlay independente.
+ */
+#composer #crisisRoomLauncher {
+  position: static !important;
+  inset: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  top: auto !important;
+  z-index: auto !important;
+
+  flex: 0 0 auto !important;
+  align-self: stretch;
+
+  min-height: 56px;
+  height: auto;
+  margin: 0 !important;
+  padding: 0 16px;
+
+  border-radius: 12px;
+  box-shadow: none;
+  white-space: nowrap;
+}
+
+#chatComposerActions #attachButton {
+  flex: 0 0 auto;
+  align-self: stretch;
+  min-height: 56px;
+  margin: 0;
+  white-space: nowrap;
+}
+
+#composer > #body {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+#composer > #chatComposerActions {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 900px) {
+  #composer #crisisRoomLauncher {
+    min-height: 52px;
+    padding-left: 13px;
+    padding-right: 13px;
+  }
+
+  #chatComposerActions #attachButton {
+    min-height: 52px;
+  }
+}
+
+@media (max-width: 720px) {
+  #composer #crisisRoomLauncher {
+    right: auto !important;
+    bottom: auto !important;
+  }
+}

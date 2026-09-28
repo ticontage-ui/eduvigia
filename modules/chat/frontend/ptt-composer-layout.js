@@ -45,17 +45,24 @@
       actions.className = "chat-composer-actions";
 
       sendButton.replaceWith(actions);
-      actions.appendChild(pttButton);
-      actions.appendChild(sendButton);
-    } else {
-      if (pttButton.parentElement !== actions) {
-        actions.insertBefore(pttButton, actions.firstChild);
-      }
-
-      if (sendButton.parentElement !== actions) {
-        actions.appendChild(sendButton);
-      }
     }
+
+    /*
+     * Composer final:
+     * [Sala de Crise] [mensagem] [Anexar] [PTT] [Enviar]
+     *
+     * Sala de Crise Ã© posicionada por crisis.js.
+     * Aqui organizamos somente o grupo de aÃ§Ãµes da direita usando IDs
+     * estÃ¡veis jÃ¡ existentes, sem busca genÃ©rica por ancestrais.
+     */
+    const attachButton = document.getElementById("attachButton");
+
+    if (attachButton) {
+      actions.appendChild(attachButton);
+    }
+
+    actions.appendChild(pttButton);
+    actions.appendChild(sendButton);
 
     pttButton.type = "button";
     pttButton.classList.add("ptt-composer-button");

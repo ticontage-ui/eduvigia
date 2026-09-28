@@ -14,6 +14,7 @@ from app.crisis import (
     ensure_room_scope,
     get_room,
     require_crisis_identity,
+    room_dict,
     write_audit,
 )
 

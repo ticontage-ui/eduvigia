@@ -9,6 +9,7 @@
   let rooms = [];
   let panelOpen = false;
   let pollHandle = null;
+  let roomsRenderSignature = null;
 
   function escapeHtml(value) {
     return String(value ?? "")
@@ -86,7 +87,19 @@
       <div id="crisisRooms" class="crisis-rooms"></div>
     `;
 
-    document.body.appendChild(launcher);
+    /*
+     * O launcher faz parte do composer institucional.
+     * NÃ£o usar botÃ£o flutuante sobre PTT/Enviar.
+     */
+    const composer = document.getElementById("composer");
+    const bodyInput = document.getElementById("body");
+
+    if (composer && bodyInput) {
+      composer.insertBefore(launcher, bodyInput);
+    } else {
+      document.body.appendChild(launcher);
+    }
+
     document.body.appendChild(panel);
 
     document
@@ -246,10 +259,25 @@
     const status = document.getElementById("crisisStatus");
 
     try {
-      rooms = await api(
+      const nextRooms = await api(
         `/api/crisis/rooms?identity_id=${encodeURIComponent(identityId)}`
       );
-      renderRooms();
+
+      /*
+       * Polling continua ativo para receber alteracoes remotas, mas a arvore
+       * DOM da Sala de Crise so e reconstruida quando o payload mudou.
+       * Isso evita destruir/recriar cards e controles a cada ciclo.
+       */
+      const nextRenderSignature = JSON.stringify(nextRooms);
+      const shouldRender =
+        nextRenderSignature !== roomsRenderSignature;
+
+      rooms = nextRooms;
+
+      if (shouldRender) {
+        roomsRenderSignature = nextRenderSignature;
+        renderRooms();
+      }
 
       if (status) {
         status.textContent =
@@ -308,6 +336,7 @@
     identityId = nextIdentityId || null;
     context = null;
     rooms = [];
+    roomsRenderSignature = null;
 
     await loadContext();
 

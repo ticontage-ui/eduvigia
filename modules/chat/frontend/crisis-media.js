@@ -4,6 +4,7 @@
   const MARKER = "EDUVIGIA_CHAT_CRISIS_LIVE_AUDIO_V0822";
   const LK = window.LivekitClient;
   const sessions = new Map();
+  const liveStartPromises = new Map();
 
   let identityId = null;
   let context = null;
@@ -134,7 +135,7 @@
     status.textContent = text;
   }
 
-  async function startManagerLive(room) {
+  async function startManagerLiveInternal(room) {
     if (!window.isSecureContext) {
       throw new Error(
         "Áudio LIVE exige HTTPS. Acesse o Chat pelo endereço HTTPS da Sala de Crise."
@@ -156,7 +157,8 @@
     const lkRoom = new LK.Room({
       autoSubscribe: false,
       adaptiveStream: false,
-      dynacast: false
+      dynacast: false,
+      singlePeerConnection: false
     });
 
     lkRoom.on(LK.RoomEvent.Reconnecting, () => scheduleDecorate());
@@ -203,6 +205,28 @@
     }
   }
 
+  async function startManagerLive(room) {
+    const currentSession = sessionFor(room.id);
+    if (currentSession?.role === "publisher") {
+      return currentSession;
+    }
+
+    const pendingStart = liveStartPromises.get(room.id);
+    if (pendingStart) {
+      return pendingStart;
+    }
+
+    const startPromise = startManagerLiveInternal(room);
+    liveStartPromises.set(room.id, startPromise);
+
+    try {
+      await startPromise;
+      return sessionFor(room.id);
+    } finally {
+      liveStartPromises.delete(room.id);
+      scheduleDecorate();
+    }
+  }
   async function stopManagerLive(roomId) {
     const session = sessionFor(roomId);
 
@@ -414,6 +438,12 @@
               button.addEventListener("click", async () => {
                 button.disabled = true;
                 try {
+                  button.textContent = "Conectando \u00e1udio...";
+                  renderSessionStatus(
+                    host,
+                    "\u00c1udio escolar: conectando...",
+                    "waiting"
+                  );
                   await startManagerLive(room);
                   await window.EduVigIACrisisRoom?.refresh?.();
                 } catch (error) {
