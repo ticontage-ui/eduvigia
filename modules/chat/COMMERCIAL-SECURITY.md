@@ -59,3 +59,36 @@ Ainda é obrigatório concluir:
 
 O Chat comercial não terá senha própria de usuário.
 A autoridade de autenticação será o EduVigIA Core após a integração.
+## R3.2-R1 — Session Authority Foundation
+
+Esta subfase prepara a autoridade comercial de sessão sem quebrar o
+runtime standalone antes da integração com o Core.
+
+Contratos adicionados:
+
+- o Chat continua sem senha própria de usuário;
+- `CHAT_AUTH_MODE=core` é o alvo comercial;
+- `standalone_qa` existe somente para QA isolado enquanto Core e Chat
+  ainda estão em runtimes separados;
+- o token Bearer do Core é usado apenas no exchange inicial;
+- o Chat cria sessão opaca própria em Redis;
+- o cookie do Chat é `HttpOnly`, `Secure` e `SameSite=Strict`;
+- o cookie não contém identidade, role, escola ou token do Core;
+- o Redis armazena somente a sessão do Chat, nunca a senha do usuário;
+- mutações autenticadas terão CSRF vinculado à sessão;
+- WebSocket comercial utilizará ticket opaco, curto e de uso único;
+- tickets WebSocket são armazenados por hash e consumidos atomicamente;
+- `Origin` WebSocket deve ser HTTPS e same-origin;
+- identidade comercial é derivada de `/auth/me` do Core;
+- escola é resolvida pelo Core e precisa de código institucional;
+- identidades comerciais usam `core:user:<id>`;
+- a sincronização server-side provisiona memberships sem confiar no browser;
+- `TECNICO` não recebe acesso ao Chat por este adapter;
+- nenhum secret de assinatura é enviado ao navegador.
+
+R3.2-R1 ainda NÃO substitui os parâmetros `identity_id` dos endpoints
+legados. A troca efetiva de REST, WebSocket, PTT, Crisis e LiveKit ocorre
+em R3.2-R2 após a fundação ser validada.
+
+O runtime atual permanece `standalone_qa`; uma release comercial só pode
+ser certificada com `CHAT_AUTH_MODE=core`.

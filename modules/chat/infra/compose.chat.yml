@@ -69,11 +69,18 @@ services:
       context: ../backend
     restart: unless-stopped
     environment:
-      CHAT_VERSION: "0.8-R3.1"
+      CHAT_VERSION: "0.8-R3.2-R1"
       CHAT_DATABASE_DSN: postgresql://${CHAT_POSTGRES_USER}:${CHAT_POSTGRES_PASSWORD}@postgres:5432/${CHAT_POSTGRES_DB}
       CHAT_REDIS_URL: redis://:${CHAT_REDIS_PASSWORD}@redis:6379/0
       CHAT_REDIS_CHANNEL: eduvigia:chat:events
       CHAT_ATTACHMENTS_DIR: /data/attachments
+      # Current standalone runtime remains QA-compatible until the Core
+      # integration branch is available. Commercial installations MUST use core.
+      CHAT_AUTH_MODE: ${CHAT_AUTH_MODE:-standalone_qa}
+      CHAT_CORE_BASE_URL: ${CHAT_CORE_BASE_URL:-http://eduvigia-core-api:8000}
+      CHAT_CORE_TIMEOUT_SECONDS: ${CHAT_CORE_TIMEOUT_SECONDS:-3}
+      CHAT_SESSION_TTL_SECONDS: ${CHAT_SESSION_TTL_SECONDS:-120}
+      CHAT_WS_TICKET_TTL_SECONDS: ${CHAT_WS_TICKET_TTL_SECONDS:-45}
     expose:
       - "8000"
     depends_on:
