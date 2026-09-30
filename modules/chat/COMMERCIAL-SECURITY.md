@@ -132,3 +132,49 @@ O HF2 restaura o contrato correto:
 - nenhum schema é alterado;
 - QA real solicita e libera o floor PTT e remove o registro de gravação
   QA produzido pelo teste.
+
+## R3.2-R3 — Frontend Session Cutover + Same-Origin Integration Prep
+
+Esta etapa move o frontend comercial para o contrato de sessão criado nas
+etapas R3.2-R1/R2.
+
+Contrato de frontend em modo `core`:
+
+- o seletor de identidade standalone não participa do fluxo comercial;
+- a identidade visível no navegador é somente contexto de apresentação;
+- `identity_id`, `sender_identity_id`, role e escola não são enviados como
+  autoridade para REST, WebSocket, PTT, Sala de Crise ou LiveKit;
+- requisições mutantes usam `X-CSRF-Token`, obtido do contexto da sessão e
+  mantido apenas em memória;
+- WebSocket principal e PTT usam tickets curtos de uso único emitidos por
+  `/api/session/ws-ticket`;
+- o ticket PTT permanece vinculado ao `channel_id`;
+- anexos, histórico PTT e mídia de crise usam o cookie HttpOnly da sessão;
+- o bearer do Core pode ser entregue ao adapter `EduVigIAChatAuth.exchange`
+  pelo shell EduVigIA, mas não é persistido pelo Chat;
+- quando não existe sessão Chat válida, o frontend emite o evento
+  `eduvigia:chat-auth-required` e permanece fail-closed;
+- quando a sessão é criada/restaurada, o frontend emite
+  `eduvigia:chat-auth-ready`.
+
+A sessão comercial usa renovação deslizante. O endpoint
+`/api/session/context` devolve o CSRF token da sessão para o JavaScript
+same-origin, renova a expiração Redis e reemite o cookie HttpOnly/Secure.
+
+Preparação same-origin:
+
+- standalone mantém `/api` e `/ws`;
+- o shell integrado pode definir antes dos scripts:
+
+  `window.EduVigIAChatConfig = { apiBase: "/api/chat", wsBase: "/ws/chat" }`;
+
+- nenhum segredo ou token de sessão é incorporado nesses caminhos;
+- a integração final continua sem iframe e sem banco compartilhado.
+
+Compatibilidade:
+
+- `standalone_qa` mantém o seletor mock/localStorage exclusivamente para
+  bancada;
+- o modo comercial `core` não consulta `/api/emergency/identities`;
+- a ativação real de `CHAT_AUTH_MODE=core` continua bloqueada até a
+  conectividade controlada com o Core estar disponível.

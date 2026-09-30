@@ -1,4 +1,5 @@
 const identityEl = document.getElementById("identity");
+const qaPanelEl = document.querySelector(".qa-panel");
 const identityInfoEl = document.getElementById("identityInfo");
 const operatorToolsEl = document.getElementById("operatorTools");
 const searchEl = document.getElementById("channelSearch");
@@ -23,9 +24,9 @@ const finishAudioEl = document.getElementById("finishAudio");
 
 let identities = [];
 let channels = [];
-let currentIdentity =
-  localStorage.getItem("eduvigia_emergency_identity") || "mock:escola-a";
+let currentIdentity = null;
 let currentChannelId = null;
+let chatRuntimeStarted = false;
 let socket = null;
 let reconnectTimer = null;
 let heartbeatTimer = null;
@@ -80,8 +81,67 @@ function friendlyHttpError(status, detail = "") {
   return detail || "Não foi possível concluir a operação.";
 }
 
+function chatAuth() {
+  return window.EduVigIAChatAuth;
+}
+
+function isCoreAuthMode() {
+  return Boolean(chatAuth()?.isCore?.());
+}
+
+function chatApiUrl(path) {
+  return chatAuth()?.apiUrl?.(path) || path;
+}
+
+function chatIdentityQuery(path, identityId = currentIdentity) {
+  return (
+    chatAuth()?.withIdentityQuery?.(path, identityId) ||
+    path
+  );
+}
+
+function chatIdentityPayload(
+  payload,
+  identityId = currentIdentity,
+  field = "identity_id"
+) {
+  return (
+    chatAuth()?.withIdentityPayload?.(
+      payload,
+      identityId,
+      field
+    ) ||
+    payload
+  );
+}
+
+async function authorizedFetch(url, options = {}) {
+  if (chatAuth()?.fetch) {
+    return chatAuth().fetch(url, options);
+  }
+
+  return fetch(url, {
+    ...options,
+    credentials: "same-origin"
+  });
+}
+
 async function jsonFetch(url, options = {}) {
-  const response = await fetch(url, options);
+  if (chatAuth()?.api) {
+    try {
+      return await chatAuth().api(url, options);
+    } catch (error) {
+      if (error?.status) {
+        error.message = friendlyHttpError(
+          error.status,
+          error.message
+        );
+      }
+      throw error;
+    }
+  }
+
+  const response = await authorizedFetch(url, options);
 
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
@@ -218,8 +278,57 @@ function renderIdentityInfo() {
 }
 
 async function loadIdentities() {
+  if (isCoreAuthMode()) {
+    const principal = chatAuth()?.identity?.();
+
+    if (!principal?.identity_id) {
+      identities = [];
+      currentIdentity = null;
+      publishChatContext();
+      renderIdentityInfo();
+      return;
+    }
+
+    identities = [
+      {
+        id: principal.identity_id,
+        display_name: principal.display_name,
+        organization_kind: principal.organization_kind,
+        school_code: principal.school_code,
+        role: principal.role,
+        active: true
+      }
+    ];
+
+    currentIdentity = principal.identity_id;
+    identityEl.innerHTML = "";
+
+    const option = document.createElement("option");
+    option.value = currentIdentity;
+    option.textContent =
+      `${principal.display_name} · ${principal.organization_kind}`;
+    identityEl.appendChild(option);
+    identityEl.value = currentIdentity;
+
+    if (qaPanelEl) {
+      qaPanelEl.hidden = true;
+    }
+
+    publishChatContext();
+    renderIdentityInfo();
+    return;
+  }
+
+  if (qaPanelEl) {
+    qaPanelEl.hidden = false;
+  }
+
   identities = await jsonFetch("/api/emergency/identities");
   identityEl.innerHTML = "";
+
+  currentIdentity =
+    localStorage.getItem("eduvigia_emergency_identity") ||
+    "mock:escola-a";
 
   for (const identity of identities) {
     const option = document.createElement("option");
@@ -418,7 +527,10 @@ function renderAttachments(message, article) {
   const list = document.createElement("div");
   list.className = "message-attachments";
   for (const attachment of attachments) {
-    const url = `/api/emergency/attachments/${encodeURIComponent(attachment.id)}?identity_id=${encodeURIComponent(currentIdentity)}`;
+    const url = chatIdentityQuery(
+      `/api/emergency/attachments/${encodeURIComponent(attachment.id)}`,
+      currentIdentity
+    );
     const isAudio = String(attachment.mime_type || "").startsWith("audio/") || [".webm",".ogg",".m4a"].includes(String(attachment.extension || "").toLowerCase());
     if (isAudio) {
       const card=document.createElement("div"); card.className="audio-message";
@@ -567,7 +679,10 @@ async function refreshChannels({preserveSelection = true} = {}) {
   const requestGeneration = generation;
 
   const data = await jsonFetch(
-    `/api/emergency/channels?identity_id=${encodeURIComponent(currentIdentity)}`
+    chatIdentityQuery(
+      "/api/emergency/channels",
+      currentIdentity
+    )
   );
 
   if (requestGeneration !== generation) return;
@@ -651,10 +766,14 @@ async function markRead(channelId, messageId) {
     {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({
-        identity_id: currentIdentity,
-        message_id: messageId
-      })
+      body: JSON.stringify(
+        chatIdentityPayload(
+          {
+            message_id: messageId
+          },
+          currentIdentity
+        )
+      )
     }
   );
 }
@@ -704,9 +823,18 @@ async function selectChannel(channelId) {
   clearSelectedFiles();
 
   try {
+    const messagePath =
+      `/api/emergency/channels/${encodeURIComponent(channelId)}/messages`;
+
     const messages = await jsonFetch(
-      `/api/emergency/channels/${encodeURIComponent(channelId)}/messages` +
-      `?identity_id=${encodeURIComponent(currentIdentity)}&limit=200`
+      isCoreAuthMode()
+        ? `${chatApiUrl(messagePath)}?limit=200`
+        : (
+            chatIdentityQuery(
+              messagePath,
+              currentIdentity
+            ) + "&limit=200"
+          )
     );
 
     if (token !== loadToken || currentChannelId !== channelId) return;
@@ -764,15 +892,63 @@ function stopSocket() {
   }
 }
 
-function connectSocket() {
+async function connectSocket() {
   stopSocket();
 
-  const socketGeneration = generation;
-  const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+  if (!currentIdentity) {
+    setStatus(
+      isCoreAuthMode()
+        ? "autenticação necessária"
+        : "offline"
+    );
+    return;
+  }
 
-  socket = new WebSocket(
-    `${protocol}//${location.host}/ws?identity_id=${encodeURIComponent(currentIdentity)}`
-  );
+  const socketGeneration = generation;
+  let socketUrl;
+
+  try {
+    if (isCoreAuthMode()) {
+      const issued = await chatAuth().issueWsTicket("CHAT");
+
+      if (socketGeneration !== generation) return;
+
+      socketUrl = chatAuth().wsUrl(
+        "/ws",
+        {
+          ticket: issued.ticket
+        }
+      );
+    } else {
+      socketUrl = chatAuth()?.wsUrl?.(
+        "/ws",
+        {
+          identity_id: currentIdentity
+        }
+      );
+
+      if (!socketUrl) {
+        const protocol =
+          location.protocol === "https:" ? "wss:" : "ws:";
+
+        socketUrl =
+          `${protocol}//${location.host}/ws?identity_id=` +
+          encodeURIComponent(currentIdentity);
+      }
+    }
+  } catch (error) {
+    if (socketGeneration !== generation) return;
+
+    console.error("Falha ao emitir ticket do Chat:", error);
+    setStatus(
+      error?.status === 401
+        ? "autenticação necessária"
+        : "erro"
+    );
+    return;
+  }
+
+  socket = new WebSocket(socketUrl);
 
   socket.onopen = () => {
     if (socketGeneration !== generation) return;
@@ -804,8 +980,6 @@ function connectSocket() {
       await markRead(payload.channel_id, payload.message.id);
     }
 
-    // If another school channel receives a message, Guard/Secretariat
-    // receive a refreshed unread badge without marking it as read.
     await refreshChannels({preserveSelection: true});
   };
 
@@ -818,7 +992,9 @@ function connectSocket() {
     setStatus("reconectando…");
 
     reconnectTimer = setTimeout(() => {
-      if (socketGeneration === generation) connectSocket();
+      if (socketGeneration === generation) {
+        void connectSocket();
+      }
     }, 1500);
   };
 
@@ -828,6 +1004,10 @@ function connectSocket() {
 }
 
 identityEl.addEventListener("change", async () => {
+  if (isCoreAuthMode()) {
+    return;
+  }
+
   cancelAudioRecording();
   generation += 1;
   loadToken += 1;
@@ -840,7 +1020,7 @@ identityEl.addEventListener("change", async () => {
 
   renderIdentityInfo();
   resetChat();
-  connectSocket();
+  void connectSocket();
 
   try {
     await refreshChannels({preserveSelection: false});
@@ -924,14 +1104,21 @@ composerEl.addEventListener("submit", async event => {
 
     if (sentFiles.length > 0) {
       const form = new FormData();
-      form.append("sender_identity_id", currentIdentity);
+
+      if (!isCoreAuthMode()) {
+        form.append(
+          "sender_identity_id",
+          currentIdentity
+        );
+      }
+
       form.append("body", sentBody);
 
       for (const file of sentFiles) {
         form.append("files", file, file.name);
       }
 
-      const response = await fetch(
+      const response = await authorizedFetch(
         `/api/emergency/channels/${encodeURIComponent(channel.id)}/messages-with-attachments`,
         {
           method: "POST",
@@ -956,10 +1143,15 @@ composerEl.addEventListener("submit", async event => {
         {
           method: "POST",
           headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({
-            sender_identity_id: currentIdentity,
-            body: sentBody
-          })
+          body: JSON.stringify(
+            chatIdentityPayload(
+              {
+                body: sentBody
+              },
+              currentIdentity,
+              "sender_identity_id"
+            )
+          )
         }
       );
     }
@@ -1016,18 +1208,81 @@ window.addEventListener("beforeunload", () => {
   stopSocket();
 });
 
-(async () => {
-  try {
-    await loadIdentities();
+async function startChatRuntime() {
+  await chatAuth()?.ready?.();
+
+  if (isCoreAuthMode()) {
+    let commercialContext = chatAuth()?.context?.();
+
+    if (!commercialContext?.identity) {
+      try {
+        commercialContext =
+          await chatAuth()?.refreshContext?.();
+      } catch (error) {
+        if (error?.status === 401) {
+          setStatus("autenticação necessária");
+          if (qaPanelEl) qaPanelEl.hidden = true;
+          chatRuntimeStarted = false;
+          return;
+        }
+        throw error;
+      }
+    }
+  }
+
+  await loadIdentities();
+
+  generation += 1;
+  loadToken += 1;
+  stopSocket();
+  resetChat();
+
+  await refreshChannels({preserveSelection: false});
+
+  if (currentChannelId) {
+    await selectChannel(currentChannelId);
+  }
+
+  void connectSocket();
+  chatRuntimeStarted = true;
+}
+
+window.addEventListener(
+  "eduvigia:chat-auth-ready",
+  () => {
+    if (!isCoreAuthMode()) return;
+
+    void startChatRuntime().catch(error => {
+      console.error(error);
+      setStatus("erro");
+    });
+  }
+);
+
+window.addEventListener(
+  "eduvigia:chat-auth-required",
+  () => {
+    if (!isCoreAuthMode()) return;
 
     generation += 1;
-    connectSocket();
+    loadToken += 1;
+    currentIdentity = null;
+    identities = [];
+    channels = [];
+    chatRuntimeStarted = false;
+    stopSocket();
+    resetChat();
+    setStatus("autenticação necessária");
 
-    await refreshChannels({preserveSelection: false});
-
-    if (currentChannelId) {
-      await selectChannel(currentChannelId);
+    if (qaPanelEl) {
+      qaPanelEl.hidden = true;
     }
+  }
+);
+
+(async () => {
+  try {
+    await startChatRuntime();
   }
   catch (error) {
     console.error(error);

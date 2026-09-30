@@ -8,7 +8,17 @@ let pttHistoryTimer = null;
 let pttHistoryOpen = false;
 
 function pttHistoryContext() {
-  const publicContext = window.EduVigIAPTT?.getContext?.() || {};
+  const publicContext =
+    window.EduVigIAPTT?.getContext?.() ||
+    window.EduVigIAChatContext?.get?.() ||
+    {};
+
+  if (window.EduVigIAChatAuth?.isCore?.()) {
+    return {
+      identityId: publicContext.identityId || null,
+      channelId: publicContext.channelId || null
+    };
+  }
 
   const identityId =
     publicContext.identityId ||
@@ -75,9 +85,18 @@ function pttHistoryTimestamp(value) {
 }
 
 function pttHistoryAudioUrl(recordingId, identityId) {
+  const path =
+    `/api/ptt/recordings/${encodeURIComponent(recordingId)}/audio`;
+
+  if (window.EduVigIAChatAuth?.withIdentityQuery) {
+    return window.EduVigIAChatAuth.withIdentityQuery(
+      path,
+      identityId
+    );
+  }
+
   return (
-    `/api/ptt/recordings/${encodeURIComponent(recordingId)}` +
-    `/audio?identity_id=${encodeURIComponent(identityId)}`
+    `${path}?identity_id=${encodeURIComponent(identityId)}`
   );
 }
 
@@ -229,14 +248,36 @@ async function pttLoadHistory() {
   }
 
   try {
-    const response = await fetch(
+    const basePath =
       `/api/ptt/channels/${encodeURIComponent(context.channelId)}` +
-      `/recordings?identity_id=${encodeURIComponent(context.identityId)}` +
-      `&limit=50`,
-      {
-        cache: "no-store"
-      }
-    );
+      "/recordings";
+
+    const path =
+      window.EduVigIAChatAuth?.isCore?.()
+        ? `${window.EduVigIAChatAuth.apiUrl(basePath)}?limit=50`
+        : (
+            window.EduVigIAChatAuth?.withIdentityQuery?.(
+              basePath,
+              context.identityId
+            ) +
+            "&limit=50"
+          );
+
+    const response =
+      window.EduVigIAChatAuth?.fetch
+        ? await window.EduVigIAChatAuth.fetch(
+            path,
+            {
+              cache: "no-store"
+            }
+          )
+        : await fetch(
+            path,
+            {
+              cache: "no-store",
+              credentials: "same-origin"
+            }
+          );
 
     if (!response.ok) {
       let detail = `HTTP ${response.status}`;

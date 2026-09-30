@@ -21,8 +21,22 @@
   }
 
   async function api(path, options = {}) {
+    if (window.EduVigIAChatAuth?.api) {
+      return window.EduVigIAChatAuth.api(
+        path,
+        {
+          ...options,
+          headers: {
+            "Content-Type": "application/json",
+            ...(options.headers || {})
+          }
+        }
+      );
+    }
+
     const response = await fetch(path, {
       ...options,
+      credentials: "same-origin",
       headers: {
         "Content-Type": "application/json",
         ...(options.headers || {})
@@ -39,6 +53,28 @@
     }
 
     return response.status === 204 ? null : response.json();
+  }
+
+  function identityQuery(path) {
+    return (
+      window.EduVigIAChatAuth?.withIdentityQuery?.(
+        path,
+        identityId
+      ) ||
+      `${path}?identity_id=${encodeURIComponent(identityId)}`
+    );
+  }
+
+  function identityPayload(payload = {}) {
+    return (
+      window.EduVigIAChatAuth?.withIdentityPayload?.(
+        payload,
+        identityId
+      ) || {
+        ...payload,
+        identity_id: identityId
+      }
+    );
   }
 
   function readIdentity() {
@@ -59,7 +95,7 @@
 
     try {
       context = await api(
-        `/api/crisis/context?identity_id=${encodeURIComponent(identityId)}`
+        identityQuery("/api/crisis/context")
       );
     } catch (_) {
       context = null;
@@ -85,7 +121,9 @@
       `/api/crisis/rooms/${encodeURIComponent(roomId)}/media/token`,
       {
         method: "POST",
-        body: JSON.stringify({ identity_id: identityId })
+        body: JSON.stringify(
+          identityPayload()
+        )
       }
     );
   }
@@ -95,10 +133,11 @@
       `/api/crisis/rooms/${encodeURIComponent(roomId)}/media/state`,
       {
         method: "POST",
-        body: JSON.stringify({
-          identity_id: identityId,
-          state
-        })
+        body: JSON.stringify(
+          identityPayload({
+            state
+          })
+        )
       }
     );
   }
@@ -327,7 +366,9 @@
 
     try {
       const detail = await api(
-        `/api/crisis/rooms/${encodeURIComponent(roomId)}?identity_id=${encodeURIComponent(identityId)}`
+        identityQuery(
+          `/api/crisis/rooms/${encodeURIComponent(roomId)}`
+        )
       );
 
       return Boolean(
@@ -346,7 +387,7 @@
     if (!identityId || !context?.can_access) return [];
 
     return api(
-      `/api/crisis/rooms?identity_id=${encodeURIComponent(identityId)}`
+      identityQuery("/api/crisis/rooms")
     );
   }
 
@@ -558,18 +599,34 @@
     for (const [roomId, session] of sessions.entries()) {
       if (session.role === "publisher" && identityId) {
         try {
-          fetch(
-            `/api/crisis/rooms/${encodeURIComponent(roomId)}/media/state`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                identity_id: identityId,
+          const path =
+            `/api/crisis/rooms/${encodeURIComponent(roomId)}/media/state`;
+
+          const options = {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(
+              identityPayload({
                 state: "OFF"
-              }),
-              keepalive: true
-            }
-          );
+              })
+            ),
+            keepalive: true
+          };
+
+          if (window.EduVigIAChatAuth?.fetch) {
+            void window.EduVigIAChatAuth.fetch(
+              path,
+              options
+            );
+          } else {
+            fetch(
+              path,
+              {
+                ...options,
+                credentials: "same-origin"
+              }
+            );
+          }
         } catch (_) {}
       }
 

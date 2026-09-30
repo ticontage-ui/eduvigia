@@ -21,8 +21,22 @@
   }
 
   async function api(path, options = {}) {
+    if (window.EduVigIAChatAuth?.api) {
+      return window.EduVigIAChatAuth.api(
+        path,
+        {
+          ...options,
+          headers: {
+            "Content-Type": "application/json",
+            ...(options.headers || {})
+          }
+        }
+      );
+    }
+
     const response = await fetch(path, {
       ...options,
+      credentials: "same-origin",
       headers: {
         "Content-Type": "application/json",
         ...(options.headers || {})
@@ -40,6 +54,28 @@
     }
 
     return response.status === 204 ? null : response.json();
+  }
+
+  function identityQuery(path) {
+    return (
+      window.EduVigIAChatAuth?.withIdentityQuery?.(
+        path,
+        identityId
+      ) ||
+      `${path}?identity_id=${encodeURIComponent(identityId)}`
+    );
+  }
+
+  function identityPayload(payload = {}) {
+    return (
+      window.EduVigIAChatAuth?.withIdentityPayload?.(
+        payload,
+        identityId
+      ) || {
+        ...payload,
+        identity_id: identityId
+      }
+    );
   }
 
   function ensureUi() {
@@ -145,7 +181,7 @@
 
     try {
       context = await api(
-        `/api/crisis/context?identity_id=${encodeURIComponent(identityId)}`
+        identityQuery("/api/crisis/context")
       );
     } catch (error) {
       context = null;
@@ -260,7 +296,7 @@
 
     try {
       const nextRooms = await api(
-        `/api/crisis/rooms?identity_id=${encodeURIComponent(identityId)}`
+        identityQuery("/api/crisis/rooms")
       );
 
       /*
@@ -297,9 +333,9 @@
     try {
       await api("/api/crisis/rooms", {
         method: "POST",
-        body: JSON.stringify({
-          identity_id: identityId
-        })
+        body: JSON.stringify(
+          identityPayload()
+        )
       });
 
       await refresh();
@@ -318,9 +354,9 @@
         `/api/crisis/rooms/${encodeURIComponent(roomId)}/${action}`,
         {
           method: "POST",
-          body: JSON.stringify({
-            identity_id: identityId
-          })
+          body: JSON.stringify(
+            identityPayload()
+          )
         }
       );
 

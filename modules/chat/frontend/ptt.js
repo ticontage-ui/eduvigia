@@ -29,11 +29,25 @@ let pttCurrentChannelId = null;
 let pttCurrentIdentity = null;
 
 function pttReadChatContext() {
+  const provider = window.EduVigIAChatContext;
+  const publicContext =
+    provider && typeof provider.get === "function"
+      ? (provider.get() || {})
+      : {};
+
+  if (window.EduVigIAChatAuth?.isCore?.()) {
+    return {
+      identityId: publicContext.identityId || null,
+      channelId: publicContext.channelId || null
+    };
+  }
+
   const identitySelect = document.getElementById("identity");
   const channelsRoot = document.getElementById("channels");
 
   const identityId =
     identitySelect?.value ||
+    publicContext.identityId ||
     null;
 
   const activeChannel =
@@ -42,30 +56,8 @@ function pttReadChatContext() {
 
   const channelId =
     activeChannel?.dataset?.channelId ||
+    publicContext.channelId ||
     null;
-
-  /*
-   * DOM is authoritative because it reflects the channel actually selected
-   * by the operator. The previous bridge remains only as a compatibility
-   * fallback during bootstrap.
-   */
-  if (identityId && channelId) {
-    return {
-      identityId,
-      channelId
-    };
-  }
-
-  const provider = window.EduVigIAChatContext;
-
-  if (provider && typeof provider.get === "function") {
-    const fallback = provider.get() || {};
-
-    return {
-      identityId: identityId || fallback.identityId || null,
-      channelId: channelId || fallback.channelId || null
-    };
-  }
 
   return {
     identityId,
@@ -278,11 +270,23 @@ async function pttStopPublishing() {
 async function pttRequestFloor() {
   if (!pttCurrentChannelId || !pttCurrentIdentity || pttOwnFloorId || !pttWantToTalk) return;
   try {
-    const result = await jsonFetch(`/api/ptt/channels/${encodeURIComponent(pttCurrentChannelId)}/floor/request`, {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({identity_id: pttCurrentIdentity})
-    });
+    const auth = window.EduVigIAChatAuth;
+    const payload =
+      auth?.withIdentityPayload?.(
+        {},
+        pttCurrentIdentity
+      ) || {
+        identity_id: pttCurrentIdentity
+      };
+
+    const result = await jsonFetch(
+      `/api/ptt/channels/${encodeURIComponent(pttCurrentChannelId)}/floor/request`,
+      {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload)
+      }
+    );
     if (!pttWantToTalk) {
       if (result.granted) { pttOwnFloorId = result.floor_id; await pttReleaseFloor(); }
       return;
@@ -325,10 +329,17 @@ async function pttReleaseFloor() {
       {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-          identity_id: identityId,
-          floor_id: floorId
-        })
+        body: JSON.stringify(
+          window.EduVigIAChatAuth?.withIdentityPayload?.(
+            {
+              floor_id: floorId
+            },
+            identityId
+          ) || {
+            identity_id: identityId,
+            floor_id: floorId
+          }
+        )
       }
     );
   } catch (error) {
@@ -349,66 +360,179 @@ function pttDisconnectSocket() {
   pttSocketChannel = null;
 }
 
-function pttConnectSocket() {
+async function pttConnectSocket() {
   pttDisconnectSocket();
+
   if (!pttCurrentChannelId || !pttCurrentIdentity) {
-    pttSetState("disabled", "PTT indisponível", "Selecione um canal");
+    pttSetState(
+      "disabled",
+      "PTT indisponível",
+      "Selecione um canal"
+    );
     return;
   }
+
   const channel = pttCurrentChannelId;
   const identity = pttCurrentIdentity;
-  const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-  pttSocket = new WebSocket(`${protocol}//${location.host}/ws/ptt?identity_id=${encodeURIComponent(identity)}&channel_id=${encodeURIComponent(channel)}`);
+  let socketUrl;
+
+  try {
+    const auth = window.EduVigIAChatAuth;
+
+    if (auth?.isCore?.()) {
+      const issued = await auth.issueWsTicket(
+        "PTT",
+        channel
+      );
+
+      if (
+        pttCurrentChannelId !== channel ||
+        pttCurrentIdentity !== identity
+      ) {
+        return;
+      }
+
+      socketUrl = auth.wsUrl(
+        "/ws/ptt",
+        {
+          ticket: issued.ticket,
+          channel_id: channel
+        }
+      );
+    } else if (auth?.wsUrl) {
+      socketUrl = auth.wsUrl(
+        "/ws/ptt",
+        {
+          identity_id: identity,
+          channel_id: channel
+        }
+      );
+    } else {
+      const protocol =
+        location.protocol === "https:" ? "wss:" : "ws:";
+
+      socketUrl =
+        `${protocol}//${location.host}/ws/ptt?identity_id=` +
+        `${encodeURIComponent(identity)}&channel_id=` +
+        encodeURIComponent(channel);
+    }
+  } catch (error) {
+    pttSetState(
+      "disabled",
+      error?.status === 401
+        ? "PTT requer autenticação"
+        : "PTT indisponível",
+      ""
+    );
+    return;
+  }
+
+  pttSocket = new WebSocket(socketUrl);
   pttSocket.binaryType = "arraybuffer";
   pttSocketChannel = channel;
   pttSetState("connecting", "Conectando PTT…", "");
+
   pttSocket.onopen = () => {
     pttHeartbeat = setInterval(() => {
-      if (pttSocket?.readyState === WebSocket.OPEN) pttSocket.send("ping");
+      if (pttSocket?.readyState === WebSocket.OPEN) {
+        pttSocket.send("ping");
+      }
     }, 20000);
   };
+
   pttSocket.onmessage = event => {
     if (typeof event.data !== "string") {
-      if (pttRemoteSpeaker) { pttPendingChunks.push(event.data); pttPump(); }
-      return;
-    }
-    if (event.data === "pong") return;
-    let payload;
-    try { payload = JSON.parse(event.data); } catch { return; }
-    if (payload.type === "ptt.ready") {
-      if (payload.floor?.identity_id && payload.floor.identity_id !== pttCurrentIdentity) {
-        pttRemoteSpeaker = payload.floor.identity_id;
-        pttBeginRemote();
-        pttSetState("busy", "CANAL OCUPADO", `${payload.floor.identity_id} está falando.`);
-      } else {
-        pttRemoteSpeaker = null;
-        pttSetState("ready", "PTT disponível", "Canal livre");
+      if (pttRemoteSpeaker) {
+        pttPendingChunks.push(event.data);
+        pttPump();
       }
       return;
     }
-    if (payload.type === "ptt.speaker.started") {
-      if (payload.identity_id === pttCurrentIdentity) return;
-      pttRemoteSpeaker = payload.identity_id;
-      pttBeginRemote();
-      pttSetState("busy", "CANAL OCUPADO", `${payload.display_name || payload.identity_id} está falando.`);
+
+    if (event.data === "pong") return;
+
+    let payload;
+    try {
+      payload = JSON.parse(event.data);
+    } catch {
       return;
     }
+
+    if (payload.type === "ptt.ready") {
+      if (
+        payload.floor?.identity_id &&
+        payload.floor.identity_id !== pttCurrentIdentity
+      ) {
+        pttRemoteSpeaker = payload.floor.identity_id;
+        pttBeginRemote();
+        pttSetState(
+          "busy",
+          "CANAL OCUPADO",
+          `${payload.floor.identity_id} está falando.`
+        );
+      } else {
+        pttRemoteSpeaker = null;
+        pttSetState(
+          "ready",
+          "PTT disponível",
+          "Canal livre"
+        );
+      }
+      return;
+    }
+
+    if (payload.type === "ptt.speaker.started") {
+      if (payload.identity_id === pttCurrentIdentity) return;
+
+      pttRemoteSpeaker = payload.identity_id;
+      pttBeginRemote();
+      pttSetState(
+        "busy",
+        "CANAL OCUPADO",
+        `${payload.display_name || payload.identity_id} está falando.`
+      );
+      return;
+    }
+
     if (payload.type === "ptt.speaker.ended") {
-      if (payload.identity_id === pttCurrentIdentity && pttOwnFloorId) {
+      if (
+        payload.identity_id === pttCurrentIdentity &&
+        pttOwnFloorId
+      ) {
         pttOwnFloorId = null;
         pttStopPublishing();
       }
+
       pttRemoteSpeaker = null;
       pttCloseRemote();
-      if (pttCurrentChannelId) pttSetState("ready", "PTT disponível", "Canal livre");
+
+      if (pttCurrentChannelId) {
+        pttSetState(
+          "ready",
+          "PTT disponível",
+          "Canal livre"
+        );
+      }
     }
   };
+
   pttSocket.onclose = () => {
-    pttSetState("connecting", "Reconectando PTT…", "");
+    pttSetState(
+      "connecting",
+      "Reconectando PTT…",
+      ""
+    );
+
     pttReconnectTimer = setTimeout(() => {
-      if (pttCurrentChannelId === channel && pttCurrentIdentity === identity) pttConnectSocket();
+      if (
+        pttCurrentChannelId === channel &&
+        pttCurrentIdentity === identity
+      ) {
+        void pttConnectSocket();
+      }
     }, 1500);
   };
+
   pttSocket.onerror = () => pttSocket?.close();
 }
 
@@ -470,7 +594,7 @@ function pttApplyChatContext(context = {}) {
     "Validando canal selecionado"
   );
 
-  pttConnectSocket();
+  void pttConnectSocket();
 }
 
 function pttSynchronizeContext() {

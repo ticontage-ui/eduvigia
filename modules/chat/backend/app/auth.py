@@ -128,10 +128,26 @@ def foundation_snapshot() -> dict:
         "chat_password_store": False,
         "session_cookie": "HTTPONLY_SECURE_SAMESITE_STRICT",
         "session_ttl_seconds": session_ttl_seconds(),
+        "session_renewal": "SLIDING_CONTEXT_REFRESH",
         "websocket_ticket": "ONE_TIME_REDIS",
         "websocket_ticket_ttl_seconds": ws_ticket_ttl_seconds(),
         "client_identity_authoritative": False if mode == "core" else True,
     }
+
+
+def set_session_cookie(
+    response: Response,
+    raw_session_id: str,
+) -> None:
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=raw_session_id,
+        max_age=session_ttl_seconds(),
+        httponly=True,
+        secure=True,
+        samesite="strict",
+        path="/",
+    )
 
 
 def same_origin_websocket(origin: str | None, host: str | None) -> bool:
@@ -557,14 +573,9 @@ async def create_commercial_session(
         ex=session_ttl_seconds(),
     )
 
-    response.set_cookie(
-        key=SESSION_COOKIE_NAME,
-        value=raw_session_id,
-        max_age=session_ttl_seconds(),
-        httponly=True,
-        secure=True,
-        samesite="strict",
-        path="/",
+    set_session_cookie(
+        response,
+        raw_session_id,
     )
     response.headers["Cache-Control"] = "no-store"
 
@@ -594,8 +605,9 @@ async def load_commercial_session(
             detail="Sessao do Chat ausente",
         )
 
+    redis_key = session_key(raw_session_id)
     raw = await request.app.state.redis.get(
-        session_key(raw_session_id)
+        redis_key
     )
     if not raw:
         raise HTTPException(
@@ -634,6 +646,11 @@ async def load_commercial_session(
             status_code=401,
             detail="Sessao do Chat invalida",
         )
+
+    await request.app.state.redis.expire(
+        redis_key,
+        session_ttl_seconds(),
+    )
 
     return session
 
@@ -841,15 +858,30 @@ async def session_exchange(
 
 
 @router.get("/context")
-async def session_context(request: Request):
+async def session_context(
+    request: Request,
+    response: Response,
+):
     session = await load_commercial_session(
         request,
         require_csrf=False,
     )
 
+    raw_session_id = request.cookies.get(
+        SESSION_COOKIE_NAME
+    )
+    if raw_session_id:
+        set_session_cookie(
+            response,
+            raw_session_id,
+        )
+
+    response.headers["Cache-Control"] = "no-store"
+
     return {
         "auth_mode": "core",
         "identity": session["principal"],
+        "csrf_token": session["csrf_token"],
         "expires_in_seconds": session_ttl_seconds(),
     }
 

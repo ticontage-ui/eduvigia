@@ -69,7 +69,7 @@ services:
       context: ../backend
     restart: unless-stopped
     environment:
-      CHAT_VERSION: "0.8-R3.2-R2"
+      CHAT_VERSION: "0.8-R3.2-R3"
       CHAT_DATABASE_DSN: postgresql://${CHAT_POSTGRES_USER}:${CHAT_POSTGRES_PASSWORD}@postgres:5432/${CHAT_POSTGRES_DB}
       CHAT_REDIS_URL: redis://:${CHAT_REDIS_PASSWORD}@redis:6379/0
       CHAT_REDIS_CHANNEL: eduvigia:chat:events
