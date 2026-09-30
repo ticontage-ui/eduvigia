@@ -8,8 +8,8 @@ services:
       POSTGRES_DB: ${CHAT_POSTGRES_DB}
       POSTGRES_USER: ${CHAT_POSTGRES_USER}
       POSTGRES_PASSWORD: ${CHAT_POSTGRES_PASSWORD}
-    ports:
-      - "127.0.0.1:15447:5432"
+    expose:
+      - "5432"
     volumes:
       - chat_pgdata:/var/lib/postgresql/data
     networks:
@@ -31,11 +31,13 @@ services:
         "redis-server",
         "--appendonly",
         "yes",
+        "--protected-mode",
+        "yes",
         "--requirepass",
         "${CHAT_REDIS_PASSWORD}"
       ]
-    ports:
-      - "127.0.0.1:16392:6379"
+    expose:
+      - "6379"
     volumes:
       - chat_redisdata:/data
     networks:
@@ -67,13 +69,13 @@ services:
       context: ../backend
     restart: unless-stopped
     environment:
-      CHAT_VERSION: "0.7.1-R1"
+      CHAT_VERSION: "0.8-R3.1"
       CHAT_DATABASE_DSN: postgresql://${CHAT_POSTGRES_USER}:${CHAT_POSTGRES_PASSWORD}@postgres:5432/${CHAT_POSTGRES_DB}
       CHAT_REDIS_URL: redis://:${CHAT_REDIS_PASSWORD}@redis:6379/0
       CHAT_REDIS_CHANNEL: eduvigia:chat:events
       CHAT_ATTACHMENTS_DIR: /data/attachments
-    ports:
-      - "127.0.0.1:18012:8000"
+    expose:
+      - "8000"
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -106,8 +108,9 @@ services:
       - 0.0.0.0
     volumes:
       - ./crisis-livekit.local.yaml:/etc/livekit/livekit.yaml:ro
+    expose:
+      - "17880"
     ports:
-      - "127.0.0.1:17880:17880"
       - "0.0.0.0:17881:17881"
       - "0.0.0.0:17882:17882/udp"
     networks:
@@ -120,7 +123,6 @@ services:
       context: ../frontend
     restart: unless-stopped
     ports:
-      - "0.0.0.0:15187:80"
       - "0.0.0.0:16443:443"
       - "0.0.0.0:16444:4443"
     depends_on:

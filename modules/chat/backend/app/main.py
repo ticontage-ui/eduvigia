@@ -528,6 +528,9 @@ app = FastAPI(
     title="EduVigIA Emergency Chat",
     version=APP_VERSION,
     lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
 )
 
 
