@@ -12,10 +12,18 @@ from contextlib import asynccontextmanager, suppress
 from typing import Dict, Set
 
 import asyncpg
-from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field
 from redis.asyncio import Redis
+
+from app.auth import (
+    auth_mode,
+    consume_ws_ticket,
+    foundation_snapshot,
+    resolve_effective_identity,
+    router as auth_router,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("eduvigia-chat")
@@ -72,14 +80,14 @@ ALLOWED_ATTACHMENT_TYPES = {
 class TextMessageIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    sender_identity_id: str = Field(min_length=1, max_length=120)
+    sender_identity_id: str | None = Field(default=None, min_length=1, max_length=120)
     body: str = Field(min_length=1, max_length=2000)
 
 
 class ReadIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    identity_id: str = Field(min_length=1, max_length=120)
+    identity_id: str | None = Field(default=None, min_length=1, max_length=120)
     message_id: int = Field(ge=0)
 
 
@@ -559,6 +567,7 @@ async def health():
         )
 
     redis_ok = await app.state.redis.ping()
+    auth_snapshot = foundation_snapshot()
 
     return {
         "status": "ok",
@@ -571,13 +580,17 @@ async def health():
         "migrations": migrations,
         "active_channels": active_channels,
         "websocket_connections": await hub.connection_count(),
-        "core_integration": "disabled",
-        "identity_provider": "mock",
+        "core_integration": auth_snapshot["core_integration"],
+        "identity_provider": auth_snapshot["identity_provider"],
+        "client_identity_authoritative": auth_snapshot["client_identity_authoritative"],
     }
 
 
 @app.get("/api/emergency/identities")
 async def list_operational_identities():
+    if auth_mode() == "core":
+        raise HTTPException(status_code=404, detail="Endpoint indisponivel em modo comercial")
+
     async with app.state.db.acquire() as conn:
         rows = await conn.fetch(
             """
@@ -607,9 +620,13 @@ async def list_operational_identities():
 
 
 @app.get("/api/emergency/channels")
-async def list_emergency_channels(identity_id: str = Query(...)):
+async def list_emergency_channels(
+    request: Request,
+    identity_id: str | None = Query(default=None),
+):
     async with app.state.db.acquire() as conn:
-        identity = await get_operational_identity(conn, identity_id)
+        identity = await resolve_effective_identity(request, conn, identity_id)
+        effective_identity_id = identity["id"]
 
         rows = await conn.fetch(
             """
@@ -679,7 +696,7 @@ async def list_emergency_channels(identity_id: str = Query(...)):
                 COALESCE(last_msg.created_at, c.updated_at) DESC,
                 c.school_code NULLS FIRST
             """,
-            identity_id,
+            effective_identity_id,
             identity["organization_kind"],
             identity["school_code"],
             BROADCAST_CHANNEL_ID,
@@ -708,11 +725,13 @@ async def list_emergency_channels(identity_id: str = Query(...)):
 @app.get("/api/emergency/channels/{channel_id}/messages")
 async def list_channel_messages(
     channel_id: str,
-    identity_id: str = Query(...),
+    request: Request,
+    identity_id: str | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=200),
 ):
     async with app.state.db.acquire() as conn:
-        await ensure_channel_access(conn, channel_id, identity_id)
+        identity = await resolve_effective_identity(request, conn, identity_id)
+        await ensure_channel_access(conn, channel_id, identity["id"])
 
         rows = await conn.fetch(
             """
@@ -777,6 +796,7 @@ async def list_channel_messages(
 @app.post("/api/emergency/channels/{channel_id}/messages", status_code=201)
 async def create_channel_message(
     channel_id: str,
+    request: Request,
     payload: TextMessageIn,
 ):
     body = payload.body.strip()
@@ -786,10 +806,15 @@ async def create_channel_message(
 
     async with app.state.db.acquire() as conn:
         async with conn.transaction():
+            identity = await resolve_effective_identity(
+                request,
+                conn,
+                identity["id"],
+            )
             identity, channel, _ = await ensure_channel_write_access(
                 conn,
                 channel_id,
-                payload.sender_identity_id,
+                identity["id"],
             )
 
             row = await conn.fetchrow(
@@ -811,7 +836,7 @@ async def create_channel_message(
                     created_at
                 """,
                 channel_id,
-                payload.sender_identity_id,
+                identity["id"],
                 identity["display_name"],
                 body,
             )
@@ -876,7 +901,8 @@ async def create_channel_message(
 @app.post("/api/emergency/channels/{channel_id}/messages-with-attachments", status_code=201)
 async def create_channel_message_with_attachments(
     channel_id: str,
-    sender_identity_id: str = Form(...),
+    request: Request,
+    sender_identity_id: str | None = Form(default=None),
     body: str = Form(default=""),
     files: list[UploadFile] = File(...),
 ):
@@ -909,10 +935,15 @@ async def create_channel_message_with_attachments(
         )
 
     async with app.state.db.acquire() as conn:
+        identity = await resolve_effective_identity(
+            request,
+            conn,
+            sender_identity_id,
+        )
         identity, channel, _ = await ensure_channel_write_access(
             conn,
             channel_id,
-            sender_identity_id,
+            identity["id"],
         )
 
         saved_paths = []
@@ -924,7 +955,7 @@ async def create_channel_message_with_attachments(
                     INSERT INTO chat_messages(
                         room_id,
                         conversation_id,
-                        sender_identity_id,
+                        identity["id"],
                         display_name,
                         body
                     )
@@ -932,7 +963,7 @@ async def create_channel_message_with_attachments(
                     RETURNING
                         id,
                         conversation_id,
-                        sender_identity_id,
+                        identity["id"],
                         display_name,
                         body,
                         created_at
@@ -992,7 +1023,7 @@ async def create_channel_message_with_attachments(
                         attachment_id,
                         row["id"],
                         channel_id,
-                        sender_identity_id,
+                        identity["id"],
                         item["original_name"],
                         stored_name,
                         item["mime_type"],
@@ -1067,7 +1098,8 @@ async def create_channel_message_with_attachments(
 @app.get("/api/emergency/attachments/{attachment_id}")
 async def download_attachment(
     attachment_id: str,
-    identity_id: str = Query(...),
+    request: Request,
+    identity_id: str | None = Query(default=None),
 ):
     async with app.state.db.acquire() as conn:
         row = await conn.fetchrow(
@@ -1087,10 +1119,11 @@ async def download_attachment(
         if not row:
             raise HTTPException(status_code=404, detail="Anexo inexistente")
 
+        identity = await resolve_effective_identity(request, conn, identity_id)
         await ensure_channel_access(
             conn,
             row["channel_id"],
-            identity_id,
+            identity["id"],
         )
 
     path = Path(row["storage_path"])
@@ -1107,13 +1140,19 @@ async def download_attachment(
 @app.post("/api/emergency/channels/{channel_id}/read")
 async def mark_channel_read(
     channel_id: str,
+    request: Request,
     payload: ReadIn,
 ):
     async with app.state.db.acquire() as conn:
+        identity = await resolve_effective_identity(
+            request,
+            conn,
+            payload.identity_id,
+        )
         await ensure_channel_access(
             conn,
             channel_id,
-            payload.identity_id,
+            identity["id"],
         )
 
         max_id = await conn.fetchval(
@@ -1138,7 +1177,7 @@ async def mark_channel_read(
               AND identity_id = $2
             """,
             channel_id,
-            payload.identity_id,
+            identity["id"],
             target,
         )
 
@@ -1149,10 +1188,25 @@ async def mark_channel_read(
 
 
 @app.websocket("/ws")
-async def websocket_endpoint(
-    websocket: WebSocket,
-    identity_id: str = Query(...),
-):
+async def websocket_endpoint(websocket: WebSocket):
+    if auth_mode() == "core":
+        try:
+            ticket = await consume_ws_ticket(
+                websocket,
+                expected_purpose="CHAT",
+            )
+            identity_id = str(ticket["identity_id"])
+        except HTTPException as exc:
+            await websocket.close(
+                code=4401 if exc.status_code == 401 else 4403
+            )
+            return
+    else:
+        identity_id = websocket.query_params.get("identity_id", "").strip()
+        if not identity_id:
+            await websocket.close(code=4401)
+            return
+
     async with app.state.db.acquire() as conn:
         row = await conn.fetchrow(
             """
@@ -1198,6 +1252,7 @@ async def websocket_endpoint(
             identity_id,
         )
         await hub.disconnect(identity_id, websocket)
+
 # PTT institutional module (V0.6)
 from app.ptt import router as ptt_router
 # EDUVIGIA_CHAT_CRISIS_ROUTER_V080R1
@@ -1205,8 +1260,6 @@ from app.crisis import router as crisis_router
 # EDUVIGIA_CHAT_CRISIS_MEDIA_ROUTER_V0821
 from app.crisis_media import router as crisis_media_router
 # EDUVIGIA_CHAT_COMMERCIAL_SESSION_R32R1
-from app.auth import router as auth_router
-
 app.include_router(auth_router)
 app.include_router(crisis_router)
 app.include_router(crisis_media_router)

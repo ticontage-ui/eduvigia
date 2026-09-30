@@ -59,36 +59,32 @@ Ainda é obrigatório concluir:
 
 O Chat comercial não terá senha própria de usuário.
 A autoridade de autenticação será o EduVigIA Core após a integração.
-## R3.2-R1 — Session Authority Foundation
 
-Esta subfase prepara a autoridade comercial de sessão sem quebrar o
-runtime standalone antes da integração com o Core.
+## R3.2-R2 — Server-Derived Identity Backend Cutover
 
-Contratos adicionados:
+Esta subfase corta a autoridade de identidade no backend quando
+`CHAT_AUTH_MODE=core`, mantendo compatibilidade somente para o runtime
+`standalone_qa`.
 
-- o Chat continua sem senha própria de usuário;
-- `CHAT_AUTH_MODE=core` é o alvo comercial;
-- `standalone_qa` existe somente para QA isolado enquanto Core e Chat
-  ainda estão em runtimes separados;
-- o token Bearer do Core é usado apenas no exchange inicial;
-- o Chat cria sessão opaca própria em Redis;
-- o cookie do Chat é `HttpOnly`, `Secure` e `SameSite=Strict`;
-- o cookie não contém identidade, role, escola ou token do Core;
-- o Redis armazena somente a sessão do Chat, nunca a senha do usuário;
-- mutações autenticadas terão CSRF vinculado à sessão;
-- WebSocket comercial utilizará ticket opaco, curto e de uso único;
-- tickets WebSocket são armazenados por hash e consumidos atomicamente;
-- `Origin` WebSocket deve ser HTTPS e same-origin;
-- identidade comercial é derivada de `/auth/me` do Core;
-- escola é resolvida pelo Core e precisa de código institucional;
-- identidades comerciais usam `core:user:<id>`;
-- a sincronização server-side provisiona memberships sem confiar no browser;
-- `TECNICO` não recebe acesso ao Chat por este adapter;
-- nenhum secret de assinatura é enviado ao navegador.
+Garantias desta fase:
 
-R3.2-R1 ainda NÃO substitui os parâmetros `identity_id` dos endpoints
-legados. A troca efetiva de REST, WebSocket, PTT, Crisis e LiveKit ocorre
-em R3.2-R2 após a fundação ser validada.
+- REST deriva a identidade efetiva da sessao server-side em modo `core`;
+- `identity_id` legado pode existir no contrato de compatibilidade, mas nao
+  possui autoridade e qualquer divergencia da sessao resulta em HTTP 403;
+- o endpoint de enumeracao de identidades mock retorna 404 em modo `core`;
+- WebSocket principal usa ticket curto, opaco e de uso unico;
+- PTT WebSocket usa ticket `PTT` vinculado ao `channel_id`;
+- tickets de outra finalidade ou canal sao rejeitados;
+- PTT REST deriva o ator da sessao;
+- Sala de Crise deriva o ator da sessao;
+- token LiveKit e alteracao de estado de audio derivam o ator da sessao;
+- o browser nao pode elevar role, trocar escola ou impersonar outro usuario
+  quando o modo `core` estiver ativo;
+- roles legadas do Core sao canonicalizadas de forma compativel com o Core;
+- `TECNICO` permanece sem acesso ao Chat;
+- nenhum password store foi introduzido no Chat;
+- o runtime standalone permanece disponivel apenas para QA isolado.
 
-O runtime atual permanece `standalone_qa`; uma release comercial só pode
-ser certificada com `CHAT_AUTH_MODE=core`.
+A interface standalone ainda envia `identity_id` durante esta fase porque o
+Core nao esta unido ao mesmo origin nesta bancada. O corte do frontend ocorre
+na fase seguinte, depois da integracao same-origin com o shell EduVigIA.

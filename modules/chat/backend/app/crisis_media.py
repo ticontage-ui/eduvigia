@@ -13,7 +13,7 @@ from app.crisis import (
     SCHOOL_MANAGER_ROLE,
     ensure_room_scope,
     get_room,
-    require_crisis_identity,
+    require_crisis_request_identity,
     room_dict,
     write_audit,
 )
@@ -24,7 +24,7 @@ TOKEN_TTL_SECONDS = 600
 
 
 class MediaTokenRequest(BaseModel):
-    identity_id: str = Field(min_length=1, max_length=255)
+    identity_id: str | None = Field(default=None, min_length=1, max_length=255)
 
 
 def _required_env(name: str) -> str:
@@ -110,7 +110,7 @@ async def issue_media_token(
 
     async with request.app.state.db.acquire() as conn:
         async with conn.transaction():
-            identity = await require_crisis_identity(conn, payload.identity_id)
+            identity = await require_crisis_request_identity(request, conn, payload.identity_id)
             room = await get_room(conn, room_id)
             ensure_room_scope(identity, room)
 
@@ -199,7 +199,7 @@ async def issue_media_token(
 
 # EDUVIGIA_CHAT_CRISIS_MEDIA_STATE_V0822
 class MediaStateRequest(BaseModel):
-    identity_id: str = Field(min_length=1, max_length=255)
+    identity_id: str | None = Field(default=None, min_length=1, max_length=255)
     state: str = Field(min_length=2, max_length=20)
 
 
@@ -219,7 +219,7 @@ async def set_media_state(
 
     async with request.app.state.db.acquire() as conn:
         async with conn.transaction():
-            identity = await require_crisis_identity(conn, payload.identity_id)
+            identity = await require_crisis_request_identity(request, conn, payload.identity_id)
             room = await get_room(conn, room_id)
             ensure_room_scope(identity, room)
 
@@ -343,4 +343,3 @@ async def set_media_state(
             )
 
     return room_dict(row)
-

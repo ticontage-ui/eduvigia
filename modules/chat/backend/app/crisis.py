@@ -8,6 +8,8 @@ from uuid import uuid4
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from app.auth import resolve_effective_identity
+
 router = APIRouter(prefix="/api/crisis", tags=["crisis-room"])
 
 SCHOOL_MANAGER_ROLE = "GESTOR_ESCOLA"
@@ -16,7 +18,7 @@ ROOM_STATUSES = {"READY", "ACTIVE", "ENDED"}
 
 
 class CreateRoomRequest(BaseModel):
-    identity_id: str = Field(min_length=1, max_length=255)
+    identity_id: str | None = Field(default=None, min_length=1, max_length=255)
     incident_id: str | None = Field(default=None, max_length=255)
     incident_source: str | None = Field(default=None, max_length=80)
     external_reference: str | None = Field(default=None, max_length=255)
@@ -24,7 +26,7 @@ class CreateRoomRequest(BaseModel):
 
 
 class IdentityActionRequest(BaseModel):
-    identity_id: str = Field(min_length=1, max_length=255)
+    identity_id: str | None = Field(default=None, min_length=1, max_length=255)
 
 
 async def get_identity(conn, identity_id: str):
@@ -66,6 +68,26 @@ def can_create_room(identity) -> bool:
 
 async def require_crisis_identity(conn, identity_id: str):
     identity = await get_identity(conn, identity_id)
+
+    if not can_access_crisis(identity):
+        raise HTTPException(
+            status_code=403,
+            detail="Perfil sem acesso a Sala de Crise",
+        )
+
+    return identity
+
+
+async def require_crisis_request_identity(
+    request: Request,
+    conn,
+    supplied_identity_id: str | None = None,
+):
+    identity = await resolve_effective_identity(
+        request,
+        conn,
+        supplied_identity_id,
+    )
 
     if not can_access_crisis(identity):
         raise HTTPException(
@@ -159,10 +181,10 @@ def room_dict(row):
 @router.get("/context")
 async def crisis_context(
     request: Request,
-    identity_id: str = Query(...),
+    identity_id: str | None = Query(default=None),
 ):
     async with request.app.state.db.acquire() as conn:
-        identity = await get_identity(conn, identity_id)
+        identity = await resolve_effective_identity(request, conn, identity_id)
 
     return {
         "identity_id": identity["id"],
@@ -181,11 +203,11 @@ async def crisis_context(
 @router.get("/rooms")
 async def list_rooms(
     request: Request,
-    identity_id: str = Query(...),
+    identity_id: str | None = Query(default=None),
     include_ended: bool = Query(default=False),
 ):
     async with request.app.state.db.acquire() as conn:
-        identity = await require_crisis_identity(conn, identity_id)
+        identity = await require_crisis_request_identity(request, conn, identity_id)
 
         params: list[Any] = [include_ended]
 
@@ -228,7 +250,7 @@ async def create_room(
 ):
     async with request.app.state.db.acquire() as conn:
         async with conn.transaction():
-            identity = await require_crisis_identity(conn, payload.identity_id)
+            identity = await require_crisis_request_identity(request, conn, payload.identity_id)
 
             if not can_create_room(identity):
                 raise HTTPException(
@@ -329,10 +351,10 @@ async def create_room(
 async def room_detail(
     request: Request,
     room_id: str,
-    identity_id: str = Query(...),
+    identity_id: str | None = Query(default=None),
 ):
     async with request.app.state.db.acquire() as conn:
-        identity = await require_crisis_identity(conn, identity_id)
+        identity = await require_crisis_request_identity(request, conn, identity_id)
         room = await get_room(conn, room_id)
         ensure_room_scope(identity, room)
 
@@ -395,7 +417,7 @@ async def join_room(
 ):
     async with request.app.state.db.acquire() as conn:
         async with conn.transaction():
-            identity = await require_crisis_identity(conn, payload.identity_id)
+            identity = await require_crisis_request_identity(request, conn, payload.identity_id)
             room = await get_room(conn, room_id)
             ensure_room_scope(identity, room)
 
@@ -480,7 +502,7 @@ async def leave_room(
 ):
     async with request.app.state.db.acquire() as conn:
         async with conn.transaction():
-            identity = await require_crisis_identity(conn, payload.identity_id)
+            identity = await require_crisis_request_identity(request, conn, payload.identity_id)
             room = await get_room(conn, room_id)
             ensure_room_scope(identity, room)
 
@@ -555,7 +577,7 @@ async def end_room(
 ):
     async with request.app.state.db.acquire() as conn:
         async with conn.transaction():
-            identity = await require_crisis_identity(conn, payload.identity_id)
+            identity = await require_crisis_request_identity(request, conn, payload.identity_id)
             room = await get_room(conn, room_id)
             ensure_room_scope(identity, room)
 

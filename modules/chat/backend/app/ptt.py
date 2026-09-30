@@ -12,6 +12,8 @@ from fastapi import APIRouter, HTTPException, Query, Request, WebSocket, WebSock
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict
 
+from app.auth import auth_mode, consume_ws_ticket, resolve_effective_identity
+
 router = APIRouter()
 
 PTT_MAX_SECONDS = 30
@@ -27,12 +29,12 @@ PTT_RECORDING_MAX_BYTES = 8 * 1024 * 1024
 
 class PttFloorRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    identity_id: str
+    identity_id: str | None = None
 
 
 class PttFloorRelease(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    identity_id: str
+    identity_id: str | None = None
     floor_id: str
 
 
@@ -425,9 +427,14 @@ async def timeout_floor(app, channel_id: str, identity_id: str, floor_id: str):
 
 
 @router.get("/api/ptt/channels/{channel_id}/status")
-async def ptt_status(request: Request, channel_id: str, identity_id: str = Query(...)):
+async def ptt_status(
+    request: Request,
+    channel_id: str,
+    identity_id: str | None = Query(default=None),
+):
     async with request.app.state.db.acquire() as conn:
-        await authorize_ptt(conn, channel_id, identity_id)
+        identity = await resolve_effective_identity(request, conn, identity_id)
+        await authorize_ptt(conn, channel_id, identity["id"])
     floor = await read_floor(request.app.state.redis, channel_id)
     return {
         "channel_id": channel_id,
@@ -440,12 +447,14 @@ async def ptt_status(request: Request, channel_id: str, identity_id: str = Query
 @router.post("/api/ptt/channels/{channel_id}/floor/request")
 async def ptt_request_floor(request: Request, channel_id: str, payload: PttFloorRequest):
     async with request.app.state.db.acquire() as conn:
-        identity, channel = await authorize_ptt(conn, channel_id, payload.identity_id)
+        principal = await resolve_effective_identity(request, conn, effective_identity_id)
+        identity, channel = await authorize_ptt(conn, channel_id, principal["id"])
 
+    effective_identity_id = identity["id"]
     floor_id = "floor:" + uuid.uuid4().hex
     acquired = await request.app.state.redis.set(
         floor_key(channel_id),
-        floor_value(payload.identity_id, floor_id),
+        floor_value(effective_identity_id, floor_id),
         nx=True,
         ex=PTT_FLOOR_TTL_SECONDS,
     )
@@ -461,7 +470,7 @@ async def ptt_request_floor(request: Request, channel_id: str, payload: PttFloor
         await recording_manager.start(
             request.app,
             channel_id,
-            payload.identity_id,
+            effective_identity_id,
             floor_id,
         )
     except Exception:
@@ -473,14 +482,14 @@ async def ptt_request_floor(request: Request, channel_id: str, payload: PttFloor
             detail="Nao foi possivel iniciar a gravacao PTT",
         )
 
-    task = asyncio.create_task(timeout_floor(request.app, channel_id, payload.identity_id, floor_id))
+    task = asyncio.create_task(timeout_floor(request.app, channel_id, effective_identity_id, floor_id))
     hub.replace_timeout(channel_id, task)
 
     await hub.broadcast_json(channel_id, {
         "type": "ptt.speaker.started",
         "channel_id": channel_id,
         "school_code": channel["school_code"],
-        "identity_id": payload.identity_id,
+        "identity_id": effective_identity_id,
         "display_name": identity["display_name"],
         "organization_kind": identity["organization_kind"],
         "floor_id": floor_id,
@@ -493,8 +502,9 @@ async def ptt_request_floor(request: Request, channel_id: str, payload: PttFloor
 @router.post("/api/ptt/channels/{channel_id}/floor/release")
 async def ptt_release_floor(request: Request, channel_id: str, payload: PttFloorRelease):
     async with request.app.state.db.acquire() as conn:
-        await authorize_ptt(conn, channel_id, payload.identity_id)
-    released = await release_floor(request.app, channel_id, payload.identity_id, payload.floor_id, "RELEASED")
+        principal = await resolve_effective_identity(request, conn, payload.identity_id)
+        await authorize_ptt(conn, channel_id, principal["id"])
+    released = await release_floor(request.app, channel_id, principal["id"], payload.floor_id, "RELEASED")
     return {"released": released, "channel_id": channel_id}
 
 
@@ -502,14 +512,15 @@ async def ptt_release_floor(request: Request, channel_id: str, payload: PttFloor
 async def ptt_recording_history(
     request: Request,
     channel_id: str,
-    identity_id: str = Query(...),
+    identity_id: str | None = Query(default=None),
     limit: int = Query(50, ge=1, le=100),
 ):
     async with request.app.state.db.acquire() as conn:
+        principal = await resolve_effective_identity(request, conn, identity_id)
         await authorize_ptt(
             conn,
             channel_id,
-            identity_id,
+            principal["id"],
         )
 
         rows = await conn.fetch(
@@ -568,7 +579,7 @@ async def ptt_recording_history(
 async def ptt_recording_audio(
     request: Request,
     recording_id: str,
-    identity_id: str = Query(...),
+    identity_id: str | None = Query(default=None),
 ):
     async with request.app.state.db.acquire() as conn:
         row = await conn.fetchrow(
@@ -592,10 +603,11 @@ async def ptt_recording_audio(
                 detail="Gravacao PTT inexistente",
             )
 
+        principal = await resolve_effective_identity(request, conn, identity_id)
         await authorize_ptt(
             conn,
             row["channel_id"],
-            identity_id,
+            principal["id"],
         )
 
     base = PTT_RECORDINGS_DIR.resolve()
@@ -629,7 +641,33 @@ async def ptt_recording_audio(
     )
 
 @router.websocket("/ws/ptt")
-async def ptt_websocket(websocket: WebSocket, identity_id: str, channel_id: str):
+async def ptt_websocket(websocket: WebSocket):
+    channel_id = websocket.query_params.get("channel_id", "").strip()
+    if not channel_id:
+        await websocket.close(code=4400)
+        return
+
+    if auth_mode() == "core":
+        try:
+            ticket = await consume_ws_ticket(
+                websocket,
+                expected_purpose="PTT",
+            )
+            identity_id = str(ticket["identity_id"])
+            if ticket.get("channel_id") != channel_id:
+                await websocket.close(code=4403)
+                return
+        except HTTPException as exc:
+            await websocket.close(
+                code=4401 if exc.status_code == 401 else 4403
+            )
+            return
+    else:
+        identity_id = websocket.query_params.get("identity_id", "").strip()
+        if not identity_id:
+            await websocket.close(code=4401)
+            return
+
     try:
         async with websocket.app.state.db.acquire() as conn:
             await authorize_ptt(conn, channel_id, identity_id)

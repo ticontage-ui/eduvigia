@@ -34,6 +34,14 @@ CORE_ROLE_TO_ORGANIZATION = {
     "OPERADOR_ESCOLA": "ESCOLA",
 }
 SCHOOL_ROLES = {"GESTOR_ESCOLA", "OPERADOR_ESCOLA"}
+LEGACY_ROLE_TO_CANONICAL = {
+    "ADMIN": "ADMIN_SECRETARIA",
+    "SUPERVISOR": "GESTOR_SECRETARIA",
+    "GESTAO": "GESTOR_SECRETARIA",
+    "DESPACHANTE": "DESPACHANTE_GUARDA",
+    "ESCOLA": "GESTOR_ESCOLA",
+    "TECNICO": "TECNICO",
+}
 UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
 
@@ -86,6 +94,13 @@ def ws_ticket_ttl_seconds() -> int:
 def core_timeout_seconds() -> float:
     value = float(os.getenv("CHAT_CORE_TIMEOUT_SECONDS", "3"))
     return min(max(value, 1.0), 10.0)
+
+
+def canonical_core_role(role: str, school_id=None) -> str:
+    normalized = str(role or "").strip().upper()
+    if normalized == "OPERADOR":
+        return "OPERADOR_ESCOLA" if school_id else "OPERADOR_GUARDA"
+    return LEGACY_ROLE_TO_CANONICAL.get(normalized, normalized)
 
 
 def organization_for_role(role: str) -> str | None:
@@ -241,7 +256,8 @@ async def principal_from_core(bearer_token: str) -> dict:
             detail="Core retornou usuario invalido",
         )
 
-    role = str(user.get("role") or "").strip().upper()
+    school_id = user.get("school_id")
+    role = canonical_core_role(user.get("role"), school_id)
     organization_kind = organization_for_role(role)
 
     if not organization_kind:
@@ -257,7 +273,6 @@ async def principal_from_core(bearer_token: str) -> dict:
             detail="Core retornou usuario sem nome",
         )
 
-    school_id = user.get("school_id")
     school_code = None
     school_name = None
 
