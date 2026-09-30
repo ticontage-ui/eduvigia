@@ -809,7 +809,7 @@ async def create_channel_message(
             identity = await resolve_effective_identity(
                 request,
                 conn,
-                identity["id"],
+                payload.sender_identity_id,
             )
             identity, channel, _ = await ensure_channel_write_access(
                 conn,
@@ -955,7 +955,7 @@ async def create_channel_message_with_attachments(
                     INSERT INTO chat_messages(
                         room_id,
                         conversation_id,
-                        identity["id"],
+                        sender_identity_id,
                         display_name,
                         body
                     )
@@ -963,13 +963,13 @@ async def create_channel_message_with_attachments(
                     RETURNING
                         id,
                         conversation_id,
-                        identity["id"],
+                        sender_identity_id,
                         display_name,
                         body,
                         created_at
                     """,
                     channel_id,
-                    sender_identity_id,
+                    identity["id"],
                     identity["display_name"],
                     body,
                 )

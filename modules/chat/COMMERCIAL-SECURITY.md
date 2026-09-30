@@ -88,3 +88,27 @@ Garantias desta fase:
 A interface standalone ainda envia `identity_id` durante esta fase porque o
 Core nao esta unido ao mesmo origin nesta bancada. O corte do frontend ocorre
 na fase seguinte, depois da integracao same-origin com o shell EduVigIA.
+## R3.2-R2-HF1 — Message Write Regression
+
+Hotfix aberto após revisão pós-fechamento do R3.2-R2.
+
+Foram identificadas duas regressões introduzidas no cutover de identidade:
+
+- a rota de mensagem de texto referenciava `identity["id"]` antes da
+  resolução da identidade efetiva;
+- a rota de mensagem com anexos recebeu uma substituição indevida dentro
+  do SQL, trocando o identificador de coluna `sender_identity_id` por uma
+  expressão Python literal e persistindo o hint legado em vez da
+  identidade efetiva.
+
+O HF1 restaura o contrato correto:
+
+- em `standalone_qa`, `sender_identity_id` continua sendo apenas o hint
+  legado esperado pelo adapter;
+- em `core`, a sessão permanece a autoridade e qualquer divergência do
+  hint legado continua retornando HTTP 403;
+- toda gravação persiste `identity["id"]`, a identidade efetiva validada
+  pelo servidor;
+- nenhum schema é alterado;
+- testes permanentes cobrem texto e anexos;
+- QA mutante cria e remove mensagens reais para comprovar o fluxo.
