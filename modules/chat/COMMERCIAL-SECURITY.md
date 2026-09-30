@@ -112,3 +112,23 @@ O HF1 restaura o contrato correto:
 - nenhum schema é alterado;
 - testes permanentes cobrem texto e anexos;
 - QA mutante cria e remove mensagens reais para comprovar o fluxo.
+## R3.2-R2-HF2 — PTT Floor Identity Regression
+
+Hotfix aberto durante a revisão posterior ao fechamento do HF1.
+
+Foi identificada uma regressão na solicitação de floor do PTT:
+`effective_identity_id` era enviado ao adapter de autenticação antes de
+receber qualquer valor.
+
+O HF2 restaura o contrato correto:
+
+- o campo legado `payload.identity_id` é utilizado apenas como hint em
+  `standalone_qa`;
+- em modo `core`, a sessão continua sendo a autoridade e divergências do
+  hint são rejeitadas;
+- após autorização, `effective_identity_id` recebe a identidade efetiva
+  validada pelo servidor;
+- Redis, gravação PTT e broadcast utilizam somente a identidade efetiva;
+- nenhum schema é alterado;
+- QA real solicita e libera o floor PTT e remove o registro de gravação
+  QA produzido pelo teste.

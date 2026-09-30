@@ -447,8 +447,16 @@ async def ptt_status(
 @router.post("/api/ptt/channels/{channel_id}/floor/request")
 async def ptt_request_floor(request: Request, channel_id: str, payload: PttFloorRequest):
     async with request.app.state.db.acquire() as conn:
-        principal = await resolve_effective_identity(request, conn, effective_identity_id)
-        identity, channel = await authorize_ptt(conn, channel_id, principal["id"])
+        principal = await resolve_effective_identity(
+            request,
+            conn,
+            payload.identity_id,
+        )
+        identity, channel = await authorize_ptt(
+            conn,
+            channel_id,
+            principal["id"],
+        )
 
     effective_identity_id = identity["id"]
     floor_id = "floor:" + uuid.uuid4().hex
