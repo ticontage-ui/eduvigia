@@ -178,3 +178,27 @@ Compatibilidade:
 - o modo comercial `core` não consulta `/api/emergency/identities`;
 - a ativação real de `CHAT_AUTH_MODE=core` continua bloqueada até a
   conectividade controlada com o Core estar disponível.
+## R3.2-R5.1 — Persistent Topology + Same-Origin Ingress
+
+Objetivo desta subfase: tornar persistente a conectividade entre Core e Chat
+sem ativar ainda o `CHAT_AUTH_MODE=core` no runtime principal.
+
+Contrato:
+
+- rede Docker externa compartilhada: `eduvigia_integration`;
+- Core API publica o alias interno `eduvigia-core-api`;
+- Chat API publica o alias interno `eduvigia-chat-api`;
+- LiveKit publica o alias interno `eduvigia-chat-livekit`;
+- o proxy principal participa da rede de integração;
+- REST do Chat fica preparado em `/api/chat/...`;
+- WebSocket principal/PTT ficam preparados em `/ws/chat` e `/ws/chat/...`;
+- mídia autenticada possui alias `/media/chat/...`;
+- signaling LiveKit fica preparado em `/rtc/chat/...`;
+- o proxy principal permite microfone somente para `self`;
+- Docker DNS é resolvido em runtime para não tornar a disponibilidade do
+  Core dependente da disponibilidade momentânea do Chat;
+- `CHAT_AUTH_MODE` do runtime principal permanece `standalone_qa`;
+- o cutover para `core` e a alteração do `CRISIS_LIVEKIT_PUBLIC_URL` para
+  o endpoint same-origin pertencem às próximas subfases;
+- nenhuma base de dados é compartilhada entre Core e Chat;
+- nenhum segredo é movido para o Git.

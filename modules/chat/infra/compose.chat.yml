@@ -69,7 +69,7 @@ services:
       context: ../backend
     restart: unless-stopped
     environment:
-      CHAT_VERSION: "0.8-R3.2-R3"
+      CHAT_VERSION: "0.8-R3.2-R5.1"
       CHAT_DATABASE_DSN: postgresql://${CHAT_POSTGRES_USER}:${CHAT_POSTGRES_PASSWORD}@postgres:5432/${CHAT_POSTGRES_DB}
       CHAT_REDIS_URL: redis://:${CHAT_REDIS_PASSWORD}@redis:6379/0
       CHAT_REDIS_CHANNEL: eduvigia:chat:events
@@ -91,7 +91,10 @@ services:
     volumes:
       - chat_attachments:/data/attachments
     networks:
-      - chat_net
+      chat_net:
+      integration:
+        aliases:
+          - eduvigia-chat-api
     healthcheck:
       test:
         [
@@ -121,7 +124,10 @@ services:
       - "0.0.0.0:17881:17881"
       - "0.0.0.0:17882:17882/udp"
     networks:
-      - chat_net
+      chat_net:
+      integration:
+        aliases:
+          - eduvigia-chat-livekit
 
   web:
     volumes:
@@ -141,6 +147,9 @@ services:
 networks:
   chat_net:
     driver: bridge
+  integration:
+    name: eduvigia_integration
+    external: true
 
 volumes:
   chat_pgdata:

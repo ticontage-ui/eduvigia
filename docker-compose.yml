@@ -133,6 +133,11 @@ services:
       - ./backend/app:/app/app
       - ./data:/app/data
       - ./nginx/certs:/certs
+    networks:
+      default:
+      integration:
+        aliases:
+          - eduvigia-core-api
     depends_on:
       postgres:
         condition: service_healthy
@@ -188,6 +193,9 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/certs:/etc/nginx/certs:ro
+    networks:
+      - default
+      - integration
     depends_on:
       api:
         condition: service_healthy
@@ -275,6 +283,11 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+networks:
+  integration:
+    name: eduvigia_integration
+    external: true
 
 volumes:
   postgres_data:
