@@ -202,3 +202,26 @@ Contrato:
   o endpoint same-origin pertencem às próximas subfases;
 - nenhuma base de dados é compartilhada entre Core e Chat;
 - nenhum segredo é movido para o Git.
+
+## R3.2-R5.2 — Main Chat Core-Mode Cutover
+
+R5.2 moves the principal Chat runtime from `standalone_qa` to `core`.
+
+Cutover contract:
+
+- Core remains the sole authority for login, password, users and RBAC;
+- the EduVigIA top bar exposes **Comunicação** only to Core roles supported
+  by the Chat role adapter;
+- `/chat/` is served by the principal EduVigIA HTTPS origin;
+- the Chat browser adapter uses `/api/chat` and `/ws/chat`;
+- LiveKit signaling uses the same-origin `/rtc/chat` base while ICE remains
+  published on TCP 17881 and UDP 17882;
+- direct Chat HTTPS 16443 and direct LiveKit signaling 16444 are removed;
+- the Chat commercial session is stored only in the
+  `__Host-eduvigia_chat` HttpOnly/Secure/SameSite=Strict cookie;
+- the temporary Core bearer is read from the existing Core browser session
+  only to perform `/api/chat/session/exchange` and is not persisted by Chat;
+- the existing Core `localStorage` bearer remains a tracked security warning
+  to be eliminated before final commercial certification;
+- no Chat password/login flow is introduced;
+- no Core database or Chat database schema change is part of this cutover.

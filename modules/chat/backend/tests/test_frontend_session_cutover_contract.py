@@ -120,17 +120,67 @@ class FrontendSessionCutoverContractTests(unittest.TestCase):
                 source,
             )
 
-    def test_index_loads_session_adapter_before_app(self):
+    def test_index_loads_core_bridge_then_session_adapter_before_app(self):
         source = self.read_frontend("index.html")
 
+        bridge_pos = source.index(
+            "core-bridge.js"
+        )
         auth_pos = source.index(
-            "/session-auth.js"
+            "session-auth.js"
         )
         app_pos = source.index(
-            "/app.js"
+            "app.js"
         )
 
+        self.assertLess(bridge_pos, auth_pos)
         self.assertLess(auth_pos, app_pos)
+
+    def test_core_bridge_sets_same_origin_paths_and_uses_core_bearer_once(self):
+        source = self.read_frontend(
+            "core-bridge.js"
+        )
+
+        self.assertIn(
+            "EDUVIGIA_CHAT_CORE_BRIDGE_V083_R522",
+            source,
+        )
+        self.assertIn(
+            'apiBase: "/api/chat"',
+            source,
+        )
+        self.assertIn(
+            'wsBase: "/ws/chat"',
+            source,
+        )
+        self.assertIn(
+            'rtcBase: "/rtc/chat"',
+            source,
+        )
+        self.assertIn(
+            'window.localStorage.getItem(CORE_TOKEN_KEY)',
+            source,
+        )
+        self.assertIn(
+            "await auth.exchange(coreBearer)",
+            source,
+        )
+
+    def test_crisis_livekit_resolves_same_origin_rtc_base(self):
+        source = self.read_frontend(
+            "crisis-media.js"
+        )
+
+        self.assertIn(
+            "window.EduVigIAChatConfig?.rtcBase",
+            source,
+        )
+        self.assertEqual(
+            source.count(
+                "liveKitServerUrl(token.server_url)"
+            ),
+            2,
+        )
 
 
 if __name__ == "__main__":

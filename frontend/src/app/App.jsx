@@ -16,6 +16,7 @@ import {
   FileVideo,
   Fingerprint,
   Mail,
+  MessageCircle,
   Phone,
   MapPinned,
   Crosshair,
@@ -157,6 +158,15 @@ const ROLE_OPTIONS = [
 const ROLE_LABELS = Object.fromEntries(ROLE_OPTIONS.map(([value, label]) => [value, label]));
 const ROLE_ENVIRONMENTS = Object.fromEntries(ROLE_OPTIONS.map(([value, , environment]) => [value, environment]));
 const SCHOOL_ROLES = new Set(["GESTOR_ESCOLA", "OPERADOR_ESCOLA"]);
+const CHAT_ROLES = new Set([
+  "ADMIN_SECRETARIA",
+  "GESTOR_SECRETARIA",
+  "SUPERVISOR_GUARDA",
+  "OPERADOR_GUARDA",
+  "DESPACHANTE_GUARDA",
+  "GESTOR_ESCOLA",
+  "OPERADOR_ESCOLA",
+]);
 
 function roleLabel(role) {
   return ROLE_LABELS[role] || role;
@@ -1627,6 +1637,18 @@ export default function App() {
             />
           </div>
           <div className="topActions">
+            {CHAT_ROLES.has(authUser.role) && (
+              <button
+                className="communicationButton"
+                type="button"
+                onClick={() => window.location.assign("/chat/")}
+                aria-label="Abrir Comunicação"
+                title="Comunicação"
+              >
+                <MessageCircle size={18} />
+                <span>Comunicação</span>
+              </button>
+            )}
             <button
               className="iconButton"
               type="button"

@@ -114,6 +114,31 @@ button { cursor: pointer; }
   background: transparent;
 }
 .topActions { display: flex; align-items: center; gap: 14px; }
+.communicationButton {
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #b9d6df;
+  border-radius: 9px;
+  padding: 0 12px;
+  background: #eef8fa;
+  color: #15566b;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.communicationButton:hover {
+  background: #def1f5;
+  border-color: #8fc3cf;
+}
+.communicationButton:focus-visible {
+  outline: 3px solid rgba(7, 139, 165, .2);
+  outline-offset: 2px;
+}
 .iconButton { position: relative; }
 .iconButton i {
   position: absolute;
@@ -4056,5 +4081,16 @@ body {
   .cameraResultMeta {
     align-items: flex-start;
     text-align: left;
+  }
+}
+
+/* R3.2-R5.2 — Comunicação na barra superior. */
+@media (max-width: 1120px) {
+  .communicationButton {
+    width: 38px;
+    padding: 0;
+  }
+  .communicationButton span {
+    display: none;
   }
 }

@@ -6,6 +6,30 @@
   const sessions = new Map();
   const liveStartPromises = new Map();
 
+  function liveKitServerUrl(serverUrl) {
+    const configured =
+      String(window.EduVigIAChatConfig?.rtcBase || "").trim();
+
+    const value =
+      configured ||
+      String(serverUrl || "").trim();
+
+    if (/^wss?:\/\//i.test(value)) {
+      return value;
+    }
+
+    if (value.startsWith("/")) {
+      const protocol =
+        window.location.protocol === "https:"
+          ? "wss:"
+          : "ws:";
+
+      return `${protocol}//${window.location.host}${value}`;
+    }
+
+    throw new Error("Endpoint LiveKit inválido.");
+  }
+
   let identityId = null;
   let context = null;
   let decorating = false;
@@ -210,7 +234,7 @@
     });
 
     try {
-      await lkRoom.connect(token.server_url, token.token, {
+      await lkRoom.connect(liveKitServerUrl(token.server_url), token.token, {
         autoSubscribe: false
       });
 
@@ -340,7 +364,7 @@
       if (current?.room === lkRoom) clearSession(room.id);
     });
 
-    await lkRoom.connect(token.server_url, token.token, {
+    await lkRoom.connect(liveKitServerUrl(token.server_url), token.token, {
       autoSubscribe: true
     });
 
